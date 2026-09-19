@@ -1,0 +1,36 @@
+# Dependencies and package-manager caches
+node_modules/
+.pnpm-store/
+
+# Build output and tool caches
+dist/
+.vite/
+.cache/
+*.tsbuildinfo
+
+# Local environment and secrets (keep the documented template)
+.env
+.env.*
+!.env.example
+*.local
+
+# Test output
+coverage/
+playwright-report/
+playwright/.cache/
+blob-report/
+test-results/
+
+# Logs
+*.log
+
+# Local Supabase state
+supabase/.temp/
+supabase/.branches/
+
+# Editor and operating-system files
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
