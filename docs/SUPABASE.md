@@ -43,3 +43,13 @@ No service-role secret is required or present in the frontend.
 Verified: email/password signup is enabled and automatic email confirmation is off.
 Anonymous REST reads of organizations return HTTP 401. Security advisors report no
 findings. Test users, memberships and organizations were rolled back and confirmed absent.
+
+## Saved projects
+
+Migration 20260920073710 adds projects with a composite organization/id primary key,
+membership-based reads and owner-only inserts. API grants allow only create/read;
+server-owned status and timestamp cannot be supplied by clients. Update and delete
+are deliberately unavailable until editing and conflict handling are implemented.
+Project creation uses a stable client UUID; duplicate retries read the existing
+record without overwriting it. List queries are organization-scoped and paginated.
+Run supabase/tests/project_isolation.sql as a transaction; it rolls back fixtures.

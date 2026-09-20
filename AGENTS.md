@@ -18,7 +18,7 @@ repository rules into this project without an explicit licensing review.
 ## Current state and decision status
 
 This repository contains a Vite/React frontend, Supabase Auth/company onboarding,
-and separate fictional, session-only project/estimate demos. Do not describe planned features,
+a persisted company project register (create/list), and separate fictional, session-only project/estimate demos. Do not describe planned features,
 commands, integrations, or tests as implemented before they exist.
 
 Agreed direction:

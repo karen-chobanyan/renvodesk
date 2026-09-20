@@ -35,7 +35,9 @@ saving, French/English switch, component showcase, shared visual tokens.
 
 ## Boundaries
 
-Authentication and organization records use Supabase. Projects and estimates are still
+Authentication, organizations and the project register in /workspace use Supabase.
+Select a company to create and list its saved projects. Editing, budgets and project
+details are not yet connected. The separate /projects and /estimates routes remain
 fictional demos; reloading resets their edits. File storage, invoice issuance, tax,
 payments and drawings are not connected. Do not enter customer records into the demo.
 Costs and contracts are illustrative, not derived from invoice records.

@@ -70,6 +70,47 @@ export type Database = {
         };
         Relationships: [];
       };
+      projects: {
+        Row: {
+          address: string;
+          city: string;
+          client_name: string;
+          created_at: string;
+          id: string;
+          name: string;
+          organization_id: string;
+          status: string;
+        };
+        Insert: {
+          address?: string;
+          city: string;
+          client_name: string;
+          created_at?: string;
+          id?: string;
+          name: string;
+          organization_id: string;
+          status?: string;
+        };
+        Update: {
+          address?: string;
+          city?: string;
+          client_name?: string;
+          created_at?: string;
+          id?: string;
+          name?: string;
+          organization_id?: string;
+          status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "projects_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;

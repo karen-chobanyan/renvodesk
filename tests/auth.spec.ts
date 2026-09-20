@@ -18,6 +18,8 @@ const token = `${encode({ alg: "HS256", typ: "JWT" })}.${encode({ sub: id, role:
 async function mockApi(page: Page) {
   let company: string | null = null;
   let requests = 0;
+  const projects: Record<string, unknown>[] = [];
+  let loseResponse = true;
   await page.route(
     "https://oripsywzngftarbprlgk.supabase.co/**",
     async (route) => {
@@ -63,6 +65,34 @@ async function mockApi(page: Page) {
       }
       if (url.pathname.endsWith("/user")) {
         await route.fulfill({ json: user });
+        return;
+      }
+      if (url.pathname.endsWith("/projects")) {
+        if (method === "POST") {
+          const body = route.request().postDataJSON();
+          expect(body.organization_id).toBe(org);
+          if (projects.some((p) => p.id === body.id)) {
+            await route.fulfill({
+              status: 409,
+              json: { code: "23505", message: "Duplicate" },
+            });
+          } else {
+            projects.push({
+              ...body,
+              status: "planning",
+              created_at: "2026-09-20T00:00:00Z",
+            });
+            if (loseResponse) {
+              loseResponse = false;
+              await route.abort();
+            } else await route.fulfill({ json: projects.at(-1) });
+          }
+        } else {
+          expect(url.searchParams.get("organization_id")).toBe(`eq.${org}`);
+          await route.fulfill({
+            json: url.searchParams.has("id") ? projects[0] : projects,
+          });
+        }
         return;
       }
       if (url.pathname.endsWith("/organization_memberships")) {
@@ -128,11 +158,51 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     page.getByRole("button", { name: /Atelier Test/ }),
   ).toBeVisible();
   expect(requests()).toBe(1);
+  await expect(
+    page.getByText("Aucun projet pour le moment.", { exact: false }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Nouveau projet" }).click();
+  await page
+    .getByLabel("Nom du projet", { exact: true })
+    .fill("Rénovation cuisine");
+  await page.getByLabel("Client", { exact: true }).fill("Client Test");
+  await page.getByLabel("Ville", { exact: true }).fill("Bruxelles");
+  await page
+    .getByRole("button", { name: "Créer le projet", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Enregistrement non confirmé",
+  );
+  await page
+    .getByRole("button", { name: "Créer le projet", exact: true })
+    .click();
+  await expect(
+    page.getByText("Projet enregistré.", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Rénovation cuisine", { exact: true }),
+  ).toHaveCount(1);
   await page.reload();
   await expect(
     page.getByRole("button", { name: /Atelier Test/ }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Se déconnecter" }).click();
+  await expect(
+    page.getByText("Rénovation cuisine", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  await expect(
+    page.getByRole("heading", { name: "Company projects" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `/private/tmp/renvo-projects-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/login$/);
   await page.goto("/workspace");
   await expect(page).toHaveURL(/\/login$/);

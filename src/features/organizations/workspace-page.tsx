@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { AuthLayout } from "@/features/auth/auth-page";
 import { useAuth } from "@/features/auth/auth-provider";
 import { authErrorKey, useAuthCopy } from "@/features/auth/copy";
+import { SavedProjects } from "@/features/projects/saved-projects";
 import { requireSupabase } from "@/lib/supabase/client";
 import {
   createOrganization,
@@ -216,9 +217,10 @@ function Workspace({ userId, email }: { userId: string; email: string }) {
               ))}
             </div>
             {activeOrganization && (
-              <p className="helper-text">
-                {t("selected")} : {activeOrganization.name}
-              </p>
+              <SavedProjects
+                key={activeOrganization.id}
+                organizationId={activeOrganization.id}
+              />
             )}
             <div className="workspace-next">
               <p>{t("demoHint")}</p>
