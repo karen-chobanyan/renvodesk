@@ -1810,3 +1810,13 @@ main {
     gap: 1rem;
   }
 }
+
+.saved-project-link {
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.connected-workspace h1 {
+  overflow-wrap: anywhere;
+}

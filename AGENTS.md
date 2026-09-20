@@ -17,28 +17,43 @@ repository rules into this project without an explicit licensing review.
 
 ## Current state and decision status
 
-This repository contains a Vite/React frontend, Supabase Auth/company onboarding,
-a persisted company project register (create/list), and separate fictional, session-only project/estimate demos. Do not describe planned features,
-commands, integrations, or tests as implemented before they exist.
+Current implementation:
+- React/TypeScript with Vite and React Router declarative routing.
+- Supabase email/password auth, recovery/callback UI and protected `/workspace`.
+- Company creation/selection with owner memberships and atomic onboarding.
+- Persisted project creation/listing in the selected company, with pagination and
+  recoverable retries. Fields: name, client name, city, optional address. Initial
+  status defaults to `planning`. Protected detail pages support editing and status
+  changes with revision-based conflict checks. Deletion is not implemented.
+- Separate fictional `/projects`, `/projects/:id` and `/estimates/:id` demos.
+  Their records remain in memory and reset on reload, even when signed in.
+- French/English UI, responsive layouts and `/design-system` component reference.
 
 Agreed direction:
-- React and TypeScript, with shadcn/ui and Tailwind CSS for the interface.
-- Supabase/Postgres, Supabase Auth, and private Supabase Storage.
-- French and English localization now; Dutch is deferred.
-- Excalidraw for quick project sketches and annotations.
-- Detailed, measured floor planning is a separate future module.
+- Tailwind v4 and locally owned shadcn-style Radix primitives; reuse existing UI.
+- Supabase/Postgres and Supabase Auth are connected. Private Supabase Storage is
+  selected but uploads, file metadata and storage policies are not implemented.
+- French is the default language; English is available. Dutch is deferred.
+- Excalidraw is selected, not integrated, for quick sketches and annotations.
+  Detailed measured floor planning is a separate future module.
+- Next milestone: persisted estimates linked to saved projects.
 
 Still to decide before dependent implementation:
-- Deployment provider. Supabase is in Frankfurt; React + Vite + React Router are selected.
+- Frontend deployment provider and production hosting configuration.
 - Invoicing/accounting provider and country rollout details.
-- Background processing, email delivery, and monitoring providers.
-- Team role/permission matrix and billing/subscription model. Initial onboarding creates owners only.
+- Background processing, SMTP/email delivery and monitoring providers.
+- Expanded team permissions and billing/subscription model. Owner is the only
+  implemented role; other roles below are proposals, not an agreed permission matrix.
+
+Do not describe planned features, integrations or tests as implemented. Real email
+confirmation and recovery delivery remain unverified; follow docs/SUPABASE.md for
+required dashboard redirects and SMTP. No invoice, payment or tax compliance is implemented.
 
 Use pnpm. Keep dependencies minimal; check current documentation, compatibility,
 and licenses before adoption. Do not install competing UI systems for the same
 purpose. Ask before adding major infrastructure or changing an agreed foundation.
 
-## Initial product scope
+## Planned product scope (not an implementation checklist)
 
 1. Clients and properties: contacts, site addresses, billing details.
 2. Estimates: reusable lines, labor/material costs, markup, PDF output, acceptance.
@@ -55,14 +70,33 @@ and automatic quantity takeoff unless explicitly requested.
 ## Architecture
 
 - Organize business logic by domain, with clear boundaries between UI, validation,
-  data access, and server-only operations. Establish the actual directory layout
-  during scaffolding and document it here.
+  data access, and server-only operations. Follow the existing layout below.
 - Keep secrets, privileged clients, and provider credentials on the server.
 - Validate inputs at trusted server boundaries; client validation is UX only.
 - Use transactions for related database writes and idempotency for retried actions
   with financial or external side effects.
 - Avoid speculative abstractions, microservices, and generic workflow engines.
 - Keep country-specific billing logic separate from project management.
+
+### Existing code map
+
+- `src/main.tsx`: route tree and providers; `/workspace` is behind `RequireAuth`.
+- `src/features/auth`: session provider, account screens and localized auth copy.
+- `src/features/organizations`: company onboarding, selection and data access.
+- `src/features/projects/project-service.ts` and `saved-projects.tsx`: live project register.
+- `saved-project-page.tsx`: live project details/editing. Other project screens
+  and `src/features/estimates`: fictional demo workflows.
+- `src/lib/demo-store.tsx`: in-memory demo state; never silently mix with live data.
+- `src/lib/i18n.tsx`: shared FR/EN copy and formatting; auth and saved projects also
+  own domain copy. Keep both languages complete when adding or changing text.
+- `src/components/ui`, `src/components/shared.tsx`: reusable primitives/patterns.
+- `src/styles.css`: semantic tokens and shared styling; `DESIGN.md` explains them.
+- `src/lib/supabase`: publishable browser client and generated database types.
+- `supabase/migrations`, `supabase/tests`: migrations and rollback-only isolation tests.
+
+There is no custom server application yet. Use dedicated server endpoints or Edge
+Functions if privileged work becomes necessary; never import privileged code into
+the Vite browser bundle. Do not copy Carbon's module conventions into this repository.
 
 ## Authentication and tenant isolation
 
@@ -103,8 +137,9 @@ and automatic quantity takeoff unless explicitly requested.
 ## Design system
 
 Aim for a calm, architectural, professional interface: warm off-white backgrounds,
-white surfaces, charcoal text, and a restrained deep-blue accent. These are initial
-visual directions to refine through reference screens.
+white surfaces, charcoal text, navy actions and muted sage navigation/statuses.
+This foundation is implemented in src/styles.css, with self-hosted Inter Variable.
+Use DESIGN.md and the existing reference screens when extending it.
 
 - Define semantic tokens for colors, spacing, typography, radii, and control sizes.
   Components consume tokens; avoid arbitrary per-screen styles.
@@ -122,7 +157,7 @@ visual directions to refine through reference screens.
 - Establish project list, project overview, and estimate editor as reference screens.
 - Maintain DESIGN.md and a component showcase as the system is implemented.
 
-## Files and drawings
+## Files and drawings (requirements for future implementation)
 
 - Keep business files in private storage with organization/project access policies.
   Store metadata and business links in Postgres; file contents belong in storage.
@@ -179,7 +214,37 @@ Do not invent a command or report an unrun check as passing.
 
 ## Supabase implementation
 
-See docs/SUPABASE.md and docs/decisions/002-auth-and-company-isolation.md.
-Generated types live in src/lib/supabase/database.types.ts; never edit by hand.
-Auth UI session state is not authorization; RLS remains the enforcement boundary.
-Never replace the demo provider with live data until its domain schema and isolation tests exist.
+- Development project: RenvoDesk (`oripsywzngftarbprlgk`), Frankfurt (`eu-central-1`).
+  Do not apply changes to other Supabase projects.
+- `.env.local` is ignored; `.env.example` documents the URL and publishable key.
+  Only public configuration belongs in `VITE_*`; never put service-role secrets there.
+- `organizations`, `organization_memberships` and `projects` are implemented.
+  Organization onboarding atomically creates the company and owner membership via
+  `create_organization`, with verified non-anonymous user checks and idempotency.
+- The public onboarding RPC is SECURITY INVOKER and delegates to a private,
+  constrained SECURITY DEFINER function. Preserve that boundary. Before adding
+  membership removal, revisit replay behavior: onboarding can repair the creator's membership.
+- Users can read only their own memberships and member organizations. Clients cannot
+  directly write memberships, update companies or delete companies.
+- Projects use `(organization_id, id)` as a composite primary key. Reads require
+  membership; inserts and updates require ownership. Column grants keep organization,
+  id and creation timestamp immutable. Only editable fields and revision have update
+  grants; deletion remains unavailable. Updates match organization, id and loaded
+  revision; the trigger requires an increment of one. Never retry stale writes against
+  a newer revision automatically. Preserve fields on conflicts until the user reloads.
+- Project list queries explicitly filter organization_id, use 20-row pages and stable
+  ordering. Create retries retain the request UUID and read an existing duplicate
+  without overwriting it. This is request recovery, not offline synchronization.
+- Generated types live in `src/lib/supabase/database.types.ts`; regenerate after
+  migrations, before typechecking. Never edit generated types manually.
+- Keep migration files and the remote migration history aligned. Do not run resets
+  or destructive schema changes without authorization.
+- Auth UI session state is not authorization; RLS remains the enforcement boundary.
+  Keep demo routes separate until each domain has a schema and isolation tests.
+- Run rollback SQL tests for authorization changes. Browser tests mock APIs and
+  cannot prove database isolation or email delivery. Do not disable confirmation
+  to work around SMTP or redirect configuration.
+
+Setup: docs/SUPABASE.md. Historical foundation decisions:
+docs/decisions/001-client-foundation.md and 002-auth-and-company-isolation.md.
+Read README.md and the latest milestone plans for current implementation status.

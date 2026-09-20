@@ -79,6 +79,7 @@ export type Database = {
           id: string;
           name: string;
           organization_id: string;
+          revision: number;
           status: string;
         };
         Insert: {
@@ -89,6 +90,7 @@ export type Database = {
           id?: string;
           name: string;
           organization_id: string;
+          revision?: number;
           status?: string;
         };
         Update: {
@@ -99,6 +101,7 @@ export type Database = {
           id?: string;
           name?: string;
           organization_id?: string;
+          revision?: number;
           status?: string;
         };
         Relationships: [

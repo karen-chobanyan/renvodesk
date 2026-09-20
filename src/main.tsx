@@ -13,6 +13,7 @@ import { EstimatePage } from "./features/estimates/estimate-page";
 import { WorkspacePage } from "./features/organizations/workspace-page";
 import { ProjectPage } from "./features/projects/project-page";
 import { ProjectsPage } from "./features/projects/projects-page";
+import { SavedProjectPage } from "./features/projects/saved-project-page";
 import { DemoProvider } from "./lib/demo-store";
 import { LocaleProvider, useLocale } from "./lib/i18n";
 
@@ -81,6 +82,10 @@ function Application() {
               <Route path="auth/callback" element={<AuthCallback />} />
               <Route element={<RequireAuth />}>
                 <Route path="workspace" element={<WorkspacePage />} />
+                <Route
+                  path="workspace/:organizationId/projects/:id"
+                  element={<SavedProjectPage />}
+                />
               </Route>
 
               <Route element={<AppShell />}>

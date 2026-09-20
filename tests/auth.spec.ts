@@ -20,6 +20,7 @@ async function mockApi(page: Page) {
   let requests = 0;
   const projects: Record<string, unknown>[] = [];
   let loseResponse = true;
+  let edits = 0;
   await page.route(
     "https://oripsywzngftarbprlgk.supabase.co/**",
     async (route) => {
@@ -80,6 +81,7 @@ async function mockApi(page: Page) {
             projects.push({
               ...body,
               status: "planning",
+              revision: 1,
               created_at: "2026-09-20T00:00:00Z",
             });
             if (loseResponse) {
@@ -87,10 +89,33 @@ async function mockApi(page: Page) {
               await route.abort();
             } else await route.fulfill({ json: projects.at(-1) });
           }
+        } else if (method === "PATCH") {
+          expect(url.searchParams.get("organization_id")).toBe(`eq.${org}`);
+          const body = route.request().postDataJSON();
+          expect(url.searchParams.get("id")).toBe(`eq.${projects[0].id}`);
+          expect(body.revision).toBe(
+            Number(url.searchParams.get("revision")?.slice(3)) + 1,
+          );
+          edits++;
+          if (edits === 2) {
+            projects[0] = { ...projects[0], name: "Other editor", revision: 3 };
+          }
+          if (
+            url.searchParams.get("revision") === `eq.${projects[0].revision}`
+          ) {
+            projects[0] = { ...projects[0], ...body };
+            await route.fulfill({ json: [projects[0]] });
+          } else await route.fulfill({ json: [] });
         } else {
           expect(url.searchParams.get("organization_id")).toBe(`eq.${org}`);
           await route.fulfill({
-            json: url.searchParams.has("id") ? projects[0] : projects,
+            json: url.searchParams.has("id")
+              ? route.request().headers().accept?.includes("vnd.pgrst.object")
+                ? projects[0]
+                : projects.filter(
+                    (p) => `eq.${p.id}` === url.searchParams.get("id"),
+                  )
+              : projects,
           });
         }
         return;
@@ -202,7 +227,73 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     path: `/private/tmp/renvo-projects-${test.info().project.name}.png`,
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await page
+    .getByRole("link", { name: "Rénovation cuisine", exact: true })
+    .click();
+  await expect(page.getByLabel("Project name", { exact: true })).toHaveValue(
+    "Rénovation cuisine",
+  );
+  await page
+    .getByLabel("Project name", { exact: true })
+    .fill("Kitchen renovation");
+  await page.getByLabel("Status", { exact: true }).selectOption("active");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Changes saved.", { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Nom du projet", { exact: true })).toHaveValue(
+    "Kitchen renovation",
+  );
+  await expect(page.getByLabel("Statut", { exact: true })).toHaveValue(
+    "active",
+  );
+  await page
+    .getByLabel("Nom du projet", { exact: true })
+    .fill("My unsaved change");
+  await page
+    .getByRole("button", { name: "Enregistrer les modifications" })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("Le projet a changé");
+  await expect(page.getByLabel("Nom du projet", { exact: true })).toHaveValue(
+    "My unsaved change",
+  );
+  await expect(
+    page.getByRole("button", { name: "Enregistrer les modifications" }),
+  ).toBeDisabled();
+  await page.screenshot({
+    path: `/private/tmp/renvo-edit-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  await page
+    .getByRole("button", { name: "Recharger et remplacer mes champs" })
+    .click();
+  await expect(page.getByLabel("Nom du projet", { exact: true })).toHaveValue(
+    "Other editor",
+  );
+  await page
+    .getByLabel("Nom du projet", { exact: true })
+    .fill("Reconciled project");
+  await page
+    .getByRole("button", { name: "Enregistrer les modifications" })
+    .click();
+  await expect(
+    page.getByText("Modifications enregistrées.", { exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.goto(
+    `/workspace/${org}/projects/00000000-0000-4000-8000-000000000000`,
+  );
+  await expect(page.getByRole("alert")).toHaveText(
+    "Projet introuvable ou accès indisponible.",
+  );
+  await page.getByRole("link", { name: "Retour aux entreprises" }).click();
+  await expect(
+    page.getByRole("link", { name: "Reconciled project", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Se déconnecter" }).click();
   await expect(page).toHaveURL(/\/login$/);
   await page.goto("/workspace");
   await expect(page).toHaveURL(/\/login$/);

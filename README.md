@@ -1,22 +1,90 @@
 # RenvoDesk
 
-Renovation SaaS foundation with French/English authentication and company onboarding,
-plus separate fictional project/estimate demos.
+A minimal SaaS for renovation companies in Belgium, France and the Netherlands.
+The intended workflow is **estimate → project → costs → invoice**, with a clear
+view of each renovation and its profitability. French and English are supported
+now; Dutch is deferred. The chosen domain is **renvodesk.com**; ownership and
+trademark clearance have not been verified.
 
-## Run
+RenvoDesk is an independent application. Carbon was evaluated as a reference,
+not selected as the codebase.
 
-Requires Node 20.19+ (or a supported newer LTS) and pnpm 10.
+## Current state
+
+| Area | Implemented | Boundary |
+| --- | --- | --- |
+| Authentication | Email/password signup, login, logout, confirmation callback and password recovery UI | Real email delivery still needs dashboard/SMTP configuration and verification |
+| Companies | Create and select companies; users can belong to several organizations | Owner role only; no invitations or team administration |
+| Saved projects | Create, list, open and edit company projects; status changes, pagination and stale-edit protection | No deletion, budgets or connected estimates yet |
+| Project demo | Search, status filters, create dialog and financial overview | Fictional data held in memory; edits reset on reload |
+| Estimate demo | Editable lines, decimal-safe totals and session-only saving | No database persistence, PDF export, acceptance or invoicing |
+| Design foundation | Responsive layouts, French/English, reusable primitives and component showcase | Floor-plan thumbnail is illustrative, not an editable drawing |
+
+Saved projects capture a name, client name, city and optional site address. The
+server sets the initial status to preparing. Client names are text fields, not
+records in a separate client-management module. No real financial totals are
+inferred from demo data.
+
+## Run locally
+
+Requires Node 20.19+ and pnpm 10 (the exact package-manager version is in package.json).
 
 ```sh
 pnpm install
+cp .env.example .env.local
+# Fill in VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in .env.local.
 pnpm dev
 ```
 
-Open http://127.0.0.1:5173/login. Copy `.env.example` to `.env.local` and fill in the
-Supabase URL and publishable key for authentication. See [Supabase setup](docs/SUPABASE.md)
-for required email redirect settings. `/projects` remains a demo without credentials.
+Open [the application](http://127.0.0.1:5173/login). Use only the Supabase
+publishable key in browser configuration; never add a service-role or secret key.
+`.env.local` is ignored by Git. Vite must be restarted after environment changes.
+The demo is accessible without Supabase configuration at `/projects`.
 
-## Verify
+The development Supabase project is **RenvoDesk**, reference
+`oripsywzngftarbprlgk`, in **Frankfurt (eu-central-1)**. Follow
+[Supabase setup](docs/SUPABASE.md) for email confirmation, callback/reset redirect
+allowlists and SMTP. These settings are required before considering real signup
+and recovery email flows verified.
+
+## Routes and data boundaries
+
+| Routes | Purpose |
+| --- | --- |
+| `/` | Redirects to the authenticated workspace, or login without a session |
+| `/login`, `/signup` | Account access |
+| `/auth/forgot`, `/auth/reset`, `/auth/callback` | Recovery and email callback handling |
+| `/workspace` | Authenticated company selection, onboarding and persisted project register |
+| `/workspace/:organizationId/projects/:id` | Saved project details, editing and status changes |
+| `/projects`, `/projects/:id` | Separate fictional project demo |
+| `/estimates/:id` | Separate fictional estimate editor |
+| `/design-system` | Shared design/component reference |
+
+Demo records do not become company records after signing in. Do not enter customer
+data into the demo. Database RLS, rather than browser session state, enforces
+organization isolation. Project creation retries reuse a UUID and recover an
+already-saved record without overwriting it.
+
+## Technical and product decisions
+
+- React + TypeScript, Vite and React Router declarative routing; pnpm for packages.
+- Tailwind v4, semantic CSS tokens, locally owned shadcn-style Radix primitives,
+  Lucide icons and self-hosted Inter. See [DESIGN.md](DESIGN.md).
+- Supabase Auth and Postgres are connected. Private Supabase Storage is selected
+  for future files; uploads and file policies are not implemented.
+- Excalidraw is selected for quick sketches and annotations, but not integrated.
+  Detailed measured floor planning is a separate future module.
+- Monetary calculations use integer cents and decimal-safe helpers. Demo amounts
+  do not implement country-specific VAT or invoicing compliance.
+- Deployment, SMTP provider, accounting/e-invoicing provider, billing model,
+  expanded team permissions, background processing and monitoring remain open.
+
+Next milestone is persisted estimates linked to real projects. Clients,
+costs, variations, schedules, documents, invoicing, payments and drawings remain
+planned. Full accounting, payroll, warehouse management, BIM/CAD and automatic
+quantity takeoff are outside the initial scope.
+
+## Verification
 
 ```sh
 pnpm lint
@@ -27,33 +95,34 @@ pnpm exec playwright install chromium
 pnpm test:e2e
 ```
 
-## Included
+Playwright starts or reuses the server on port 5173 and checks desktop/mobile flows.
+Auth and connected-project browser tests mock the configured development project's
+API: they verify UI behavior, reloads, lost-response retries and editing conflicts without sending email.
+They are not evidence of real email delivery or an end-to-end live browser connection.
 
-Responsive workspace, project search/status filters, new demo project dialog,
-project overview, editable estimate with decimal-safe line totals and session-only
-saving, French/English switch, component showcase, shared visual tokens.
+Live database isolation tests are in `supabase/tests/company_isolation.sql` and
+`supabase/tests/project_isolation.sql` and `supabase/tests/project_editing.sql`. Execute them against the development database
+as complete transactions; their temporary fixtures roll back. They cover tenant
+isolation, anonymous denial, write restrictions, validation, revision increments and stale-update rejection.
 
-## Boundaries
+Last implementation verification (2026-09-20): lint, typecheck and build passed;
+11 unit tests and 17 browser tests passed, with one intentional desktop skip for
+the mobile navigation test. Live SQL isolation tests passed and the security
+advisor reported no findings. This is a dated result, not a production-readiness claim.
 
-Authentication, organizations and the project register in /workspace use Supabase.
-Select a company to create and list its saved projects. Editing, budgets and project
-details are not yet connected. The separate /projects and /estimates routes remain
-fictional demos; reloading resets their edits. File storage, invoice issuance, tax,
-payments and drawings are not connected. Do not enter customer records into the demo.
-Costs and contracts are illustrative, not derived from invoice records.
+## Repository map
 
-Live SQL verifies company isolation; browser auth tests use mocked API responses.
-Real email confirmation and recovery delivery require the setup steps in docs/SUPABASE.md.
-The floor-plan thumbnail is decorative and not an actual or editable project plan.
+- `src/main.tsx`: providers and routes.
+- `src/components/ui`, `src/components/shared.tsx`: primitives and shared patterns.
+- `src/features/auth`, `src/features/organizations`: account and company workflows.
+- `src/features/projects`: demo screens plus `saved-projects.tsx` and `project-service.ts` for live data.
+- `src/features/estimates`: demo editor and decimal-safe calculations.
+- `src/lib/i18n.tsx`, `src/lib/demo-store.tsx`: localization and separate demo state.
+- `src/lib/supabase`: browser client and generated database types.
+- `supabase/migrations`, `supabase/tests`: schema history and SQL isolation tests.
+- `tests`: Playwright flows; unit tests live beside their source.
+- `docs/plans`, `docs/decisions`: milestone plans and historical architecture decisions.
 
-## Layout
-
-- `src/components/ui`: local UI primitives (shadcn/Radix pattern).
-- `src/components`: shared layout and product patterns.
-- `src/features`: projects, estimates, component showcase.
-- `src/lib`: locale, demo state, utility functions.
-- `tests`: Playwright browser flows.
-- `docs/plans`, `docs/decisions`: implementation plans and architecture decisions.
-
-See DESIGN.md for visual rules and AGENTS.md for implementation requirements.
-Before deploying BrowserRouter routes, configure SPA history fallback on the host.
+Read [AGENTS.md](AGENTS.md) before implementation. Decision records describe their
+respective milestones; this README describes the current application. Before
+hosting the frontend, configure SPA history fallback and production auth redirects.

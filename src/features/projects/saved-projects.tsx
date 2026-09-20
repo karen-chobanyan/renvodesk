@@ -1,9 +1,11 @@
 import { Plus } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
+import { Link } from "react-router";
 import { StatusBadge } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useLocale } from "@/lib/i18n";
+import { projectCopy } from "./project-copy";
+import { ProjectFields } from "./project-fields";
 import {
   createProject,
   listProjects,
@@ -11,49 +13,9 @@ import {
   type SavedProject,
 } from "./project-service";
 
-const copy = {
-  fr: {
-    title: "Projets de l’entreprise",
-    hint: "Vos projets sont enregistrés dans cet espace.",
-    empty: "Aucun projet pour le moment. Ajoutez votre premier chantier.",
-    name: "Nom du projet",
-    client: "Client",
-    city: "Ville",
-    address: "Adresse du chantier (facultatif)",
-    create: "Créer le projet",
-    cancel: "Annuler",
-    loading: "Chargement…",
-    retry: "Réessayer",
-    error: "Impossible de charger les projets.",
-    saveError:
-      "Enregistrement non confirmé. Réessayez : le même projet ne sera pas créé deux fois.",
-    saved: "Projet enregistré.",
-    more: "Voir plus",
-    invalid: "Renseignez le projet, le client et la ville.",
-  },
-  en: {
-    title: "Company projects",
-    hint: "Your projects are saved in this workspace.",
-    empty: "No projects yet. Add your first renovation.",
-    name: "Project name",
-    client: "Client",
-    city: "City",
-    address: "Site address (optional)",
-    create: "Create project",
-    cancel: "Cancel",
-    loading: "Loading…",
-    retry: "Try again",
-    error: "Could not load projects.",
-    saveError:
-      "Save not confirmed. Try again: the same project will not be created twice.",
-    saved: "Project saved.",
-    more: "Load more",
-    invalid: "Enter the project, client and city.",
-  },
-};
 export function SavedProjects({ organizationId }: { organizationId: string }) {
   const { locale, t } = useLocale(),
-    c = copy[locale];
+    c = projectCopy[locale];
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [loading, setLoading] = useState(true),
     [failed, setFailed] = useState(false);
@@ -152,23 +114,7 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
       {creating && (
         <form className="company-form" onSubmit={submit}>
           <fieldset disabled={busy} className="project-fields">
-            {(["name", "client_name", "city", "address"] as const).map(
-              (field) => (
-                <label
-                  className="field"
-                  key={field}
-                  htmlFor={`project-${field}`}
-                >
-                  {c[field === "client_name" ? "client" : field]}
-                  <Input
-                    id={`project-${field}`}
-                    name={field}
-                    required={field !== "address"}
-                    maxLength={field === "address" ? 300 : 120}
-                  />
-                </label>
-              ),
-            )}
+            <ProjectFields />
             <div className="dialog-actions">
               <Button
                 type="button"
@@ -206,7 +152,12 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
         {projects.map((project) => (
           <li key={project.id}>
             <div>
-              <strong>{project.name}</strong>
+              <Link
+                className="saved-project-link"
+                to={`/workspace/${organizationId}/projects/${project.id}`}
+              >
+                {project.name}
+              </Link>
               <p>
                 {project.client_name} · {project.city}
               </p>

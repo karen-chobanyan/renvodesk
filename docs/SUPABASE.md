@@ -25,7 +25,8 @@ a generic account-existence message. Email links require the redirect settings a
 ## Database
 
 Migration: `supabase/migrations/20260919205112_company_auth_foundation.sql`.
-Only organizations, memberships and the atomic onboarding RPC are implemented.
+Organizations, memberships, the atomic onboarding RPC and projects are implemented.
+Subsequent migrations add the project register and revision-checked editing.
 Generated types: `src/lib/supabase/database.types.ts`; regenerate instead of editing.
 
 `supabase/tests/company_isolation.sql` is a rollback-only integration test executed
@@ -48,8 +49,20 @@ findings. Test users, memberships and organizations were rolled back and confirm
 
 Migration 20260920073710 adds projects with a composite organization/id primary key,
 membership-based reads and owner-only inserts. API grants allow only create/read;
-server-owned status and timestamp cannot be supplied by clients. Update and delete
-are deliberately unavailable until editing and conflict handling are implemented.
+initial status and timestamp cannot be supplied on creation. The later editing
+migration adds owner-only updates; deletion remains unavailable.
 Project creation uses a stable client UUID; duplicate retries read the existing
 record without overwriting it. List queries are organization-scoped and paginated.
 Run supabase/tests/project_isolation.sql as a transaction; it rolls back fixtures.
+
+## Project editing
+
+Migration 20260920074632 adds integer revisions, a private invoker trigger and
+owner-only update policies. Updates grant only name, client_name, city, address,
+status and revision. Identity, organization and created_at remain immutable.
+The trigger requires revision to advance by one; clients also filter updates by
+the loaded revision. Zero returned rows mean conflict or unavailable access.
+The UI preserves fields, blocks stale resubmission and offers an explicit reload.
+A lost update response may also require reload; it never causes an automatic overwrite.
+Run supabase/tests/project_editing.sql to verify edits, stale writes, validation
+and tenant denial. All fixture changes roll back.

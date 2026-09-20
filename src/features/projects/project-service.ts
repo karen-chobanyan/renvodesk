@@ -41,3 +41,29 @@ export async function createProject(
   }
   throw error;
 }
+
+export async function getProject(organizationId: string, id: string) {
+  const { data, error } = await requireSupabase()
+    .from("projects")
+    .select("*")
+    .eq("organization_id", organizationId)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+export async function updateProject(
+  project: SavedProject,
+  input: ProjectInput & { status: string },
+) {
+  const { data, error } = await requireSupabase()
+    .from("projects")
+    .update({ ...input, revision: project.revision + 1 })
+    .eq("organization_id", project.organization_id)
+    .eq("id", project.id)
+    .eq("revision", project.revision)
+    .select("*")
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
