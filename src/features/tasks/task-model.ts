@@ -1,6 +1,7 @@
 export const statuses = ["todo", "in_progress", "done"] as const;
 export type TaskStatus = (typeof statuses)[number];
 export type TaskInput = {
+  assignee_id?: string | null;
   title: string;
   notes: string;
   status: TaskStatus;

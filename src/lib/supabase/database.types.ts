@@ -304,6 +304,7 @@ export type Database = {
       };
       project_tasks: {
         Row: {
+          assignee_id: string | null;
           created_at: string;
           due_date: string | null;
           id: string;
@@ -316,6 +317,7 @@ export type Database = {
           title: string;
         };
         Insert: {
+          assignee_id?: string | null;
           created_at?: string;
           due_date?: string | null;
           id?: string;
@@ -328,6 +330,7 @@ export type Database = {
           title: string;
         };
         Update: {
+          assignee_id?: string | null;
           created_at?: string;
           due_date?: string | null;
           id?: string;
@@ -346,6 +349,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "projects";
             referencedColumns: ["organization_id", "id"];
+          },
+          {
+            foreignKeyName: "tasks_assignee_member";
+            columns: ["organization_id", "assignee_id"];
+            isOneToOne: false;
+            referencedRelation: "organization_memberships";
+            referencedColumns: ["organization_id", "user_id"];
           },
         ];
       };
@@ -457,6 +467,53 @@ export type Database = {
           },
         ];
       };
+      team_invitations: {
+        Row: {
+          accepted_at: string | null;
+          accepted_by: string | null;
+          created_at: string;
+          created_by: string;
+          email: string;
+          expires_at: string;
+          id: string;
+          organization_id: string;
+          revoked_at: string | null;
+          role: string;
+        };
+        Insert: {
+          accepted_at?: string | null;
+          accepted_by?: string | null;
+          created_at?: string;
+          created_by: string;
+          email: string;
+          expires_at?: string;
+          id: string;
+          organization_id: string;
+          revoked_at?: string | null;
+          role?: string;
+        };
+        Update: {
+          accepted_at?: string | null;
+          accepted_by?: string | null;
+          created_at?: string;
+          created_by?: string;
+          email?: string;
+          expires_at?: string;
+          id?: string;
+          organization_id?: string;
+          revoked_at?: string | null;
+          role?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "team_invitations_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;
@@ -477,6 +534,34 @@ export type Database = {
           subcontractors: string;
           total: string;
         }[];
+      };
+      team_invitation: {
+        Args: { p_accept?: boolean; p_id: string };
+        Returns: {
+          company_name: string;
+          member_role: string;
+          organization_id: string;
+        }[];
+      };
+      team_invite: {
+        Args: { p_email: string; p_id: string; p_org: string };
+        Returns: string;
+      };
+      team_members: {
+        Args: { p_offset?: number; p_org: string };
+        Returns: {
+          email: string;
+          role: string;
+          user_id: string;
+        }[];
+      };
+      team_remove: {
+        Args: { p_org: string; p_user: string };
+        Returns: undefined;
+      };
+      team_revoke: {
+        Args: { p_id: string; p_org: string };
+        Returns: undefined;
       };
     };
     Enums: {

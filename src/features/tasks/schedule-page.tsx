@@ -3,7 +3,9 @@ import { Link, useParams } from "react-router";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/shared";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/features/auth/auth-provider";
 import { getOrganization } from "@/features/organizations/organization-service";
+import { teamCopy } from "@/features/team/team-copy";
 import { useLocale } from "@/lib/i18n";
 import { taskCopy } from "./task-copy";
 import { addDays, dateLabel, today, weekStart } from "./task-model";
@@ -38,6 +40,8 @@ function CompanySchedule({ organizationId }: { organizationId: string }) {
   }, [organizationId, reload]);
   const { locale } = useLocale(),
     c = taskCopy[locale];
+  const { session } = useAuth();
+  const [mine, setMine] = useState(false);
   const [start, setStart] = useState(() => weekStart(today()));
   const [mode, setMode] = useState<"week" | "overdue" | "undated">("week");
   if (failed || !company)
@@ -92,10 +96,23 @@ function CompanySchedule({ organizationId }: { organizationId: string }) {
           </Button>
         </div>
       )}
+      <label className="task-filter">
+        <input
+          type="checkbox"
+          checked={mine}
+          onChange={(e) => setMine(e.target.checked)}
+        />
+        {teamCopy[locale].myTasks}
+      </label>
       <TaskPanel
-        key={`${organizationId}:${mode}:${start}`}
+        key={`${organizationId}:${mode}:${start}:${mine}`}
         org={organizationId}
-        filter={{ mode, start, today: today() }}
+        filter={{
+          mode,
+          start,
+          today: today(),
+          assignee: mine ? session?.user.id : undefined,
+        }}
       />
     </AppShell>
   );

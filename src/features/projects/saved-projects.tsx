@@ -5,6 +5,7 @@ import { PlanMark, StatusBadge } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NewProjectFields } from "@/features/clients/project-client-picker";
+import { useCompanyAccess } from "@/features/team/company-access";
 import { useLocale } from "@/lib/i18n";
 import { projectCopy } from "./project-copy";
 import {
@@ -17,6 +18,7 @@ import {
 export function SavedProjects({ organizationId }: { organizationId: string }) {
   const { locale, t } = useLocale(),
     c = projectCopy[locale];
+  const { owner } = useCompanyAccess(organizationId);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [projects, setProjects] = useState<SavedProject[]>([]);
@@ -109,7 +111,7 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
     <section className="saved-projects" aria-labelledby="saved-projects-title">
       <div className="section-heading workspace-heading">
         <h2 id="saved-projects-title">{c.title}</h2>
-        {!creating && (
+        {owner && !creating && (
           <Button
             onClick={() => {
               setCreating(true);
@@ -140,7 +142,7 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
           </div>
         ))}
       </section>
-      {creating && (
+      {owner && creating && (
         <form className="company-form" onSubmit={submit}>
           <fieldset disabled={busy} className="project-fields">
             <NewProjectFields org={organizationId} />

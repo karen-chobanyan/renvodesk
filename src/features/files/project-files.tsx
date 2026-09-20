@@ -19,9 +19,11 @@ const PdfPreview = lazy(() => import("./pdf-preview"));
 export function ProjectFiles({
   organizationId,
   projectId,
+  canManage,
 }: {
   organizationId: string;
   projectId: string;
+  canManage: boolean;
 }) {
   const { locale } = useLocale(),
     c = fileCopy[locale];
@@ -122,28 +124,32 @@ export function ProjectFiles({
     <section id="project-files" className="saved-projects project-files">
       <h2>{c.title}</h2>
       <p className="helper-text">{c.hint}</p>
-      <label className="field" htmlFor="project-file-input">
-        {c.choose}
-        <input
-          ref={input}
-          id="project-file-input"
-          type="file"
-          accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.docx,.xlsx"
-          disabled={busy}
-          onChange={(e) => {
-            const file = e.target.files?.[0] ?? null;
-            setNotice(null);
-            setRequestId(crypto.randomUUID());
-            setPercent(0);
-            const problem = file ? validateFile(file) : null;
-            setError(problem);
-            setSelected(problem ? null : file);
-          }}
-        />
-      </label>
-      <Button disabled={!selected || busy} onClick={upload}>
-        {busy ? c.loading : c.upload}
-      </Button>
+      {canManage && (
+        <>
+          <label className="field" htmlFor="project-file-input">
+            {c.choose}
+            <input
+              ref={input}
+              id="project-file-input"
+              type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.docx,.xlsx"
+              disabled={busy}
+              onChange={(e) => {
+                const file = e.target.files?.[0] ?? null;
+                setNotice(null);
+                setRequestId(crypto.randomUUID());
+                setPercent(0);
+                const problem = file ? validateFile(file) : null;
+                setError(problem);
+                setSelected(problem ? null : file);
+              }}
+            />
+          </label>
+          <Button disabled={!selected || busy} onClick={upload}>
+            {busy ? c.loading : c.upload}
+          </Button>
+        </>
+      )}
       {selected && busy && (
         <div>
           <progress aria-label={c.progress} max={100} value={percent} />
@@ -204,7 +210,7 @@ export function ProjectFiles({
                       </Button>
                     )}
                   </>
-                ) : file.state === "pending" ? (
+                ) : canManage && file.state === "pending" ? (
                   <Button
                     variant="outline"
                     disabled={busy}
@@ -219,13 +225,15 @@ export function ProjectFiles({
                     {c.verify}
                   </Button>
                 ) : null}
-                <Button
-                  variant="ghost"
-                  disabled={busy}
-                  onClick={() => setRemoving(file)}
-                >
-                  {c.remove}
-                </Button>
+                {canManage && (
+                  <Button
+                    variant="ghost"
+                    disabled={busy}
+                    onClick={() => setRemoving(file)}
+                  >
+                    {c.remove}
+                  </Button>
+                )}
               </div>
             </div>
           </li>

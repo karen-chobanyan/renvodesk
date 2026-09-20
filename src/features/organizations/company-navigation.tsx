@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/auth-provider";
 import { authErrorKey, useAuthCopy } from "@/features/auth/copy";
+import { useCompanyAccess } from "@/features/team/company-access";
 import { useLocale } from "@/lib/i18n";
 import { requireSupabase } from "@/lib/supabase/client";
 import { getOrganizations, type Organization } from "./organization-service";
@@ -18,6 +19,7 @@ export function CompanyNavigation({
     t = useAuthCopy(),
     { locale } = useLocale(),
     navigate = useNavigate();
+  const { owner } = useCompanyAccess(id);
   const menu = useRef<HTMLDetailsElement>(null);
   function dismiss() {
     if (menu.current) menu.current.open = false;
@@ -103,12 +105,17 @@ export function CompanyNavigation({
         >
           {t("addCompany")}
         </Link>
-        {id && (
-          <Link to={`/workspace/${id}/settings`} onClick={dismiss}>
-            {locale === "fr"
-              ? "Paramètres de l’entreprise"
-              : "Company settings"}
-          </Link>
+        {id && owner && (
+          <>
+            <Link to={`/workspace/${id}/team`} onClick={dismiss}>
+              {locale === "fr" ? "Équipe" : "Team"}
+            </Link>
+            <Link to={`/workspace/${id}/settings`} onClick={dismiss}>
+              {locale === "fr"
+                ? "Paramètres de l’entreprise"
+                : "Company settings"}
+            </Link>
+          </>
         )}
       </div>
     </details>

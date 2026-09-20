@@ -16,6 +16,7 @@ import {
   AccountControls,
   CompanyNavigation,
 } from "@/features/organizations/company-navigation";
+import { useCompanyAccess } from "@/features/team/company-access";
 import { useDemo } from "@/lib/demo-store";
 import { useLocale } from "@/lib/i18n";
 import { Button } from "./ui/button";
@@ -43,6 +44,7 @@ export function AppShell({
     params.organizationId ??
     search.get("company") ??
     undefined;
+  const { owner } = useCompanyAccess(live ? activeOrg : undefined);
   const home =
     live && activeOrg
       ? `/workspace?company=${activeOrg}`
@@ -112,7 +114,7 @@ export function AppShell({
             </span>
           )}
         </NavLink>
-        {live && activeOrg && (
+        {live && activeOrg && owner && (
           <NavLink
             to={`/workspace/${activeOrg}/clients`}
             onClick={() => setMobileOpen(false)}
@@ -130,19 +132,21 @@ export function AppShell({
             {locale === "fr" ? "Planning" : "Schedule"}
           </NavLink>
         )}
-        <NavLink
-          to={
-            live
-              ? activeOrg
-                ? `/workspace/${activeOrg}/estimates`
-                : home
-              : "/estimates/maison-ixelles"
-          }
-          onClick={() => setMobileOpen(false)}
-        >
-          <FileText size={18} />
-          {t("estimates")}{" "}
-        </NavLink>
+        {(!live || owner) && (
+          <NavLink
+            to={
+              live
+                ? activeOrg
+                  ? `/workspace/${activeOrg}/estimates`
+                  : home
+                : "/estimates/maison-ixelles"
+            }
+            onClick={() => setMobileOpen(false)}
+          >
+            <FileText size={18} />
+            {t("estimates")}{" "}
+          </NavLink>
+        )}
       </nav>
       <p className="nav-label resource-label">{t("resources")}</p>
       <nav aria-label={t("resources")}>

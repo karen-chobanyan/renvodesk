@@ -47,8 +47,7 @@ Still to decide before dependent implementation:
 - Frontend deployment provider and production hosting configuration.
 - Invoicing/accounting provider and country rollout details.
 - Background processing, SMTP/email delivery and monitoring providers.
-- Expanded team permissions and billing/subscription model. Owner is the only
-  implemented role; other roles below are proposals, not an agreed permission matrix.
+- Expanded team permissions and billing/subscription model. Owner and member roles are implemented; broader roles remain proposals.
 
 Do not describe planned features, integrations or tests as implemented. Real email
 confirmation and recovery delivery remain unverified; follow docs/SUPABASE.md for
@@ -269,7 +268,7 @@ Read README.md and the latest milestone plans for current implementation status.
 - The database trigger computes total_cents using exact numeric arithmetic and
   half-up rounding per line, capped at JS's safe integer maximum. Never accept a
   client total as authoritative. Shared client helpers provide matching previews.
-- Only owners create/update drafts; member reads are scoped by organization and
+- Only owners read/create/update drafts; queries are scoped by organization and
   project. Identity, project link, currency, status and totals have no client write
   grants. Updates use the loaded revision and require an increment of one.
 - Draft status and EUR currency are fixed. No tax calculation, document issuance,
@@ -329,7 +328,8 @@ Saved project overview now mirrors the demo detail composition: real project hea
 - `src/features/tasks` owns task model, localized copy, data access, project editor
   and company schedule. Generated task types come from Supabase.
 - `project_tasks` uses composite organization/project FK and existing membership RLS.
-  Owners create/update/delete, members read. Explicit grants prevent identity edits.
+  Owners create/update/delete and assign tasks. Members read and edit only tasks
+  assigned to them; they cannot reassign or delete. Explicit grants prevent identity edits.
 - Preserve revision matching on update AND deletion. Never overwrite a conflict.
   Preserve request UUID on create retry; duplicate recovery never overwrites data.
 - Dates are calendar strings, not timestamp instants. Validate real YYYY-MM-DD dates,
@@ -339,7 +339,7 @@ Saved project overview now mirrors the demo detail composition: real project hea
   server before 50-row pagination; do not label loaded counts as global totals.
 - Overdue excludes done and requires a past due date. Undated excludes done and
   requires both dates null. A start-only task is one scheduled day, not open-ended.
-- Task demo prompts have been replaced with live schedule navigation. Only sketch previews remain fictional. No assignments, dependencies or realtime yet.
+- Task demo prompts have been replaced with live schedule navigation. Only sketch previews remain fictional. Task assignment is implemented; dependencies and realtime remain deferred.
 
 ## Company and account navigation
 
@@ -378,6 +378,26 @@ property to copy their details, or use manual entry.
 Project text remains a snapshot: directory edits do not change existing projects.
 Existing projects are not automatically linked; linked IDs cannot be reassigned yet.
 No directory deletion, merging, imports or automatic billing-address PDF integration
-is implemented. Owners write and members read; revision checks prevent stale edits,
+is implemented. Only owners read/write the client/property directory; revision checks prevent stale edits,
 and stable request IDs recover interrupted creates without overwriting records.
 See `docs/decisions/011-clients-properties.md`.
+
+## Team and task assignments
+
+The company menu opens **Team** at `/workspace/:organizationId/team`. Owners create
+email-bound invitation links valid for seven days, copy/share them, revoke pending
+invitations and remove members with confirmation. Acceptance at `/invite/:id` requires
+a verified account matching the invited email and an explicit click. Login/signup
+preserve that invitation destination. Invitation email delivery is not implemented.
+
+Members view company projects/files/tasks and edit their assigned tasks. Project
+creation/editing, file uploads/deletion, finance, the client directory and company/team
+administration remain owner-only. Task editors offer a paginated company assignee
+picker; the schedule can show only the signed-in user's tasks. Removal revokes access
+and invitations and clears assignments atomically, retaining the tasks and files.
+
+`src/features/team` owns the UI, service calls and role-aware controls. SQL policies
+and constrained private functions enforce permissions independently of the UI. Never
+add role escalation, allow arbitrary acceptance email/user IDs, expose privileged
+keys, or silently retry stale task updates. Owners cannot be removed through this API.
+See decision 012 and `supabase/tests/team_isolation.sql`.

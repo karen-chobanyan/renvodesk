@@ -1,6 +1,9 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router";
+import { OwnerRoute } from "./features/team/company-access";
+import { InvitationPage } from "./features/team/invitation-page";
+import { TeamPage } from "./features/team/team-page";
 import "@fontsource-variable/inter";
 import "./styles.css";
 import { AppShell } from "./components/app-shell";
@@ -84,28 +87,37 @@ function Application() {
                 element={<AuthPage key="update" mode="update" />}
               />
               <Route path="auth/callback" element={<AuthCallback />} />
+              <Route path="invite/:id" element={<InvitationPage />} />
               <Route element={<RequireAuth />}>
                 <Route path="workspace" element={<WorkspacePage />} />
-                <Route
-                  path="workspace/:organizationId/clients"
-                  element={<ClientsPage />}
-                />
-                <Route
-                  path="workspace/:organizationId/estimates"
-                  element={<CompanyEstimatesPage />}
-                />
-                <Route
-                  path="workspace/:organizationId/settings"
-                  element={<WorkspacePage settings />}
-                />
+                <Route element={<OwnerRoute />}>
+                  <Route
+                    path="workspace/:organizationId/team"
+                    element={<TeamPage />}
+                  />
+                  <Route
+                    path="workspace/:organizationId/clients"
+                    element={<ClientsPage />}
+                  />
+                  <Route
+                    path="workspace/:organizationId/estimates"
+                    element={<CompanyEstimatesPage />}
+                  />
+                  <Route
+                    path="workspace/:organizationId/settings"
+                    element={<WorkspacePage settings />}
+                  />
+                </Route>
                 <Route
                   path="workspace/:organizationId/schedule"
                   element={<SchedulePage />}
                 />
-                <Route
-                  path="workspace/:organizationId/projects/:id/estimates/:estimateId"
-                  element={<SavedEstimatePage />}
-                />
+                <Route element={<OwnerRoute />}>
+                  <Route
+                    path="workspace/:organizationId/projects/:id/estimates/:estimateId"
+                    element={<SavedEstimatePage />}
+                  />
+                </Route>
                 <Route
                   path="workspace/:organizationId/projects/:id"
                   element={<SavedProjectPage />}

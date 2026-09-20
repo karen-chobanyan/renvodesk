@@ -88,3 +88,12 @@ Reuse the workspace shell and flat task rows. Client selection reveals a propert
 column on desktop; stack it below the list on mobile. Editors are inline and reuse
 project fields. The project creation picker is optional and clearly explains copied
 details. Preserve manual entry and display retry/conflict states in context.
+
+## Team and role-aware workspace
+
+Team administration lives in the compact company menu. Use the existing flat rows,
+inline forms and confirmation dialog. Show invitation status and expiry explicitly,
+and explain that links are copied rather than emailed. Member views retain the same
+shell and project context while hiding owner actions and financial sections. Assignee
+selection uses a labeled select with paging; the schedule has an explicit My tasks
+filter. An unavailable invitation explains email verification, expiry and revocation.

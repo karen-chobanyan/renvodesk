@@ -314,6 +314,12 @@ async function mockApi(page: Page) {
         });
         return;
       }
+      if (url.pathname.endsWith("/rpc/team_members")) {
+        await route.fulfill({
+          json: [{ user_id: id, email: user.email, role: "owner" }],
+        });
+        return;
+      }
       if (url.pathname.endsWith("/organization_memberships")) {
         expect(url.searchParams.get("user_id")).toBe(`eq.${id}`);
         await route.fulfill({
@@ -321,6 +327,7 @@ async function mockApi(page: Page) {
             ? [
                 {
                   organization_id: org,
+                  role: "owner",
                   organizations: { id: org, name: company, country: "BE" },
                 },
               ]
@@ -766,6 +773,7 @@ test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
     if (method === "POST") {
       const input = route.request().postDataJSON();
       expect(input.organization_id).toBe(org);
+      expect(input.assignee_id).toBe(id);
       if (tasks.some((t) => t.id === input.id)) {
         await route.fulfill({ status: 409, json: { code: "23505" } });
         return;
@@ -839,6 +847,7 @@ test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
   const panel = page.getByRole("region", { name: "Tâches du projet" });
   await panel.getByRole("button", { name: "Nouvelle tâche" }).click();
   await panel.getByLabel("Nom de la tâche").fill("Préparer le chantier");
+  await panel.getByLabel("Responsable", { exact: true }).selectOption(id);
   await panel.getByLabel("Date de début").fill("2026-09-23");
   await panel.getByLabel("Date limite").fill("2026-09-21");
   await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
@@ -961,16 +970,29 @@ test("company navigation keeps selection across reload and detail routes", async
   const second = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
   await page.route("**/rest/v1/organization_memberships**", (route) =>
     route.fulfill({
-      json: [
-        {
-          organization_id: org,
-          organizations: { id: org, name: "First company", country: "BE" },
-        },
-        {
-          organization_id: second,
-          organizations: { id: second, name: "Second company", country: "FR" },
-        },
-      ],
+      json:
+        new URL(route.request().url()).searchParams.get("select") === "role"
+          ? [{ role: "owner" }]
+          : [
+              {
+                organization_id: org,
+                role: "owner",
+                organizations: {
+                  id: org,
+                  name: "First company",
+                  country: "BE",
+                },
+              },
+              {
+                organization_id: second,
+                role: "owner",
+                organizations: {
+                  id: second,
+                  name: "Second company",
+                  country: "FR",
+                },
+              },
+            ],
     }),
   );
   await page.route("**/rest/v1/projects**", (route) =>
@@ -1395,4 +1417,345 @@ test("clients and properties prefill a linked project", async ({
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+});
+
+test("owner invites with recovery, revokes and removes a teammate", async ({
+  page,
+  isMobile,
+}) => {
+  await mockApi(page);
+  const teammate = "22222222-2222-4222-8222-222222222222";
+  let members = [
+    { user_id: id, email: user.email, role: "owner" },
+    { user_id: teammate, email: "teammate@example.test", role: "member" },
+  ];
+  const invitations: Record<string, unknown>[] = [];
+  let lost = false;
+  await page.route("**/rest/v1/rpc/team_members", async (route) => {
+    expect(route.request().postDataJSON().p_org).toBe(org);
+    await route.fulfill({ json: members });
+  });
+  await page.route("**/rest/v1/team_invitations**", async (route) => {
+    expect(
+      new URL(route.request().url()).searchParams.get("organization_id"),
+    ).toBe(`eq.${org}`);
+    await route.fulfill({ json: invitations });
+  });
+  await page.route("**/rest/v1/rpc/team_invite", async (route) => {
+    const body = route.request().postDataJSON();
+    expect(body.p_org).toBe(org);
+    if (!invitations.some((i) => i.id === body.p_id))
+      invitations.push({
+        id: body.p_id,
+        email: body.p_email,
+        role: "member",
+        organization_id: org,
+        created_at: "2026-09-20T12:00:00Z",
+        expires_at: "2099-09-27T12:00:00Z",
+        accepted_at: null,
+        revoked_at: null,
+      });
+    if (!lost) {
+      lost = true;
+      await route.abort();
+    } else await route.fulfill({ json: body.p_id });
+  });
+  await page.route("**/rest/v1/rpc/team_revoke", async (route) => {
+    const body = route.request().postDataJSON();
+    expect(body.p_org).toBe(org);
+    const row = invitations.find((i) => i.id === body.p_id);
+    if (!row) throw new Error("Invitation fixture missing");
+    row.revoked_at = "2026-09-20T13:00:00Z";
+    await route.fulfill({ json: null });
+  });
+  await page.route("**/rest/v1/rpc/team_remove", async (route) => {
+    const body = route.request().postDataJSON();
+    expect(body.p_org).toBe(org);
+    expect(body.p_user).toBe(teammate);
+    members = members.filter((m) => m.user_id !== teammate);
+    await route.fulfill({ json: null });
+  });
+  await login(page);
+  await page.getByLabel("Nom de l’entreprise").fill("Team company");
+  await page.getByRole("button", { name: "Créer mon entreprise" }).click();
+  await expect(
+    page.getByRole("button", { name: "Nouveau projet" }),
+  ).toBeVisible();
+  if (isMobile)
+    await page.getByRole("button", { name: "Navigation", exact: true }).click();
+  await page.locator(".company-menu > summary").click();
+  await page.getByRole("link", { name: "Équipe", exact: true }).click();
+  await page.getByLabel("E-mail du coéquipier").fill("invited@example.test");
+  await page.getByRole("button", { name: "Créer une invitation" }).click();
+  await expect(page.getByRole("alert")).toContainText("Action non confirmée");
+  await page.getByRole("button", { name: "Créer une invitation" }).click();
+  expect(invitations).toHaveLength(1);
+  await expect(
+    page.getByLabel("Lien d’invitation", { exact: true }),
+  ).toHaveValue(new RegExp(`/invite/${invitations[0].id}$`));
+  await page.getByRole("button", { name: "Révoquer", exact: true }).click();
+  await expect(page.getByText(/Révoquée ·/)).toBeVisible();
+  await page
+    .getByRole("button", { name: "Retirer le membre", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Annuler", exact: true })
+    .click();
+  await expect(
+    page.getByText("teammate@example.test", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Retirer le membre", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Retirer le membre", exact: true })
+    .click();
+  await expect(
+    page.getByText("teammate@example.test", { exact: true }),
+  ).toHaveCount(0);
+  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  await expect(
+    page.getByRole("heading", { name: "Team", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.locator("main").focus();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: `/private/tmp/renvo-team-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+});
+
+test("invitation returns after login and requires explicit acceptance", async ({
+  page,
+}) => {
+  await mockApi(page);
+  const inviteId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+  let accepted = false;
+  await page.route("**/rest/v1/rpc/team_invitation", async (route) => {
+    const body = route.request().postDataJSON();
+    expect(body.p_id).toBe(inviteId);
+    if (body.p_accept) accepted = true;
+    await route.fulfill({
+      json: [
+        {
+          organization_id: org,
+          company_name: "Inviting company",
+          member_role: "member",
+        },
+      ],
+    });
+  });
+  await page.route("**/rest/v1/organization_memberships**", async (route) => {
+    await route.fulfill({
+      json: accepted
+        ? [
+            {
+              organization_id: org,
+              role: "member",
+              organizations: {
+                id: org,
+                name: "Inviting company",
+                country: "BE",
+              },
+            },
+          ]
+        : [],
+    });
+  });
+  await page.goto(`/invite/${inviteId}`);
+  await page.getByRole("link", { name: "Se connecter", exact: true }).click();
+  await page.getByLabel("Adresse e-mail").fill("test@example.test");
+  await page
+    .getByLabel("Mot de passe", { exact: true })
+    .fill("long-test-password");
+  await page.getByRole("button", { name: "Se connecter", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Inviting company", exact: true }),
+  ).toBeVisible();
+  expect(accepted).toBe(false);
+  await page
+    .getByRole("button", { name: "Accepter l’invitation", exact: true })
+    .click();
+  await expect(page).toHaveURL(new RegExp(`/workspace\\?company=${org}$`));
+  expect(accepted).toBe(true);
+  await expect(
+    page.getByRole("button", { name: "Nouveau projet" }),
+  ).toHaveCount(0);
+  await page.goto(`/workspace/${org}/estimates`);
+  await expect(
+    page.getByRole("heading", { name: "Accès réservé au propriétaire" }),
+  ).toBeVisible();
+  await page.route("**/rest/v1/rpc/team_invitation", (route) =>
+    route.fulfill({
+      status: 403,
+      json: { code: "42501", message: "Invitation unavailable" },
+    }),
+  );
+  await page.goto(`/invite/${inviteId}`);
+  await expect(page.getByRole("alert")).toContainText(
+    "Invitation indisponible",
+  );
+  await expect(
+    page.getByRole("button", { name: "Accepter l’invitation", exact: true }),
+  ).toHaveCount(0);
+});
+
+test("member edits only assigned tasks and sees no owner controls", async ({
+  page,
+  isMobile,
+}) => {
+  await mockApi(page);
+  const projectId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+  const project = {
+    id: projectId,
+    organization_id: org,
+    name: "Member site",
+    client_name: "Client",
+    city: "Namur",
+    address: "12 rue Exemple",
+    status: "active",
+    revision: 1,
+  };
+  const tasks = [
+    {
+      id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+      organization_id: org,
+      project_id: projectId,
+      title: "My task",
+      notes: "",
+      status: "todo",
+      start_date: null,
+      due_date: null,
+      revision: 1,
+      assignee_id: id,
+      projects: { name: project.name },
+    },
+    {
+      id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+      organization_id: org,
+      project_id: projectId,
+      title: "Other task",
+      notes: "",
+      status: "todo",
+      start_date: null,
+      due_date: null,
+      revision: 1,
+      assignee_id: null,
+      projects: { name: project.name },
+    },
+  ];
+  await page.route("**/rest/v1/organization_memberships**", (route) =>
+    route.fulfill({
+      json: [
+        {
+          organization_id: org,
+          role: "member",
+          organizations: { id: org, name: "Member company", country: "BE" },
+        },
+      ],
+    }),
+  );
+  await page.route("**/rest/v1/rpc/team_members", (route) =>
+    route.fulfill({
+      json: [{ user_id: id, email: user.email, role: "member" }],
+    }),
+  );
+  await page.route("**/rest/v1/projects**", (route) =>
+    route.fulfill({ json: [project] }),
+  );
+  await page.route("**/rest/v1/project_files**", (route) =>
+    route.fulfill({ json: [] }),
+  );
+  await page.route("**/rest/v1/organizations**", (route) =>
+    route.fulfill({
+      json: [{ id: org, name: "Member company", country: "BE" }],
+    }),
+  );
+  let edits = 0;
+  await page.route("**/rest/v1/project_tasks**", async (route) => {
+    const url = new URL(route.request().url());
+    expect(url.searchParams.get("organization_id")).toBe(`eq.${org}`);
+    if (route.request().method() === "PATCH") {
+      expect(url.searchParams.get("id")).toBe(`eq.${tasks[0].id}`);
+      expect(url.searchParams.get("revision")).toBe("eq.1");
+      expect(route.request().postDataJSON().assignee_id).toBe(id);
+      Object.assign(tasks[0], route.request().postDataJSON());
+      edits++;
+      await route.fulfill({ json: [tasks[0]] });
+    } else
+      await route.fulfill({
+        json: url.searchParams.has("assignee_id") ? [tasks[0]] : tasks,
+      });
+  });
+  await login(page);
+  await expect(
+    page.getByRole("link", { name: "Member site", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Nouveau projet" }),
+  ).toHaveCount(0);
+  if (isMobile)
+    await page.getByRole("button", { name: "Navigation", exact: true }).click();
+  await expect(
+    page.getByRole("link", { name: "Clients", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "Devis", exact: true }),
+  ).toHaveCount(0);
+  if (isMobile) await page.keyboard.press("Escape");
+  await page.getByRole("link", { name: "Member site", exact: true }).click();
+  const panel = page.getByRole("region", { name: "Tâches du projet" });
+  await expect(panel.locator("article")).toHaveCount(2);
+  await expect(
+    panel.getByRole("button", { name: "Nouvelle tâche" }),
+  ).toHaveCount(0);
+  await expect(
+    panel.getByRole("button", { name: "Modifier", exact: true }),
+  ).toHaveCount(1);
+  await expect(
+    panel.getByRole("button", { name: "Supprimer", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("region", { name: "Budget et coûts" }),
+  ).toHaveCount(0);
+  await expect(page.locator("#project-estimates")).toHaveCount(0);
+  await expect(page.locator("#project-file-input")).toHaveCount(0);
+  await panel.getByRole("button", { name: "Modifier", exact: true }).click();
+  await expect(panel.getByLabel("Responsable", { exact: true })).toHaveCount(0);
+  await panel.getByLabel("Statut de la tâche").selectOption("in_progress");
+  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  await expect(panel.locator("article").first().locator(".status")).toHaveText(
+    "En cours",
+  );
+  expect(edits).toBe(1);
+  await page
+    .getByRole("link", { name: "Planning", exact: true })
+    .last()
+    .click();
+  await page.getByRole("button", { name: "Sans date", exact: true }).click();
+  await expect(page.locator(".task-row")).toHaveCount(2);
+  const filtered = page.waitForRequest(
+    (r) =>
+      r.url().includes("/project_tasks?") &&
+      new URL(r.url()).searchParams.get("assignee_id") === `eq.${id}`,
+  );
+  await page.getByLabel("Mes tâches uniquement").check();
+  await filtered;
+  await expect(
+    page.locator(".task-row").filter({ hasText: "My task" }),
+  ).toHaveCount(1);
+  await expect(
+    page.locator(".task-row").filter({ hasText: "Other task" }),
+  ).toHaveCount(0);
+  await page.goto(`/workspace/${org}/clients`);
+  await expect(
+    page.getByRole("heading", { name: "Accès réservé au propriétaire" }),
+  ).toBeVisible();
 });

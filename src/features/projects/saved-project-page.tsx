@@ -8,6 +8,7 @@ import { useAuth } from "@/features/auth/auth-provider";
 import { ProjectEstimates } from "@/features/estimates/project-estimates";
 import { ProjectFiles } from "@/features/files/project-files";
 import { TaskPanel } from "@/features/tasks/task-panel";
+import { useCompanyAccess } from "@/features/team/company-access";
 import { useLocale } from "@/lib/i18n";
 import { projectCopy } from "./project-copy";
 import { ProjectFields } from "./project-fields";
@@ -73,6 +74,11 @@ function ProjectDetail({
   const { locale, t } = useLocale(),
     c = copy[locale],
     shared = projectCopy[locale];
+  const {
+    owner,
+    role,
+    loading: accessLoading,
+  } = useCompanyAccess(organizationId);
   const [project, setProject] = useState<SavedProject | null>(null);
   const [loading, setLoading] = useState(true),
     [failed, setFailed] = useState(false),
@@ -145,7 +151,7 @@ function ProjectDetail({
               : c.hint
           }
           action={
-            project && !loading && !failed ? (
+            owner && project && !loading && !failed ? (
               <Button asChild>
                 <a href="#project-estimates">
                   {t("allEstimates")}
@@ -165,19 +171,23 @@ function ProjectDetail({
                 {locale === "fr" ? "Projet enregistré" : "Saved project"}
               </span>
             </div>
-            <SavedProjectOverview project={project} />
+            <SavedProjectOverview project={project} owner={owner} />
             <nav className="detail-navigation" aria-label={c.title}>
-              <a href="#project-costs">
-                {locale === "fr" ? "Budget et coûts" : "Budget and costs"}
-              </a>
-              <a href="#site-details">{c.title}</a>
+              {owner && (
+                <>
+                  <a href="#project-costs">
+                    {locale === "fr" ? "Budget et coûts" : "Budget and costs"}
+                  </a>
+                  <a href="#site-details">{c.title}</a>
+                </>
+              )}
               <a href="#project-tasks">
                 {locale === "fr" ? "Tâches" : "Tasks"}
               </a>
               <Link to={`/workspace/${organizationId}/schedule`}>
                 {locale === "fr" ? "Planning" : "Schedule"}
               </Link>
-              <a href="#project-estimates">{t("estimates")}</a>
+              {owner && <a href="#project-estimates">{t("estimates")}</a>}
               <a href="#project-files">
                 {locale === "fr" ? "Fichiers" : "Files"}
               </a>
@@ -193,7 +203,7 @@ function ProjectDetail({
           </>
         ) : !project ? (
           <p role="alert">{c.missing}</p>
-        ) : (
+        ) : owner ? (
           <form
             id="site-details"
             className="company-form"
@@ -241,12 +251,23 @@ function ProjectDetail({
             )}
             {saved && <p role="status">{c.saved}</p>}
           </form>
-        )}
+        ) : !accessLoading && !role ? (
+          <p role="alert">{c.error}</p>
+        ) : null}
         {project && !loading && !failed && (
           <>
             <TaskPanel org={organizationId} project={id} />
-            <ProjectEstimates organizationId={organizationId} projectId={id} />
-            <ProjectFiles organizationId={organizationId} projectId={id} />
+            {owner && (
+              <ProjectEstimates
+                organizationId={organizationId}
+                projectId={id}
+              />
+            )}
+            <ProjectFiles
+              organizationId={organizationId}
+              projectId={id}
+              canManage={owner}
+            />
           </>
         )}
       </section>

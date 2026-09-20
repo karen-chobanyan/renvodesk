@@ -225,6 +225,26 @@ property to copy their details, or use manual entry.
 Project text remains a snapshot: directory edits do not change existing projects.
 Existing projects are not automatically linked; linked IDs cannot be reassigned yet.
 No directory deletion, merging, imports or automatic billing-address PDF integration
-is implemented. Owners write and members read; revision checks prevent stale edits,
+is implemented. Only owners read/write the client/property directory; revision checks prevent stale edits,
 and stable request IDs recover interrupted creates without overwriting records.
 See `docs/decisions/011-clients-properties.md`.
+
+## Team and task assignments
+
+The company menu opens **Team** at `/workspace/:organizationId/team`. Owners create
+email-bound invitation links valid for seven days, copy/share them, revoke pending
+invitations and remove members with confirmation. Acceptance at `/invite/:id` requires
+a verified account matching the invited email and an explicit click. Login/signup
+preserve that invitation destination. Invitation email delivery is not implemented.
+
+Members view company projects/files/tasks and edit their assigned tasks. Project
+creation/editing, file uploads/deletion, finance, the client directory and company/team
+administration remain owner-only. Task editors offer a paginated company assignee
+picker; the schedule can show only the signed-in user's tasks. Removal revokes access
+and invitations and clears assignments atomically, retaining the tasks and files.
+
+`src/features/team` owns the UI, service calls and role-aware controls. SQL policies
+and constrained private functions enforce permissions independently of the UI. Never
+add role escalation, allow arbitrary acceptance email/user IDs, expose privileged
+keys, or silently retry stale task updates. Owners cannot be removed through this API.
+See decision 012 and `supabase/tests/team_isolation.sql`.

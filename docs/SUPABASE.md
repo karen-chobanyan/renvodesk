@@ -128,3 +128,23 @@ project links. Composite foreign keys enforce organization and property/client i
 Members read; owners insert/update editable columns with revision checks. No deletion
 or project-link update grants. Run `supabase/tests/client_isolation.sql` as a rollback-only
 SQL verification; it checks tenant denial, link constraints, revisions and snapshots.
+
+## Team invitations and task permissions
+
+Applied migration `20260920121357_team_tasks.sql` adds the member role, team invitation
+RPCs and same-company task assignee FK. Member financial/directory reads are denied
+by restrictive policies; project/task/file reads remain available. Direct membership
+writes remain unavailable. Public invoker RPCs delegate to constrained private
+functions for verified recipient matching and transactional membership changes.
+
+Run `supabase/tests/team_isolation.sql` as a rollback-only check. It passed against
+the development project. Generated types reflect the migration. Security advisors
+reported no new finding beyond the existing leaked-password-protection warning.
+
+Invitation links are copied, not emailed. They expire after seven days. Recipients
+need a confirmed account with the invited email. For signup return navigation, allow
+the application callback URL with its `next=/invite/<uuid>` query parameter in Auth
+redirect configuration; keep the production origin and path restricted. If an email
+callback drops the return parameter, reopen the original invitation after confirmation.
+A localhost invitation works only on the same device; use a deployed origin for real
+team testing. Existing SMTP/signup/recovery delivery limitations remain unchanged.

@@ -4,6 +4,10 @@ import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { AssigneePicker } from "@/features/team/assignee-picker";
+import { useCompanyAccess } from "@/features/team/company-access";
+import { teamCopy } from "@/features/team/team-copy";
+import { listTeam, type TeamMember } from "@/features/team/team-service";
 import { useLocale } from "@/lib/i18n";
 import { taskCopy } from "./task-copy";
 import {
@@ -46,14 +50,30 @@ export function TaskPanel({
     [deleting, setDeleting] = useState<Task | null>(null),
     [busy, setBusy] = useState(false),
     [deleteError, setDeleteError] = useState(false);
+  const access = useCompanyAccess(org);
+  const teamText = teamCopy[locale];
+  const [people, setPeople] = useState<TeamMember[]>([]);
+  useEffect(() => {
+    let active = true;
+    void listTeam(org)
+      .then((data) => {
+        if (active) setPeople(data);
+      })
+      .catch(() => {
+        if (active) setPeople([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, [org]);
   const day = today();
-  const { mode, start, today: filterToday } = filter;
+  const { mode, start, today: filterToday, assignee } = filter;
   // biome-ignore lint/correctness/useExhaustiveDependencies: reload explicitly refreshes saved data
   useEffect(() => {
     let active = true;
     setLoading(true);
     setFailed(false);
-    void listTasks(org, { project, mode, start, today: filterToday })
+    void listTasks(org, { project, mode, start, today: filterToday, assignee })
       .then((data) => {
         if (active) {
           setRows(data);
@@ -69,13 +89,13 @@ export function TaskPanel({
     return () => {
       active = false;
     };
-  }, [org, project, mode, start, filterToday, reload]);
+  }, [org, project, mode, start, filterToday, assignee, reload]);
   async function loadMore() {
     setLoading(true);
     try {
       const data = await listTasks(
         org,
-        { project, mode, start, today: filterToday },
+        { project, mode, start, today: filterToday, assignee },
         rows.length,
       );
       setRows((old) => [
@@ -119,6 +139,13 @@ export function TaskPanel({
               {row.projects?.name ?? c.project}
             </Link>
           )}
+          <small>
+            {teamText.assignee}:{" "}
+            {row.assignee_id
+              ? (people.find((p) => p.user_id === row.assignee_id)?.email ??
+                teamText.savedAssignment)
+              : teamText.unassigned}
+          </small>
           {row.notes && <p className="task-notes">{row.notes}</p>}
           <small>
             {row.start_date ? dateLabel(row.start_date, locale) : c.noDate} →{" "}
@@ -133,22 +160,27 @@ export function TaskPanel({
             { ...row, status: row.status as TaskInput["status"] },
             day,
           ) && <span className="task-overdue">{c.overdue}</span>}
-          {project && (
-            <>
-              <Button variant="ghost" onClick={() => setEditing(row)}>
-                {c.edit}
-              </Button>
-              <Button
-                variant="ghost"
-                onClick={() => {
-                  setDeleting(row);
-                  setDeleteError(false);
-                }}
-              >
-                {c.remove}
-              </Button>
-            </>
-          )}
+          {project &&
+            (access.owner ||
+              (access.role === "member" &&
+                row.assignee_id === access.user)) && (
+              <>
+                <Button variant="ghost" onClick={() => setEditing(row)}>
+                  {c.edit}
+                </Button>
+                {access.owner && (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      setDeleting(row);
+                      setDeleteError(false);
+                    }}
+                  >
+                    {c.remove}
+                  </Button>
+                )}
+              </>
+            )}
         </div>
       </article>
     );
@@ -168,7 +200,7 @@ export function TaskPanel({
           <Button variant="outline" disabled={loading} onClick={refresh}>
             {c.refresh}
           </Button>
-          {project && (
+          {project && access.owner && (
             <Button onClick={() => setEditing("new")}>
               <Plus size={16} />
               {c.add}
@@ -176,10 +208,14 @@ export function TaskPanel({
           )}
         </div>
       </div>
+      {access.role === "member" && (
+        <p className="helper-text">{teamText.readOnly}</p>
+      )}
       {editing && project && (
         <TaskEditor
           key={editing === "new" ? "new" : `${editing.id}:${editing.revision}`}
           org={org}
+          canAssign={access.owner}
           project={project}
           task={editing === "new" ? undefined : editing}
           close={() => setEditing(null)}
@@ -282,12 +318,14 @@ function TaskEditor({
   org,
   project,
   task,
+  canAssign,
   close,
   saved,
 }: {
   org: string;
   project: string;
   task?: Task;
+  canAssign: boolean;
   close: () => void;
   saved: () => void;
 }) {
@@ -303,6 +341,9 @@ function TaskEditor({
     if (busy) return;
     const form = new FormData(e.currentTarget);
     const input: TaskInput = {
+      assignee_id: canAssign
+        ? String(form.get("assignee") ?? "") || null
+        : (task?.assignee_id ?? null),
       title: String(form.get("title") ?? "").trim(),
       notes: String(form.get("notes") ?? ""),
       status: String(form.get("status")) as TaskInput["status"],
@@ -330,6 +371,9 @@ function TaskEditor({
   return (
     <form className="company-form task-editor" onSubmit={submit}>
       <fieldset disabled={busy} className="project-fields">
+        {canAssign && (
+          <AssigneePicker org={org} value={task?.assignee_id ?? null} />
+        )}
         <label className="field" htmlFor="task-title">
           {c.title}
           <Input

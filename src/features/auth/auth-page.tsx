@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { useLocale } from "@/lib/i18n";
 import { requireSupabase, supabase } from "@/lib/supabase/client";
 import { useAuth } from "./auth-provider";
+import { authReturn } from "./auth-return";
 import { type AuthKey, authErrorKey, useAuthCopy } from "./copy";
 export function AuthLayout({ children }: { children: ReactNode }) {
   const { locale, setLocale } = useLocale();
@@ -47,6 +48,11 @@ export function AuthPage({ mode }: { mode: Mode }) {
   const { session, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const destination = authReturn(location.search);
+  const nextQuery =
+    destination === "/workspace"
+      ? ""
+      : `?next=${encodeURIComponent(destination)}`;
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<AuthKey | null>(null);
   const [message, setMessage] = useState<AuthKey | null>(null);
@@ -85,17 +91,17 @@ export function AuthPage({ mode }: { mode: Mode }) {
           password,
         });
         if (error) throw error;
-        navigate("/workspace", { replace: true });
+        navigate(destination, { replace: true });
       } else if (mode === "signup") {
         const { data, error } = await client.auth.signUp({
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback`,
+            emailRedirectTo: `${window.location.origin}/auth/callback${nextQuery}`,
           },
         });
         if (error) throw error;
-        if (data.session) navigate("/workspace", { replace: true });
+        if (data.session) navigate(destination, { replace: true });
         else setMessage("confirmation");
       } else if (mode === "request") {
         const { error } = await client.auth.resetPasswordForEmail(email, {
@@ -106,7 +112,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
       } else {
         const { error } = await client.auth.updateUser({ password });
         if (error) throw error;
-        navigate("/workspace", { replace: true });
+        navigate(destination, { replace: true });
       }
     } catch (error) {
       setError(authErrorKey(error));
@@ -121,7 +127,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
       </AuthLayout>
     );
   if (session && (mode === "login" || mode === "signup"))
-    return <Navigate to="/workspace" replace />;
+    return <Navigate to={destination} replace />;
   const invalidRecovery =
     mode === "update" &&
     (!session || new URLSearchParams(location.search).has("error"));
@@ -207,12 +213,13 @@ export function AuthPage({ mode }: { mode: Mode }) {
               {t("forgot")}
             </Link>
             <div className="auth-bottom">
-              {t("signinFooter")} <Link to="/signup">{t("signup")}</Link>
+              {t("signinFooter")}{" "}
+              <Link to={`/signup${nextQuery}`}>{t("signup")}</Link>
             </div>
           </>
         ) : (
           <div className="auth-bottom">
-            <Link to="/login">{t("backLogin")}</Link>
+            <Link to={`/login${nextQuery}`}>{t("backLogin")}</Link>
           </div>
         )}
       </section>
@@ -223,15 +230,20 @@ export function AuthCallback() {
   const { session, loading } = useAuth();
   const t = useAuthCopy();
   const location = useLocation();
+  const destination = authReturn(location.search);
+  const nextQuery =
+    destination === "/workspace"
+      ? ""
+      : `?next=${encodeURIComponent(destination)}`;
   const failed = new URLSearchParams(location.search).has("error");
   if (!loading && session && !failed)
-    return <Navigate to="/workspace" replace />;
+    return <Navigate to={destination} replace />;
   return (
     <AuthLayout>
       <section className="auth-panel">
         <h1>{t(loading ? "verify" : "callbackError")}</h1>
         {!loading && (
-          <Link className="auth-text-link" to="/login">
+          <Link className="auth-text-link" to={`/login${nextQuery}`}>
             {t("backLogin")}
           </Link>
         )}
