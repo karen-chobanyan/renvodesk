@@ -39,11 +39,31 @@ production-safe behavior. Browser QA is required at desktop and mobile sizes.
 
 Protected workspace, project and estimate pages reuse the demo application shell.
 The saved project register uses the same visual hierarchy and table styles, with
-search/status filters and counts scoped to loaded projects. Company settings follow
-the register. Saved project pages provide links to details, estimates and files.
-Task and sketch previews are explicitly fictional; their links lead to demo routes.
+search/status filters and counts scoped to loaded projects. Company settings have a dedicated page. Saved project pages provide links to details, estimates and files.
+Sketch previews are explicitly fictional; task navigation opens the live company schedule.
 The global estimates link is labeled Demo; saved estimates remain inside projects.
 Keep demo records separate from live data while replacing previews incrementally.
 See docs/decisions/007-shared-workspace-design.md.
 
 Saved project overview now mirrors the demo detail composition: real project header/status and client/address sidebar, explicitly fictional financial metrics and breakdown, illustrative plan, and live estimate/file sections. Example amounts are integer cents, never saved budgets. Site editing and revision-conflict recovery remain available below the overview.
+
+## Tasks and planning
+
+Tasks use flat rows with text status badges, dates, notes and an explicit overdue
+label. Editing uses existing form controls; deletion uses the shared confirmation
+modal. The weekly schedule is seven columns on desktop, two on narrower desktop,
+and a stacked daily agenda on phones. Today has a subtle tinted background. Company
+identity remains visible; task cards link back to saved projects. French and English
+are complete. Task previews in the register are now replaced by live schedule links.
+
+## Company and account navigation
+
+The live sidebar owns company selection, Add a company, Company settings, demo
+access and account sign-out. Projects no longer embeds company administration.
+`/workspace?company=<id>` selects the project register; project, schedule and settings
+routes carry the company ID in the path. Switching companies returns to that company’s
+register. `/workspace/:organizationId/settings` contains document contact details.
+Selection is explicit in the URL and survives reload; unqualified `/workspace` uses
+the first available membership. No permissions or database schema changed.
+
+Live sidebar identities use compact avatar/name disclosure rows matching the demo. Company selection, add/settings links and account sign-out are inside keyboard-accessible expandable panels. Escape closes the panel and returns focus to its trigger; mobile drawer remains scrollable.

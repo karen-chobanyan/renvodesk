@@ -1,6 +1,6 @@
-import { ArrowUpRight, Building2, Check, LogOut, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
-import { Link } from "react-router";
+import { useNavigate, useParams, useSearchParams } from "react-router";
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,35 +8,47 @@ import { useAuth } from "@/features/auth/auth-provider";
 import { authErrorKey, useAuthCopy } from "@/features/auth/copy";
 import { SavedProjects } from "@/features/projects/saved-projects";
 import { useLocale } from "@/lib/i18n";
-import { requireSupabase } from "@/lib/supabase/client";
+
 import { CompanyContacts } from "./company-contacts";
 import {
   createOrganization,
   getOrganizations,
   type Organization,
 } from "./organization-service";
-export function WorkspacePage() {
+export function WorkspacePage({ settings = false }: { settings?: boolean }) {
   const { session } = useAuth();
   return session ? (
     <Workspace
       key={session.user.id}
       userId={session.user.id}
-      email={session.user.email ?? ""}
+      settings={settings}
     />
   ) : null;
 }
-function Workspace({ userId, email }: { userId: string; email: string }) {
+function Workspace({
+  userId,
+  settings,
+}: {
+  userId: string;
+  settings: boolean;
+}) {
+  const [search] = useSearchParams();
+  const params = useParams();
+  const navigate = useNavigate();
+  const requested = params.organizationId ?? search.get("company") ?? "";
   const t = useAuthCopy();
-  const { t: ui } = useLocale();
+  const { t: ui, locale } = useLocale();
+  const settingsTitle =
+    locale === "fr" ? "Paramètres de l’entreprise" : "Company settings";
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [reload, setReload] = useState(0);
-  const [creating, setCreating] = useState(false);
+  const creating = search.get("new") === "1";
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [requestId, setRequestId] = useState(() => crypto.randomUUID());
-  const [selected, setSelected] = useState("");
+  const selected = requested || organizations[0]?.id || "";
   // biome-ignore lint/correctness/useExhaustiveDependencies: reload intentionally invalidates the company query after creation or retry
   useEffect(() => {
     let active = true;
@@ -46,9 +58,6 @@ function Workspace({ userId, email }: { userId: string; email: string }) {
       .then((data) => {
         if (active) {
           setOrganizations(data);
-          setSelected((current) =>
-            data.some((o) => o.id === current) ? current : (data[0]?.id ?? ""),
-          );
         }
       })
       .catch(() => {
@@ -76,23 +85,8 @@ function Workspace({ userId, email }: { userId: string; email: string }) {
     try {
       const id = await createOrganization(name, country, requestId);
       setRequestId(crypto.randomUUID());
-      setCreating(false);
-      setSelected(id);
+      navigate(`/workspace?company=${id}`);
       setReload((n) => n + 1);
-    } catch (error) {
-      setError(t(authErrorKey(error)));
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function signOut() {
-    setBusy(true);
-    setError("");
-    try {
-      const { error } = await requireSupabase().auth.signOut({
-        scope: "local",
-      });
-      if (error) throw error;
     } catch (error) {
       setError(t(authErrorKey(error)));
     } finally {
@@ -102,12 +96,26 @@ function Workspace({ userId, email }: { userId: string; email: string }) {
   const showForm = creating || organizations.length === 0;
   const activeOrganization = organizations.find((o) => o.id === selected);
   return (
-    <AppShell live company={activeOrganization?.name}>
+    <AppShell
+      live
+      company={activeOrganization?.name}
+      organizationId={activeOrganization?.id}
+    >
       <section className="connected-workspace">
-        <p className="eyebrow">{ui("projects")}</p>
-        <h1>{showForm ? t("companyTitle") : ui("title")}</h1>
+        <p className="eyebrow">{settings ? settingsTitle : ui("projects")}</p>
+        <h1>
+          {showForm
+            ? t("companyTitle")
+            : settings
+              ? settingsTitle
+              : ui("title")}
+        </h1>
         <p className="page-description">
-          {showForm ? t("companyHint") : ui("subtitle")}
+          {showForm
+            ? t("companyHint")
+            : settings
+              ? activeOrganization?.name
+              : ui("subtitle")}
         </p>
         {loading ? (
           <p role="status" className="workspace-loading">
@@ -151,7 +159,7 @@ function Workspace({ userId, email }: { userId: string; email: string }) {
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    setCreating(false);
+                    navigate(`/workspace?company=${selected}`);
                     setError("");
                   }}
                 >
@@ -164,86 +172,26 @@ function Workspace({ userId, email }: { userId: string; email: string }) {
               </Button>
             </div>
           </form>
+        ) : activeOrganization ? (
+          settings ? (
+            <CompanyContacts
+              key={activeOrganization.id}
+              id={activeOrganization.id}
+            />
+          ) : (
+            <SavedProjects
+              key={activeOrganization.id}
+              organizationId={activeOrganization.id}
+            />
+          )
         ) : (
-          <>
-            {activeOrganization && (
-              <SavedProjects
-                key={activeOrganization.id}
-                organizationId={activeOrganization.id}
-              />
-            )}
-            <div className="section-heading workspace-heading">
-              <h2>{t("companies")}</h2>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setCreating(true);
-                  setError("");
-                }}
-              >
-                <Plus size={15} />
-                {t("addCompany")}
-              </Button>
-            </div>
-            <div className="organization-list">
-              {organizations.map((o) => (
-                <button
-                  type="button"
-                  key={o.id}
-                  onClick={() => setSelected(o.id)}
-                  aria-pressed={o.id === selected}
-                >
-                  <Building2 size={22} />
-                  <span>
-                    <strong>{o.name}</strong>
-                    <small>
-                      {t(
-                        o.country === "BE"
-                          ? "belgium"
-                          : o.country === "FR"
-                            ? "france"
-                            : "netherlands",
-                      )}{" "}
-                      · {t("owner")}
-                    </small>
-                  </span>
-                  {o.id === selected ? (
-                    <Check size={18} />
-                  ) : (
-                    <ArrowUpRight size={18} />
-                  )}
-                </button>
-              ))}
-            </div>
-            {activeOrganization && (
-              <CompanyContacts
-                key={`contacts-${activeOrganization.id}`}
-                id={activeOrganization.id}
-              />
-            )}
-            <div className="workspace-next">
-              <p>{t("demoHint")}</p>
-              <Button asChild variant="outline">
-                <Link to="/projects">
-                  {t("demo")}
-                  <ArrowUpRight size={15} />
-                </Link>
-              </Button>
-            </div>
-          </>
+          <p role="alert">{t("loadError")}</p>
         )}
         {error && (
           <p role="alert" className="error-message">
             {error}
           </p>
         )}
-        <div className="connected-toolbar">
-          <span className="helper-text">{email}</span>
-          <Button variant="ghost" disabled={busy} onClick={signOut}>
-            <LogOut size={15} />
-            {t("logout")}
-          </Button>
-        </div>
       </section>
     </AppShell>
   );

@@ -100,3 +100,13 @@ exercise RLS and transitions. No real object bytes are created by that SQL test.
 A separate live test confirmed raw Storage upload, metadata finalization, exact
 bytes on download, signed URLs, anonymous denial, overwrite denial and API deletion.
 Temporary account, company, project, file metadata and object were removed afterward.
+
+### Project tasks
+
+Applied migration `20260920105333_project_tasks.sql` adds private tenant-scoped task
+CRUD with composite project ownership, title/notes/status/date validation, immutable
+identity and revision triggers. Types regenerated. `supabase/tests/task_isolation.sql`
+passed against the connected development project in a rolled-back transaction,
+covering authorized CRUD, invalid input, stale writes/deletes, cross-tenant denial,
+cross-company project links and anonymous denial. Security advisor reports no new
+findings; the existing leaked-password protection warning remains.

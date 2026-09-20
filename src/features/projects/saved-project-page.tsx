@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/auth-provider";
 import { ProjectEstimates } from "@/features/estimates/project-estimates";
 import { ProjectFiles } from "@/features/files/project-files";
+import { TaskPanel } from "@/features/tasks/task-panel";
 import { useLocale } from "@/lib/i18n";
 import { projectCopy } from "./project-copy";
 import { ProjectFields } from "./project-fields";
@@ -131,7 +132,7 @@ function ProjectDetail({
   return (
     <AppShell live>
       <section className="connected-workspace">
-        <Link className="back-link" to="/workspace">
+        <Link className="back-link" to={`/workspace?company=${organizationId}`}>
           <ArrowLeft size={14} />
           {c.back}
         </Link>
@@ -167,6 +168,12 @@ function ProjectDetail({
             <SavedProjectOverview project={project} />
             <nav className="detail-navigation" aria-label={c.title}>
               <a href="#site-details">{c.title}</a>
+              <a href="#project-tasks">
+                {locale === "fr" ? "Tâches" : "Tasks"}
+              </a>
+              <Link to={`/workspace/${organizationId}/schedule`}>
+                {locale === "fr" ? "Planning" : "Schedule"}
+              </Link>
               <a href="#project-estimates">{t("estimates")}</a>
               <a href="#project-files">
                 {locale === "fr" ? "Fichiers" : "Files"}
@@ -234,6 +241,7 @@ function ProjectDetail({
         )}
         {project && !loading && !failed && (
           <>
+            <TaskPanel org={organizationId} project={id} />
             <ProjectEstimates organizationId={organizationId} projectId={id} />
             <ProjectFiles organizationId={organizationId} projectId={id} />
           </>

@@ -27,6 +27,8 @@ Current implementation:
   changes with revision-based conflict checks. Deletion is not implemented.
 - Saved draft estimates support title/line editing, server totals, pagination and
   revision-based conflict handling. EUR excluding tax; at most 100 lines.
+- Persisted project tasks with notes, optional dates, statuses, revision-safe edits,
+  confirmed deletion and a company weekly/overdue/undated schedule.
 - Separate fictional `/projects`, `/projects/:id` and `/estimates/:id` demos.
   Their records remain in memory and reset on reload, even when signed in.
 - French/English UI, responsive layouts and `/design-system` component reference.
@@ -314,11 +316,40 @@ Read README.md and the latest milestone plans for current implementation status.
 
 Protected workspace, project and estimate pages reuse the demo application shell.
 The saved project register uses the same visual hierarchy and table styles, with
-search/status filters and counts scoped to loaded projects. Company settings follow
-the register. Saved project pages provide links to details, estimates and files.
-Task and sketch previews are explicitly fictional; their links lead to demo routes.
+search/status filters and counts scoped to loaded projects. Company settings have a dedicated page. Saved project pages provide links to details, estimates and files.
+Sketch previews are explicitly fictional; task navigation opens the live company schedule.
 The global estimates link is labeled Demo; saved estimates remain inside projects.
 Keep demo records separate from live data while replacing previews incrementally.
 See docs/decisions/007-shared-workspace-design.md.
 
 Saved project overview now mirrors the demo detail composition: real project header/status and client/address sidebar, explicitly fictional financial metrics and breakdown, illustrative plan, and live estimate/file sections. Example amounts are integer cents, never saved budgets. Site editing and revision-conflict recovery remain available below the overview.
+
+## Project tasks and schedule invariants
+
+- `src/features/tasks` owns task model, localized copy, data access, project editor
+  and company schedule. Generated task types come from Supabase.
+- `project_tasks` uses composite organization/project FK and existing membership RLS.
+  Owners create/update/delete, members read. Explicit grants prevent identity edits.
+- Preserve revision matching on update AND deletion. Never overwrite a conflict.
+  Preserve request UUID on create retry; duplicate recovery never overwrites data.
+- Dates are calendar strings, not timestamp instants. Validate real YYYY-MM-DD dates,
+  1900–2100, and start <= due when both exist. Arithmetic/formatting uses UTC solely
+  to preserve the calendar day; today is the browser's local day.
+- Weekly queries include overlapping ranges and either single-date case. Filter on
+  server before 50-row pagination; do not label loaded counts as global totals.
+- Overdue excludes done and requires a past due date. Undated excludes done and
+  requires both dates null. A start-only task is one scheduled day, not open-ended.
+- Task demo prompts have been replaced with live schedule navigation. Only financial
+  and sketch previews remain fictional. No assignments, dependencies or realtime yet.
+
+## Company and account navigation
+
+The live sidebar owns company selection, Add a company, Company settings, demo
+access and account sign-out. Projects no longer embeds company administration.
+`/workspace?company=<id>` selects the project register; project, schedule and settings
+routes carry the company ID in the path. Switching companies returns to that company’s
+register. `/workspace/:organizationId/settings` contains document contact details.
+Selection is explicit in the URL and survives reload; unqualified `/workspace` uses
+the first available membership. No permissions or database schema changed.
+
+Live sidebar identities use compact avatar/name disclosure rows matching the demo. Company selection, add/settings links and account sign-out are inside keyboard-accessible expandable panels. Escape closes the panel and returns focus to its trigger; mobile drawer remains scrollable.

@@ -179,6 +179,53 @@ export type Database = {
           },
         ];
       };
+      project_tasks: {
+        Row: {
+          created_at: string;
+          due_date: string | null;
+          id: string;
+          notes: string;
+          organization_id: string;
+          project_id: string;
+          revision: number;
+          start_date: string | null;
+          status: string;
+          title: string;
+        };
+        Insert: {
+          created_at?: string;
+          due_date?: string | null;
+          id?: string;
+          notes?: string;
+          organization_id: string;
+          project_id: string;
+          revision?: number;
+          start_date?: string | null;
+          status?: string;
+          title: string;
+        };
+        Update: {
+          created_at?: string;
+          due_date?: string | null;
+          id?: string;
+          notes?: string;
+          organization_id?: string;
+          project_id?: string;
+          revision?: number;
+          start_date?: string | null;
+          status?: string;
+          title?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_tasks_organization_id_project_id_fkey";
+            columns: ["organization_id", "project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["organization_id", "id"];
+          },
+        ];
+      };
       projects: {
         Row: {
           address: string;

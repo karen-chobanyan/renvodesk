@@ -140,6 +140,10 @@ async function mockApi(page: Page) {
         }
         return;
       }
+      if (url.pathname.endsWith("/project_tasks")) {
+        await route.fulfill({ json: [] });
+        return;
+      }
       if (url.pathname.endsWith("/projects")) {
         if (method === "POST") {
           const body = route.request().postDataJSON();
@@ -342,10 +346,17 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     .getByRole("textbox", { name: "Nom de l’entreprise" })
     .fill("Atelier Test");
   await page.getByRole("button", { name: "Créer mon entreprise" }).click();
-  await expect(
-    page.getByRole("button", { name: /Atelier Test/ }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`company=${org}`));
   expect(requests()).toBe(1);
+  if (test.info().project.name === "mobile")
+    await page.getByRole("button", { name: "Navigation" }).click();
+  await page.locator(".company-menu > summary").click();
+  await page
+    .getByRole("link", { name: "Paramètres de l’entreprise", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Paramètres de l’entreprise" }),
+  ).toBeVisible();
   await page
     .getByText("Coordonnées pour les documents", { exact: true })
     .click();
@@ -364,6 +375,7 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await page
     .getByText("Coordonnées pour les documents", { exact: true })
     .click();
+  await page.goto(`/workspace?company=${org}`);
   await expect(
     page.getByText("Aucun projet pour le moment.", { exact: false }),
   ).toBeVisible();
@@ -389,9 +401,7 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     page.getByText("Rénovation cuisine", { exact: true }),
   ).toHaveCount(1);
   await page.reload();
-  await expect(
-    page.getByRole("button", { name: /Atelier Test/ }),
-  ).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`company=${org}`));
   await expect(
     page.getByText("Rénovation cuisine", { exact: true }),
   ).toBeVisible();
@@ -425,7 +435,7 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     register.getByRole("link", { name: "Rénovation cuisine", exact: true }),
   ).toBeVisible();
   await expect(
-    register.getByText("Fictional examples — task tracking is coming later."),
+    register.getByText("Find your project tasks in the company schedule."),
   ).toBeVisible();
   await page.screenshot({
     path: `/private/tmp/renvo-projects-${test.info().project.name}.png`,
@@ -650,6 +660,9 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     page.getByRole("link", { name: "Other estimate edit", exact: true }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Back to companies" }).click();
+  if (test.info().project.name === "mobile")
+    await page.getByRole("button", { name: "Navigation" }).click();
+  await page.locator(".account-menu > summary").click();
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/login$/);
   await page.goto("/workspace");
@@ -698,4 +711,285 @@ test("signup and recovery explain the email step without sending mail", async ({
   );
   await page.goto("/auth/reset");
   await expect(page.getByRole("alert")).toContainText("Ce lien a expiré");
+});
+
+test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
+  await page.clock.setFixedTime(new Date("2026-09-21T12:00:00Z"));
+  await mockApi(page);
+  const tasks: Array<{
+    id: string;
+    organization_id: string;
+    project_id: string;
+    title: string;
+    status: string;
+    notes: string;
+    start_date: string | null;
+    due_date: string | null;
+    revision: number;
+    created_at: string;
+    projects: { name: string };
+  }> = [];
+  let lose = true,
+    conflict = true;
+  await page.route("**/rest/v1/project_tasks**", async (route) => {
+    const url = new URL(route.request().url()),
+      method = route.request().method();
+    const taskId = url.searchParams.get("id")?.slice(3);
+    const row = tasks.find((t) => t.id === taskId);
+    if (method === "POST") {
+      const input = route.request().postDataJSON();
+      expect(input.organization_id).toBe(org);
+      if (tasks.some((t) => t.id === input.id)) {
+        await route.fulfill({ status: 409, json: { code: "23505" } });
+        return;
+      }
+      const task = {
+        ...input,
+        revision: 1,
+        created_at: "2026-09-21T12:00:00Z",
+        projects: { name: "Task site" },
+      };
+      tasks.push(task);
+      if (lose) {
+        lose = false;
+        await route.abort();
+      } else await route.fulfill({ json: task });
+      return;
+    }
+    expect(url.searchParams.get("organization_id")).toBe(`eq.${org}`);
+    if (method === "PATCH") {
+      if (conflict && row) {
+        row.revision++;
+        conflict = false;
+      }
+      if (!row || url.searchParams.get("revision") !== `eq.${row.revision}`) {
+        await route.fulfill({ json: [] });
+        return;
+      }
+      Object.assign(row, route.request().postDataJSON());
+      await route.fulfill({ json: [row] });
+      return;
+    }
+    if (method === "DELETE") {
+      expect(url.searchParams.get("revision")).toBe(`eq.${row?.revision}`);
+      if (!row) throw new Error("Missing delete fixture");
+      tasks.splice(tasks.indexOf(row), 1);
+      await route.fulfill({ json: [{ id: taskId }] });
+      return;
+    }
+    let result = taskId ? tasks.filter((t) => t.id === taskId) : tasks;
+    if (url.searchParams.get("due_date")?.startsWith("lt."))
+      result = result.filter(
+        (t) => t.due_date && t.due_date < "2026-09-21" && t.status !== "done",
+      );
+    if (url.searchParams.get("start_date") === "is.null")
+      result = result.filter(
+        (t) => !t.start_date && !t.due_date && t.status !== "done",
+      );
+    if (url.searchParams.has("or")) {
+      result = url.searchParams.get("or")?.includes("2026-09-21")
+        ? result.filter((t) => t.start_date || t.due_date)
+        : [];
+    }
+    await route.fulfill({ json: result });
+  });
+  await login(page);
+  await page.getByLabel("Nom de l’entreprise").fill("Atelier Tasks");
+  await page.getByRole("button", { name: "Créer mon entreprise" }).click();
+  await page.getByRole("button", { name: "Nouveau projet" }).click();
+  await page.getByLabel("Nom du projet", { exact: true }).fill("Task site");
+  await page.getByLabel("Client", { exact: true }).fill("Test Client");
+  await page.getByLabel("Ville", { exact: true }).fill("Bruxelles");
+  await page
+    .getByRole("button", { name: "Créer le projet", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Créer le projet", exact: true })
+    .click();
+  await page.getByRole("link", { name: "Task site", exact: true }).click();
+  const projectUrl = page.url();
+  const panel = page.getByRole("region", { name: "Tâches du projet" });
+  await panel.getByRole("button", { name: "Nouvelle tâche" }).click();
+  await panel.getByLabel("Nom de la tâche").fill("Préparer le chantier");
+  await panel.getByLabel("Date de début").fill("2026-09-23");
+  await panel.getByLabel("Date limite").fill("2026-09-21");
+  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  await expect(panel.getByRole("alert")).toContainText("Vérifiez");
+  await panel.getByLabel("Date de début").fill("2026-09-21");
+  await panel.getByLabel("Date limite").fill("2026-09-23");
+  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  await expect(panel.getByRole("alert")).toContainText(
+    "Enregistrement non confirmé",
+  );
+  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  await expect(panel.locator("article")).toHaveCount(1);
+  expect(tasks).toHaveLength(1);
+  await page.reload();
+  await expect(
+    panel.getByText("Préparer le chantier", { exact: true }),
+  ).toBeVisible();
+  await panel.getByRole("button", { name: "Modifier", exact: true }).click();
+  await panel.getByLabel("Statut de la tâche").selectOption("in_progress");
+  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  await expect(panel.getByRole("alert")).toContainText("La tâche a changé");
+  await expect(panel.getByLabel("Statut de la tâche")).toHaveValue(
+    "in_progress",
+  );
+  await panel.getByRole("button", { name: "Recharger les tâches" }).click();
+  await panel.getByRole("button", { name: "Modifier", exact: true }).click();
+  await panel.getByLabel("Statut de la tâche").selectOption("in_progress");
+  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  await expect(panel.locator("article .status")).toHaveText("En cours");
+  await page
+    .getByRole("link", { name: "Planning", exact: true })
+    .last()
+    .click();
+  await expect(page.locator(".week-grid .task-row")).toHaveCount(3);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `/private/tmp/renvo-schedule-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  await page
+    .getByRole("button", { name: "Semaine suivante", exact: true })
+    .click();
+  await expect(page.locator(".week-grid .task-row")).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Semaine précédente", exact: true })
+    .click();
+  await expect(page.locator(".week-grid .task-row")).toHaveCount(3);
+  await page.getByRole("button", { name: "En retard", exact: true }).click();
+  await expect(page.getByText("Aucune tâche à afficher.")).toBeVisible();
+  await page.getByRole("button", { name: "Sans date", exact: true }).click();
+  await expect(page.getByText("Aucune tâche à afficher.")).toBeVisible();
+  await page.goto(projectUrl);
+  await panel.getByRole("button", { name: "Modifier", exact: true }).click();
+  await panel.getByLabel("Date de début").fill("");
+  await panel.getByLabel("Date limite").fill("2026-09-20");
+  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  await expect(panel.getByText("En retard", { exact: true })).toBeVisible();
+  await page
+    .getByRole("link", { name: "Planning", exact: true })
+    .last()
+    .click();
+  await page.getByRole("button", { name: "En retard", exact: true }).click();
+  await expect(page.locator(".task-row")).toHaveCount(1);
+  await page.goto(projectUrl);
+  await panel.getByRole("button", { name: "Modifier", exact: true }).click();
+  await panel.getByLabel("Date limite").fill("");
+  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  await page
+    .getByRole("link", { name: "Planning", exact: true })
+    .last()
+    .click();
+  await page.getByRole("button", { name: "Sans date", exact: true }).click();
+  await expect(page.locator(".task-row")).toHaveCount(1);
+  await page.goto(projectUrl);
+  await panel.getByRole("button", { name: "Modifier", exact: true }).click();
+  await panel.getByLabel("Statut de la tâche").selectOption("done");
+  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  await expect(panel.locator("article .status")).toHaveText("Terminée");
+  await page
+    .getByRole("link", { name: "Planning", exact: true })
+    .last()
+    .click();
+  await page.getByRole("button", { name: "Sans date", exact: true }).click();
+  await expect(page.locator(".task-row")).toHaveCount(0);
+  await page.goto(projectUrl);
+  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  await expect(
+    page
+      .getByRole("region", { name: "Project tasks" })
+      .getByText("Done", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByRole("region", { name: "Project tasks" })
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Cancel" })
+    .click();
+  await expect(page.locator("#project-tasks article")).toHaveCount(1);
+  await page
+    .locator("#project-tasks")
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Delete", exact: true })
+    .click();
+  await expect(page.locator("#project-tasks article")).toHaveCount(0);
+});
+
+test("company navigation keeps selection across reload and detail routes", async ({
+  page,
+}) => {
+  await mockApi(page);
+  const second = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+  await page.route("**/rest/v1/organization_memberships**", (route) =>
+    route.fulfill({
+      json: [
+        {
+          organization_id: org,
+          organizations: { id: org, name: "First company", country: "BE" },
+        },
+        {
+          organization_id: second,
+          organizations: { id: second, name: "Second company", country: "FR" },
+        },
+      ],
+    }),
+  );
+  await page.route("**/rest/v1/projects**", (route) =>
+    route.fulfill({ json: [] }),
+  );
+  async function openSidebar() {
+    if (test.info().project.name === "mobile")
+      await page
+        .getByRole("button", { name: "Navigation", exact: true })
+        .click();
+  }
+  await login(page);
+  await openSidebar();
+  await page.locator(".company-menu > summary").click();
+  await page
+    .getByRole("combobox", { name: "Entreprise", exact: true })
+    .selectOption(second);
+  await expect(page).toHaveURL(new RegExp(`company=${second}`));
+  await page.reload();
+  await openSidebar();
+  await page.locator(".company-menu > summary").click();
+  await expect(
+    page.getByRole("combobox", { name: "Entreprise", exact: true }),
+  ).toHaveValue(second);
+  await page
+    .getByRole("link", { name: "Ajouter une entreprise", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Créons votre entreprise." }),
+  ).toBeVisible();
+  await page.goto(
+    `/workspace/${second}/projects/00000000-0000-4000-8000-000000000000`,
+  );
+  await openSidebar();
+  await page.locator(".company-menu > summary").click();
+  await expect(
+    page.getByRole("combobox", { name: "Entreprise", exact: true }),
+  ).toHaveValue(second);
+  await page
+    .getByRole("combobox", { name: "Entreprise", exact: true })
+    .selectOption(org);
+  await expect(page).toHaveURL(new RegExp(`company=${org}`));
+  await expect(
+    page.locator("main").getByText("Coordonnées pour les documents"),
+  ).toHaveCount(0);
+  await expect(
+    page.locator("main").getByRole("button", { name: "Se déconnecter" }),
+  ).toHaveCount(0);
 });

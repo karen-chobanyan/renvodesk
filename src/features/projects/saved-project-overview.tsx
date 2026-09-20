@@ -79,12 +79,12 @@ export function SavedProjectOverview({ project }: { project: SavedProject }) {
           <div className="section-heading">
             <h2>{t("nextStep")}</h2>
           </div>
-          <a className="next-step-detail" href="#project-estimates">
+          <a className="next-step-detail" href="#project-tasks">
             <span>
               <strong>
                 {locale === "fr"
-                  ? "Consulter les devis du projet"
-                  : "Review project estimates"}
+                  ? "Organiser les tâches du projet"
+                  : "Organize project tasks"}
               </strong>
               <small>{project.name}</small>
             </span>

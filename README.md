@@ -110,7 +110,7 @@ as complete transactions; their temporary fixtures roll back. They cover tenant
 isolation, anonymous denial, write restrictions, validation, revision increments and stale-update rejection.
 
 Last implementation verification (2026-09-20): lint, typecheck and build passed;
-21 unit tests and 17 browser tests passed, with one intentional desktop skip for
+25 unit tests and 21 browser tests passed, with one intentional desktop skip for
 the mobile navigation test. Live SQL isolation tests passed. The security advisor reported leaked-password
 protection disabled in Auth; no estimate-schema findings were reported. This is a dated result, not a production-readiness claim.
 
@@ -168,11 +168,34 @@ browser tests mock the API and cover errors, recovery, previews and deletion.
 
 Protected workspace, project and estimate pages reuse the demo application shell.
 The saved project register uses the same visual hierarchy and table styles, with
-search/status filters and counts scoped to loaded projects. Company settings follow
-the register. Saved project pages provide links to details, estimates and files.
-Task and sketch previews are explicitly fictional; their links lead to demo routes.
+search/status filters and counts scoped to loaded projects. Company settings have a dedicated page. Saved project pages provide links to details, estimates and files.
+Sketch previews are explicitly fictional; task navigation opens the live company schedule.
 The global estimates link is labeled Demo; saved estimates remain inside projects.
 Keep demo records separate from live data while replacing previews incrementally.
 See docs/decisions/007-shared-workspace-design.md.
 
 Saved project overview now mirrors the demo detail composition: real project header/status and client/address sidebar, explicitly fictional financial metrics and breakdown, illustrative plan, and live estimate/file sections. Example amounts are integer cents, never saved budgets. Site editing and revision-conflict recovery remain available below the overview.
+
+## Project tasks and schedule
+
+Open a saved project → **Tasks / Tâches** to create or edit a task, add optional
+start/due dates and notes, and set To do / In progress / Done. Delete requires
+confirmation. The **Schedule / Planning** navigation opens the company's weekly
+schedule, with separate Overdue and Undated views and links back to each project.
+Multi-day tasks appear on each day; single-date tasks appear once. Load more fetches
+another 50 matching tasks. Task edits survive a failed save in the current page;
+revision conflicts require an explicit reload. Unsaved fields do not survive navigation.
+
+Team assignments, dependencies, Gantt charts, calendar integration and notifications
+are not implemented. Financial and sketch examples remain demonstrations, but task
+tracking is now connected. See decision 008 and `supabase/tests/task_isolation.sql`.
+
+## Company and account navigation
+
+The live sidebar owns company selection, Add a company, Company settings, demo
+access and account sign-out. Projects no longer embeds company administration.
+`/workspace?company=<id>` selects the project register; project, schedule and settings
+routes carry the company ID in the path. Switching companies returns to that company’s
+register. `/workspace/:organizationId/settings` contains document contact details.
+Selection is explicit in the URL and survives reload; unqualified `/workspace` uses
+the first available membership. No permissions or database schema changed.

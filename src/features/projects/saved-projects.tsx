@@ -267,36 +267,26 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
               <p className="workspace-loading">{t("noResults")}</p>
             )}
         </div>
-        <aside className="context-panel" aria-label={t("demo")}>
+        <aside className="context-panel" aria-label={t("attention")}>
           <div className="context-title">
             <h2>{t("attention")}</h2>
-            <span className="demo-chip">{t("demo")}</span>
           </div>
           <p className="muted context-description">
             {locale === "fr"
-              ? "Exemples fictifs — le suivi des tâches arrive prochainement."
-              : "Fictional examples — task tracking is coming later."}
+              ? "Retrouvez les tâches de vos chantiers dans le planning de l’entreprise."
+              : "Find your project tasks in the company schedule."}
           </p>
           <div className="next-steps">
-            <Link to="/projects/maison-ixelles">
-              <span className="step-index">01</span>
+            <Link to={`/workspace/${organizationId}/schedule`}>
               <span>
                 <strong>
+                  {locale === "fr" ? "Ouvrir le planning" : "Open schedule"}
+                </strong>
+                <small>
                   {locale === "fr"
-                    ? "Confirmer les matériaux"
-                    : "Confirm materials"}
-                </strong>
-                <small>Maison des Tilleuls · {t("demo")}</small>
-              </span>
-              <ArrowUpRight size={15} />
-            </Link>
-            <Link to="/estimates/maison-ixelles">
-              <span className="step-index">02</span>
-              <span>
-                <strong>
-                  {locale === "fr" ? "Finaliser le devis" : "Finalize estimate"}
-                </strong>
-                <small>Maison des Tilleuls · {t("demo")}</small>
+                    ? "Semaine, retards et tâches sans date"
+                    : "Week, overdue and undated tasks"}
+                </small>
               </span>
               <ArrowUpRight size={15} />
             </Link>

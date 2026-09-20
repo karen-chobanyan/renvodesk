@@ -1,6 +1,7 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
   ArrowUpRight,
+  CalendarDays,
   FileText,
   FolderKanban,
   Menu,
@@ -8,8 +9,12 @@ import {
   X,
 } from "lucide-react";
 import { type ReactNode, useState, useSyncExternalStore } from "react";
-import { NavLink, Outlet } from "react-router";
+import { NavLink, Outlet, useParams, useSearchParams } from "react-router";
 import { useAuthCopy } from "@/features/auth/copy";
+import {
+  AccountControls,
+  CompanyNavigation,
+} from "@/features/organizations/company-navigation";
 import { useDemo } from "@/lib/demo-store";
 import { useLocale } from "@/lib/i18n";
 import { Button } from "./ui/button";
@@ -23,11 +28,26 @@ export function AppShell({
   children,
   live = false,
   company,
+  organizationId,
 }: {
   children?: ReactNode;
   live?: boolean;
   company?: string;
+  organizationId?: string;
 }) {
+  const params = useParams();
+  const [search] = useSearchParams();
+  const activeOrg =
+    organizationId ??
+    params.organizationId ??
+    search.get("company") ??
+    undefined;
+  const home =
+    live && activeOrg
+      ? `/workspace?company=${activeOrg}`
+      : live
+        ? "/workspace"
+        : "/projects";
   const { t, locale, setLocale } = useLocale();
   const { projects } = useDemo();
   const authText = useAuthCopy();
@@ -55,31 +75,32 @@ export function AppShell({
           </DialogPrimitive.Close>
         </>
       )}
-      <NavLink
-        className="brand"
-        to={live ? "/workspace" : "/projects"}
-        onClick={() => setMobileOpen(false)}
-      >
+      <NavLink className="brand" to={home} onClick={() => setMobileOpen(false)}>
         <span className="brand-mark">
           r<span>.</span>
         </span>
         RenvoDesk
       </NavLink>
-      <div className="workspace-switch">
-        <span className="company-avatar">
-          {live ? company?.slice(0, 2).toUpperCase() || "R." : "AH"}
-        </span>
-        <div>
-          <strong>
-            {live ? company || authText("workspace") : t("company")}
-          </strong>
-          <small>{live ? authText("realData") : t("companyDetail")}</small>
+      {live ? (
+        <CompanyNavigation id={activeOrg} close={() => setMobileOpen(false)} />
+      ) : (
+        <div className="workspace-switch">
+          <span className="company-avatar">
+            {live ? company?.slice(0, 2).toUpperCase() || "R." : "AH"}
+          </span>
+          <div>
+            <strong>
+              {live ? company || authText("workspace") : t("company")}
+            </strong>
+            <small>{live ? authText("realData") : t("companyDetail")}</small>
+          </div>
         </div>
-      </div>
+      )}
       <p className="nav-label">{t("workspace")}</p>
       <nav aria-label={t("workspace")}>
         <NavLink
-          to={live ? "/workspace" : "/projects"}
+          to={home}
+          end={live && !params.id}
           onClick={() => setMobileOpen(false)}
         >
           <FolderKanban size={18} />
@@ -90,6 +111,15 @@ export function AppShell({
             </span>
           )}
         </NavLink>
+        {live && activeOrg && (
+          <NavLink
+            to={`/workspace/${activeOrg}/schedule`}
+            onClick={() => setMobileOpen(false)}
+          >
+            <CalendarDays size={18} />
+            {locale === "fr" ? "Planning" : "Schedule"}
+          </NavLink>
+        )}
         <NavLink
           to="/estimates/maison-ixelles"
           onClick={() => setMobileOpen(false)}
@@ -106,6 +136,15 @@ export function AppShell({
           {t("design")}
         </NavLink>
       </nav>
+      {live && (
+        <NavLink
+          className="sidebar-demo-link"
+          to="/projects"
+          onClick={() => setMobileOpen(false)}
+        >
+          {authText("demo")}
+        </NavLink>
+      )}
       <div className="sidebar-bottom">
         <div className="demo-label">
           <span className="live-dot" />
@@ -118,6 +157,7 @@ export function AppShell({
               : "Saved projects. Demonstration previews are labeled."
             : t("demoNotice")}
         </p>
+        {live && <AccountControls />}
         {!live && (
           <div className="profile">
             <span className="profile-avatar">AM</span>
@@ -169,7 +209,7 @@ export function AppShell({
               </span>
             </div>
             <div className="topbar-right">
-              <NavLink className="account-link" to="/workspace">
+              <NavLink className="account-link" to={live ? home : "/workspace"}>
                 {authText("account")}
               </NavLink>
               <span className="demo-chip">
