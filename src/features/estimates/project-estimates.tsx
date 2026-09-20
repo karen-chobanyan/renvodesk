@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { formatMoney, useLocale } from "@/lib/i18n";
 import { draftCopy } from "./draft-copy";
 import { createEstimate, listEstimates } from "./estimate-service";
+import { estimateStatus, workflowCopy } from "./workflow-copy";
 export function ProjectEstimates({
   organizationId,
   projectId,
@@ -12,7 +13,7 @@ export function ProjectEstimates({
   organizationId: string;
   projectId: string;
 }) {
-  const { locale, t } = useLocale(),
+  const { locale } = useLocale(),
     c = draftCopy[locale],
     navigate = useNavigate();
   const [rows, setRows] = useState<Awaited<ReturnType<typeof listEstimates>>>(
@@ -117,7 +118,8 @@ export function ProjectEstimates({
               {row.title}
             </Link>
             <span>
-              {t("draft")} · {formatMoney(row.total_cents, locale)}
+              {workflowCopy[locale][estimateStatus(row.status)]} ·{" "}
+              {formatMoney(row.total_cents, locale)}
             </span>
           </li>
         ))}

@@ -3,7 +3,13 @@ import { autoTable } from "jspdf-autotable";
 import type { Locale } from "@/lib/i18n";
 import { editorLines, type StoredLine } from "./draft-model";
 import { estimateTotal, hundredths, lineTotal } from "./model";
+import {
+  type EstimateStatus,
+  estimateStatus,
+  workflowCopy,
+} from "./workflow-copy";
 export type PdfEstimate = {
+  status?: EstimateStatus;
   title: string;
   revision: number;
   total_cents: number;
@@ -79,6 +85,9 @@ export function buildEstimatePdf(
   font: string,
 ) {
   const c = copy[locale],
+    status = estimateStatus(data.status ?? "draft"),
+    label = status === "draft" ? c.draft : workflowCopy[locale][status],
+    notice = status === "draft" ? c.notice : workflowCopy[locale].pdfNotice,
     lines = editorLines(data.lines);
   if (estimateTotal(lines) !== data.total_cents)
     throw new Error("Saved total mismatch");
@@ -92,9 +101,9 @@ export function buildEstimatePdf(
   doc.addFont("NotoSans.ttf", "NotoSans", "normal");
   doc.setFont("NotoSans");
   doc.setProperties({
-    title: `${c.draft} - ${data.title}`,
+    title: `${label} - ${data.title}`,
     author: data.company.name,
-    subject: c.notice,
+    subject: notice,
   });
   const common = {
     font: "NotoSans",
@@ -197,12 +206,12 @@ export function buildEstimatePdf(
     doc.setFontSize(13);
     doc.text("RenvoDesk", 18, 17);
     doc.setFontSize(10);
-    doc.text(c.draft, 192, 17, { align: "right" });
+    doc.text(label, 192, 17, { align: "right" });
     doc.setDrawColor(220, 226, 220);
     doc.line(18, 22, 192, 22);
     doc.setFontSize(8);
     doc.setTextColor(90, 103, 95);
-    doc.text(c.notice, 18, 282);
+    doc.text(doc.splitTextToSize(notice, 174), 18, 282);
     doc.text(`${page} / ${pages}`, 192, 289, { align: "right" });
   }
   return doc;
@@ -221,6 +230,6 @@ export async function downloadEstimatePdf(data: PdfEstimate, locale: Locale) {
       .replace(/^-|-$/g, "")
       .slice(0, 70) || "estimate";
   doc.save(
-    `${locale === "fr" ? "brouillon" : "draft"}-${name}-r${data.revision}.pdf`,
+    `${data.status && data.status !== "draft" ? (locale === "fr" ? "devis" : "estimate") : locale === "fr" ? "brouillon" : "draft"}-${name}-r${data.revision}.pdf`,
   );
 }

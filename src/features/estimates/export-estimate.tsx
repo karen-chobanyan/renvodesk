@@ -4,7 +4,9 @@ import { getOrganization } from "@/features/organizations/organization-service";
 import { getProject } from "@/features/projects/project-service";
 import { useLocale } from "@/lib/i18n";
 import type { StoredLine } from "./draft-model";
+import type { PdfEstimate } from "./estimate-pdf";
 import { getEstimate, type SavedEstimate } from "./estimate-service";
+import { estimateStatus } from "./workflow-copy";
 
 const copy = {
   fr: {
@@ -40,28 +42,47 @@ export function ExportEstimate({
     setBusy(true);
     setError(null);
     try {
-      const [saved, company, project] = await Promise.all([
-        getEstimate(estimate.organization_id, estimate.project_id, estimate.id),
-        getOrganization(estimate.organization_id),
-        getProject(estimate.organization_id, estimate.project_id),
-      ]);
-      if (!saved || !company || !project) throw new Error("Unavailable");
+      const saved = await getEstimate(
+        estimate.organization_id,
+        estimate.project_id,
+        estimate.id,
+      );
+      if (!saved) throw new Error("Unavailable");
       if (saved.revision !== estimate.revision) {
         setError("stale");
         return;
       }
       const { downloadEstimatePdf } = await import("./estimate-pdf");
-      await downloadEstimatePdf(
-        {
-          title: saved.title,
-          revision: saved.revision,
-          total_cents: saved.total_cents,
-          lines: saved.lines as unknown as StoredLine[],
-          company,
-          project,
-        },
-        locale,
-      );
+      if (saved.status !== "draft") {
+        if (
+          !saved.sent_snapshot ||
+          typeof saved.sent_snapshot !== "object" ||
+          Array.isArray(saved.sent_snapshot)
+        )
+          throw new Error("Snapshot unavailable");
+        const snapshot = saved.sent_snapshot as unknown as PdfEstimate;
+        await downloadEstimatePdf(
+          { ...snapshot, status: estimateStatus(saved.status) },
+          locale,
+        );
+      } else {
+        const [company, project] = await Promise.all([
+          getOrganization(estimate.organization_id),
+          getProject(estimate.organization_id, estimate.project_id),
+        ]);
+        if (!company || !project) throw new Error("Unavailable");
+        await downloadEstimatePdf(
+          {
+            title: saved.title,
+            revision: saved.revision,
+            total_cents: saved.total_cents,
+            lines: saved.lines as unknown as StoredLine[],
+            company,
+            project,
+          },
+          locale,
+        );
+      }
     } catch {
       setError("error");
     } finally {

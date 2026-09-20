@@ -9,6 +9,7 @@ import { getOrganization } from "@/features/organizations/organization-service";
 import { formatMoney, useLocale } from "@/lib/i18n";
 import { draftCopy } from "./draft-copy";
 import { listCompanyEstimates } from "./estimate-service";
+import { estimateStatus, workflowCopy } from "./workflow-copy";
 export function CompanyEstimatesPage() {
   const { organizationId = "" } = useParams();
   return <CompanyEstimates key={organizationId} org={organizationId} />;
@@ -192,7 +193,7 @@ function EstimateResults({ org, search }: { org: string; search: string }) {
                     <td>{row.projects?.client_name ?? "—"}</td>
                     <td>
                       <span className="status status-planning">
-                        {t("draft")}
+                        {workflowCopy[locale][estimateStatus(row.status)]}
                       </span>
                     </td>
                     <td className="numeric">

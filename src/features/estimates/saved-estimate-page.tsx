@@ -9,12 +9,16 @@ import { draftCopy } from "./draft-copy";
 import { editorLines, type StoredLine, serializeLines } from "./draft-model";
 import { EstimateLines } from "./estimate-lines";
 import {
+  estimateHistory,
   getEstimate,
+  recordDecision,
   type SavedEstimate,
   saveEstimate,
 } from "./estimate-service";
+import { type DecisionEvent, EstimateWorkflow } from "./estimate-workflow";
 import { ExportEstimate } from "./export-estimate";
 import { type EstimateLine, estimateTotal } from "./model";
+import { estimateStatus, workflowCopy } from "./workflow-copy";
 export function SavedEstimatePage() {
   const { organizationId = "", id = "", estimateId = "" } = useParams(),
     { session } = useAuth();
@@ -108,6 +112,23 @@ function Editor({
     [error, setError] = useState<"failed" | "conflict" | null>(null),
     [saved, setSaved] = useState(false),
     [dirty, setDirty] = useState(false);
+  const [transitionLocked, setTransitionLocked] = useState(false),
+    [events, setEvents] = useState<DecisionEvent[]>([]),
+    [historyFailed, setHistoryFailed] = useState(false);
+  const frozen = current.status !== "draft",
+    w = workflowCopy[locale];
+  async function refreshHistory() {
+    try {
+      setEvents(await estimateHistory(current));
+      setHistoryFailed(false);
+    } catch {
+      setHistoryFailed(true);
+    }
+  }
+  // biome-ignore lint/correctness/useExhaustiveDependencies: refresh history on persisted revision changes
+  useEffect(() => {
+    void refreshHistory();
+  }, [current.revision]);
   const serialized = serializeLines(lines),
     total = estimateTotal(lines);
   function changed() {
@@ -119,7 +140,8 @@ function Editor({
     changed();
   }
   async function save() {
-    if (busy || !serialized || !title.trim()) return;
+    if (busy || frozen || transitionLocked || !serialized || !title.trim())
+      return;
     setBusy(true);
     setError(null);
     setSaved(false);
@@ -140,15 +162,18 @@ function Editor({
   }
   return (
     <>
-      <p className="eyebrow">{t("draft")}</p>
+      <p className="eyebrow">{w[estimateStatus(current.status)]}</p>
       <h1>{current.title}</h1>
-      <p className="page-description">{c.notice}</p>
+      <p className="page-description">{frozen ? w.frozen : c.notice}</p>
       <ExportEstimate
         estimate={current}
         dirty={dirty}
-        disabled={busy || !!error}
+        disabled={busy || !!error || transitionLocked}
       />
-      <fieldset className="project-fields" disabled={busy}>
+      <fieldset
+        className="project-fields"
+        disabled={busy || frozen || transitionLocked}
+      >
         <label className="field" htmlFor="estimate-title">
           {c.title}
           <Input
@@ -170,29 +195,31 @@ function Editor({
               changed();
             }}
           />
-          <div className="estimate-add">
-            <Button
-              variant="ghost"
-              disabled={lines.length >= 100}
-              onClick={() => {
-                setLines((old) => [
-                  ...old,
-                  {
-                    id: crypto.randomUUID(),
-                    label: "newLine",
-                    customDescription: "",
-                    quantity: "1",
-                    price: "0",
-                    unit: "fixed",
-                  },
-                ]);
-                changed();
-              }}
-            >
-              {t("addLine")}
-            </Button>
-            {lines.length >= 100 && <p>{c.limit}</p>}
-          </div>
+          {!frozen && (
+            <div className="estimate-add">
+              <Button
+                variant="ghost"
+                disabled={lines.length >= 100}
+                onClick={() => {
+                  setLines((old) => [
+                    ...old,
+                    {
+                      id: crypto.randomUUID(),
+                      label: "newLine",
+                      customDescription: "",
+                      quantity: "1",
+                      price: "0",
+                      unit: "fixed",
+                    },
+                  ]);
+                  changed();
+                }}
+              >
+                {t("addLine")}
+              </Button>
+              {lines.length >= 100 && <p>{c.limit}</p>}
+            </div>
+          )}
           <div className="estimate-summary">
             <div>
               <span>{t("subtotal")}</span>
@@ -207,14 +234,16 @@ function Editor({
             {c.invalid}
           </p>
         )}
-        <div className="dialog-actions">
-          <Button
-            disabled={!title.trim() || !serialized || error === "conflict"}
-            onClick={save}
-          >
-            {busy ? c.loading : t("save")}
-          </Button>
-        </div>
+        {!frozen && (
+          <div className="dialog-actions">
+            <Button
+              disabled={!title.trim() || !serialized || error === "conflict"}
+              onClick={save}
+            >
+              {busy ? c.loading : t("save")}
+            </Button>
+          </div>
+        )}
       </fieldset>
       {error && (
         <div role="alert">
@@ -225,6 +254,21 @@ function Editor({
         </div>
       )}
       <p role="status">{saved ? c.saved : dirty ? t("unsaved") : ""}</p>
+      <EstimateWorkflow
+        record={current}
+        dirty={dirty}
+        disabled={busy || !!error || transitionLocked}
+        events={events}
+        historyFailed={historyFailed}
+        refresh={() => void refreshHistory()}
+        transition={(request) => recordDecision(current, request)}
+        changed={(next) => {
+          setCurrent(next);
+          setSaved(false);
+        }}
+        lock={setTransitionLocked}
+        reload={reload}
+      />
     </>
   );
 }

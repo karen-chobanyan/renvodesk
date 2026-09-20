@@ -88,3 +88,33 @@ export async function listCompanyEstimates(
   if (error) throw error;
   return data;
 }
+
+export async function estimateHistory(estimate: SavedEstimate) {
+  const { data, error } = await requireSupabase()
+    .from("estimate_events")
+    .select("*")
+    .eq("organization_id", estimate.organization_id)
+    .eq("project_id", estimate.project_id)
+    .eq("estimate_id", estimate.id)
+    .order("from_revision", { ascending: false });
+  if (error) throw error;
+  return data;
+}
+export async function recordDecision(
+  estimate: SavedEstimate,
+  request: import("./estimate-workflow").DecisionRequest,
+) {
+  const { data, error } = await requireSupabase()
+    .rpc("record_estimate_event", {
+      p_org: estimate.organization_id,
+      p_project: estimate.project_id,
+      p_estimate: estimate.id,
+      p_request: request.id,
+      p_revision: request.revision,
+      p_status: request.status,
+      p_note: request.note,
+    })
+    .single();
+  if (error) throw error;
+  return data;
+}

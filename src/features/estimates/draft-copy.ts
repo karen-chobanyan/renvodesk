@@ -18,7 +18,8 @@ export const draftCopy = {
     missing: "Devis introuvable ou accès indisponible.",
     invalid:
       "Renseignez les descriptions, des quantités positives et des prix valides (deux décimales maximum, 100 lignes maximum).",
-    notice: "Brouillon en EUR, hors taxes. Aucun envoi ni acceptation client.",
+    notice:
+      "Brouillon en EUR, hors taxes. Enregistrez-le avant de consigner un envoi.",
     more: "Voir plus",
     limit: "Limite de 100 lignes atteinte.",
     createError:
@@ -44,7 +45,7 @@ export const draftCopy = {
     invalid:
       "Enter descriptions, positive quantities and valid prices (up to two decimal places, up to 100 lines).",
     notice:
-      "Draft in EUR, excluding tax. Not sent or accepted by the customer.",
+      "Draft in EUR, excluding tax. Save it before recording that it was sent.",
     more: "Load more",
     limit: "100-line limit reached.",
     createError: "Creation not confirmed. Retry to recover the same draft.",

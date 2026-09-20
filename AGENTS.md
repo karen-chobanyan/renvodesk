@@ -25,8 +25,8 @@ Current implementation:
   recoverable retries. Fields: name, client name, city, optional address. Initial
   status defaults to `planning`. Protected detail pages support editing and status
   changes with revision-based conflict checks. Deletion is not implemented.
-- Saved draft estimates support title/line editing, server totals, pagination and
-  revision-based conflict handling. EUR excluding tax; at most 100 lines.
+- Saved estimates support draft editing, server totals, pagination, revision conflicts,
+  and owner-recorded sent/accepted/declined states. EUR excluding tax; at most 100 lines.
 - Persisted project tasks with notes, optional dates, statuses, revision-safe edits,
   confirmed deletion and a company weekly/overdue/undated schedule.
 - Separate fictional `/projects`, `/projects/:id` and `/estimates/:id` demos.
@@ -40,8 +40,8 @@ Agreed direction:
 - French is the default language; English is available. Dutch is deferred.
 - Excalidraw 0.18.1 is integrated for saved project sketches and annotations.
   Detailed measured floor planning is a separate future module.
-- Persisted draft estimates now link to saved projects. Draft PDF export is implemented; sending and
-  customer acceptance remain future milestones.
+- Persisted draft estimates now link to saved projects. PDF export and owner-recorded sending/decisions are implemented; email delivery and
+  direct customer acceptance remain future milestones.
 
 Still to decide before dependent implementation:
 - Frontend deployment provider and production hosting configuration.
@@ -271,8 +271,9 @@ Read README.md and the latest milestone plans for current implementation status.
 - Only owners read/create/update drafts; queries are scoped by organization and
   project. Identity, project link, currency, status and totals have no client write
   grants. Updates use the loaded revision and require an increment of one.
-- Draft status and EUR currency are fixed. No tax calculation, document issuance,
-  acceptance, version history or automatic budget updates are implemented.
+- EUR currency is fixed. Drafts can become sent, then accepted or declined through
+  the owner-only transition RPC. No tax calculation, invoices, direct customer acceptance
+  or automatic budget updates are implemented.
 - Preserve inputs on failed saves; conflicts require explicit reload. Unsaved edits
   are memory-only and are lost when navigating away. Do not claim offline support.
 
@@ -286,8 +287,9 @@ Read README.md and the latest milestone plans for current implementation status.
 - estimate-pdf uses lazy-loaded jsPDF/AutoTable with local Noto Sans (OFL). Keep font
   license attribution. Use exact integer-cent formatting, Unicode text, wrapping,
   repeated headers, page numbers and a Draft marker on every page.
-- PDFs contain current company/project data alongside a saved draft revision. They
-  are not immutable issued documents and are not uploaded or emailed automatically.
+- Draft PDFs contain current company/project data; sent/accepted/declined PDFs use
+  the frozen sent snapshot. PDF status is explicitly owner-recorded. PDFs are not
+  invoices, uploaded automatically, or emailed by the application.
 - Verify generated PDF text and render short/multi-page FR/EN fixtures before
   changing layout; a passing browser download test alone does not verify pagination.
 
@@ -423,3 +425,23 @@ Editor navigation uses full document links so beforeunload can warn about pendin
 edits. Preserve locale across reloads. Database tests are rollback-only fixtures;
 browser tests mock APIs and do not establish real Storage network delivery.
 See `docs/decisions/013-project-sketches.md`.
+
+## Estimate decision workflow
+
+`record_estimate_event` performs owner-authorized Draft → Sent → Accepted/Declined
+transitions with expected revisions and immutable request IDs. Each requires a
+communication reference note and explicit confirmation. Never imply email delivery,
+a customer signature or independently verified acceptance. Server timestamps are
+recording times. Empty drafts cannot be marked sent.
+
+Sending freezes title, lines, exact totals and company/client/site snapshot. Database
+triggers protect sent content, not only disabled UI. `estimate_events` is owner-only
+and append-only through the constrained RPC. Retrying the same UUID/arguments
+returns current state without duplicating history; changed arguments are rejected.
+Failed transitions retain the request and lock draft edits until retry or reload.
+Terminal decisions cannot be reopened or corrected in this first workflow; create
+a separate draft for changed work. No budget/revenue changes happen automatically.
+
+PDFs for non-drafts must use `sent_snapshot`, never mutable company/project records.
+Keep draft PDF behavior and exact cents intact. See decision 014 and
+`supabase/tests/estimate_workflow.sql`.

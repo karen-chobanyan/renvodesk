@@ -17,7 +17,7 @@ not selected as the codebase.
 | Companies | Create and select companies; users can belong to several organizations | Optional document address/email/phone; owner/member roles and invitation links; no automated invitation emails |
 | Saved projects | Create, list, open and edit company projects; status changes, pagination and stale-edit protection | Cost budgets and expense tracking; no project deletion |
 | Project demo | Search, status filters, create dialog and financial overview | Fictional data held in memory; edits reset on reload |
-| Saved estimates | Project-linked drafts, editable lines, atomic saves, server-calculated totals and conflict protection | EUR excluding tax; up to 100 lines; no sending, acceptance or invoicing |
+| Saved estimates | Project-linked drafts, editable lines, atomic saves, server-calculated totals and conflict protection | EUR excluding tax; up to 100 lines; owner-recorded decisions; no email delivery, customer signature or invoicing |
 | Draft PDF export | French/English downloads with contacts, client/site details, line items, exact cents and page numbers | Saved drafts only; no VAT calculation or issued-document snapshot |
 | Estimate demo | Editable lines, decimal-safe totals and session-only saving | No database persistence, PDF export, acceptance or invoicing |
 | Design foundation | Responsive layouts, French/English, reusable primitives and component showcase | Demo thumbnails are illustrative; saved projects have editable sketches |
@@ -81,7 +81,7 @@ already-saved record without overwriting it.
 - Deployment, SMTP provider, accounting/e-invoicing provider, billing model,
   expanded team permissions, background processing and monitoring remain open.
 
-Next estimate milestones are customer sending and acceptance. Variations,
+Next estimate milestones are email delivery and direct customer acceptance. Variations,
 invoicing and payments remain planned. Clients/properties, cost budgets, tasks,
 schedules, project files, team access and sketches are implemented. Full accounting, payroll, warehouse management, BIM/CAD and automatic
 quantity takeoff are outside the initial scope.
@@ -265,3 +265,20 @@ require a future cleanup policy. The fictional demo stays separate.
 The approved sketch migration is applied to the development Supabase project.
 `pnpm exec playwright test tests/sketch-editor.spec.ts tests/sketch-storage.spec.ts`
 checks the editor and storage integration with mocked APIs.
+
+## Estimate status and decision history
+
+Open a saved estimate as a company owner. Save at least one line, add a communication
+reference under **Estimate tracking / Suivi du devis**, then choose **Mark as sent /
+Marquer comme envoyé** and confirm. This records communication performed elsewhere;
+it does not send an email. Sent content and company/client details become frozen.
+
+You can then record acceptance or decline with another reference. Each action records
+its author, time and note. Sent and terminal estimates cannot be edited or reopened;
+create a separate draft if work changes. This is owner-recorded tracking, not an
+electronic signature. No invoice or automatic budget/revenue update is created.
+
+PDF exports use the frozen snapshot after sending, even if company or site details
+change later. Status labels identify decisions as recorded by the company. Existing
+draft exports retain their Draft marker. The approved migration is applied and
+`supabase/tests/estimate_workflow.sql` passes on the hosted development database.

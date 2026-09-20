@@ -57,6 +57,20 @@ describe("draft PDF", () => {
       Buffer.from(doc.output("arraybuffer")),
     );
   });
+  it("renders recorded acceptance in French and English", () => {
+    for (const locale of ["fr", "en"] as const) {
+      const doc = buildEstimatePdf(
+        { ...data, status: "accepted" },
+        locale,
+        font,
+      );
+      expect(doc.getNumberOfPages()).toBe(1);
+      writeFileSync(
+        `/private/tmp/renvo-accepted-${locale}.pdf`,
+        Buffer.from(doc.output("arraybuffer")),
+      );
+    }
+  });
   it("paginates 100 English lines and long descriptions", () => {
     const long = {
       ...data,

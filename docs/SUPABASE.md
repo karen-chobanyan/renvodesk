@@ -160,3 +160,13 @@ Run `supabase/tests/sketch_isolation.sql` only as a rollback test; its writes an
 delete-denial assertions are scoped to fresh fixture users/company. Hosted Storage
 blocks direct metadata deletion independently of RLS. Use Storage APIs for actual
 object operations. The SQL test proves metadata/policy behavior, not byte transport.
+
+## Estimate workflow
+
+Migration `20260920143945_estimate_workflow.sql` is applied and generated types are
+updated. `estimates.sent_snapshot` freezes sent content and contact/site details.
+`estimate_events` is owner-readable with no direct client mutation grants. Use
+`record_estimate_event` with an expected revision and stable request ID; never write
+statuses directly. Hosted rollback tests pass in `supabase/tests/estimate_workflow.sql`.
+The existing leaked-password protection warning is unchanged; no new schema security
+advisor findings were reported.

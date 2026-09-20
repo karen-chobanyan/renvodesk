@@ -58,6 +58,60 @@ export type Database = {
           },
         ];
       };
+      estimate_events: {
+        Row: {
+          estimate_id: string;
+          from_revision: number;
+          from_status: string;
+          id: string;
+          note: string;
+          organization_id: string;
+          project_id: string;
+          recorded_at: string;
+          recorded_by: string;
+          to_status: string;
+        };
+        Insert: {
+          estimate_id: string;
+          from_revision: number;
+          from_status: string;
+          id: string;
+          note: string;
+          organization_id: string;
+          project_id: string;
+          recorded_at?: string;
+          recorded_by?: string;
+          to_status: string;
+        };
+        Update: {
+          estimate_id?: string;
+          from_revision?: number;
+          from_status?: string;
+          id?: string;
+          note?: string;
+          organization_id?: string;
+          project_id?: string;
+          recorded_at?: string;
+          recorded_by?: string;
+          to_status?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "estimate_events_organization_id_estimate_id_fkey";
+            columns: ["organization_id", "estimate_id"];
+            isOneToOne: false;
+            referencedRelation: "estimates";
+            referencedColumns: ["organization_id", "id"];
+          },
+          {
+            foreignKeyName: "estimate_events_organization_id_project_id_fkey";
+            columns: ["organization_id", "project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["organization_id", "id"];
+          },
+        ];
+      };
       estimates: {
         Row: {
           created_at: string;
@@ -67,6 +121,7 @@ export type Database = {
           organization_id: string;
           project_id: string;
           revision: number;
+          sent_snapshot: Json | null;
           status: string;
           title: string;
           total_cents: number;
@@ -79,6 +134,7 @@ export type Database = {
           organization_id: string;
           project_id: string;
           revision?: number;
+          sent_snapshot?: Json | null;
           status?: string;
           title: string;
           total_cents?: number;
@@ -91,6 +147,7 @@ export type Database = {
           organization_id?: string;
           project_id?: string;
           revision?: number;
+          sent_snapshot?: Json | null;
           status?: string;
           title?: string;
           total_cents?: number;
@@ -657,6 +714,36 @@ export type Database = {
       publish_sketch: {
         Args: { p_org: string; p_save: string; p_sketch: string };
         Returns: number;
+      };
+      record_estimate_event: {
+        Args: {
+          p_estimate: string;
+          p_note: string;
+          p_org: string;
+          p_project: string;
+          p_request: string;
+          p_revision: number;
+          p_status: string;
+        };
+        Returns: {
+          created_at: string;
+          currency: string;
+          id: string;
+          lines: Json;
+          organization_id: string;
+          project_id: string;
+          revision: number;
+          sent_snapshot: Json | null;
+          status: string;
+          title: string;
+          total_cents: number;
+        };
+        SetofOptions: {
+          from: "*";
+          to: "estimates";
+          isOneToOne: true;
+          isSetofReturn: false;
+        };
       };
       team_invitation: {
         Args: { p_accept?: boolean; p_id: string };

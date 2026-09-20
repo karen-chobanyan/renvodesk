@@ -2429,3 +2429,18 @@ details[open] > .compact-identity > svg {
 .sketch-list-row > span:last-child {
   margin-left: auto;
 }
+
+.estimate-workflow {
+  margin-top: 32px;
+}
+.estimate-event-list {
+  padding-left: 20px;
+}
+.estimate-event-list li {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border);
+}
+.estimate-event-list p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

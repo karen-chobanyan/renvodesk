@@ -488,6 +488,10 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Changes saved.", { exact: true })).toBeVisible();
   await page.reload();
+  await expect(page.getByLabel("Project name", { exact: true })).toHaveValue(
+    "Kitchen renovation",
+  );
+  await page.getByRole("combobox", { name: "Language" }).selectOption("fr");
   await expect(page.getByLabel("Nom du projet", { exact: true })).toHaveValue(
     "Kitchen renovation",
   );
