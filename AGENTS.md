@@ -318,11 +318,11 @@ Protected workspace, project and estimate pages reuse the demo application shell
 The saved project register uses the same visual hierarchy and table styles, with
 search/status filters and counts scoped to loaded projects. Company settings have a dedicated page. Saved project pages provide links to details, estimates and files.
 Sketch previews are explicitly fictional; task navigation opens the live company schedule.
-The global estimates link is labeled Demo; saved estimates remain inside projects.
+The global estimates link opens the live company estimate register.
 Keep demo records separate from live data while replacing previews incrementally.
 See docs/decisions/007-shared-workspace-design.md.
 
-Saved project overview now mirrors the demo detail composition: real project header/status and client/address sidebar, explicitly fictional financial metrics and breakdown, illustrative plan, and live estimate/file sections. Example amounts are integer cents, never saved budgets. Site editing and revision-conflict recovery remain available below the overview.
+Saved project overview now mirrors the demo detail composition: real project header/status and client/address sidebar, live cost-budget metrics and breakdown, illustrative plan, and live estimate/file sections. Financial amounts are saved integer cents. Site editing and revision-conflict recovery remain available below the overview.
 
 ## Project tasks and schedule invariants
 
@@ -339,8 +339,7 @@ Saved project overview now mirrors the demo detail composition: real project hea
   server before 50-row pagination; do not label loaded counts as global totals.
 - Overdue excludes done and requires a past due date. Undated excludes done and
   requires both dates null. A start-only task is one scheduled day, not open-ended.
-- Task demo prompts have been replaced with live schedule navigation. Only financial
-  and sketch previews remain fictional. No assignments, dependencies or realtime yet.
+- Task demo prompts have been replaced with live schedule navigation. Only sketch previews remain fictional. No assignments, dependencies or realtime yet.
 
 ## Company and account navigation
 
@@ -353,3 +352,17 @@ Selection is explicit in the URL and survives reload; unqualified `/workspace` u
 the first available membership. No permissions or database schema changed.
 
 Live sidebar identities use compact avatar/name disclosure rows matching the demo. Company selection, add/settings links and account sign-out are inside keyboard-accessible expandable panels. Escape closes the panel and returns focus to its trigger; mobile drawer remains scrollable.
+
+Company estimates: `/workspace/:organizationId/estimates` lists saved drafts with server-side title/project/client search, 20-row pagination and direct draft/project links. Creation starts from a project. No schema or permission changes; demo estimate routes remain separate.
+
+## Project cost budgets
+
+Saved project pages now show real **Budget and costs**: set a cost allowance, add
+materials/labor/subcontractor/other expenses with date and notes, correct entries or
+void them with confirmation. Voided entries remain visible but are excluded from
+totals. Financial figures use EUR excluding tax. Budget remaining is not profit;
+contract revenue, commitments, VAT, refunds and accounting are not implemented.
+`src/features/costs` owns this feature; see decision 010. Preserve exact integer-cent
+parsing and BigInt aggregate formatting, company/project scoping, independent revision
+checks, same-company FKs and the invoker summary RPC. Never sum a paginated list to
+produce project totals. No automatic changes to draft estimates or project revisions.

@@ -167,6 +167,9 @@ function ProjectDetail({
             </div>
             <SavedProjectOverview project={project} />
             <nav className="detail-navigation" aria-label={c.title}>
+              <a href="#project-costs">
+                {locale === "fr" ? "Budget et coûts" : "Budget and costs"}
+              </a>
               <a href="#site-details">{c.title}</a>
               <a href="#project-tasks">
                 {locale === "fr" ? "Tâches" : "Tasks"}

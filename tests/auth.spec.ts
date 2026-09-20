@@ -140,6 +140,26 @@ async function mockApi(page: Page) {
         }
         return;
       }
+      if (url.pathname.endsWith("/project_cost_summary")) {
+        await route.fulfill({
+          json: [
+            {
+              budget_cents: null,
+              budget_revision: null,
+              materials: "0",
+              labor: "0",
+              subcontractors: "0",
+              other: "0",
+              total: "0",
+            },
+          ],
+        });
+        return;
+      }
+      if (url.pathname.endsWith("/project_costs")) {
+        await route.fulfill({ json: [] });
+        return;
+      }
       if (url.pathname.endsWith("/project_tasks")) {
         await route.fulfill({ json: [] });
         return;
@@ -991,5 +1011,266 @@ test("company navigation keeps selection across reload and detail routes", async
   ).toHaveCount(0);
   await expect(
     page.locator("main").getByRole("button", { name: "Se déconnecter" }),
+  ).toHaveCount(0);
+});
+
+test("company estimates search, pagination and saved draft links", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.route("**/rest/v1/estimates**", async (route) => {
+    const url = new URL(route.request().url());
+    expect(url.searchParams.get("organization_id")).toBe(`eq.${org}`);
+    const records = Array.from({ length: 21 }, (_, i) => ({
+      id: `estimate-${i}`,
+      project_id: "project-a",
+      title: `Kitchen quote ${i}`,
+      revision: 1,
+      status: "draft",
+      total_cents: 123456,
+      projects: { name: "Maison Test", client_name: "Client Dupont" },
+    }));
+    const search = url.searchParams.get("or");
+    if (search) {
+      expect(url.searchParams.get("match.or")).toContain("client_name.ilike");
+      expect(search).toContain("match.not.is.null");
+    }
+    const rows = search?.includes("absent") ? [] : records;
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+    await route.fulfill({ json: rows.slice(offset, offset + 20) });
+  });
+  await login(page);
+  await page.getByLabel("Nom de l’entreprise").fill("Estimates company");
+  await page.getByRole("button", { name: "Créer mon entreprise" }).click();
+  await expect(page).toHaveURL(new RegExp(`company=${org}`));
+  if (test.info().project.name === "mobile")
+    await page.getByRole("button", { name: "Navigation", exact: true }).click();
+  await page.getByRole("link", { name: "Devis", exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`/workspace/${org}/estimates`));
+  await expect(page.locator("tbody tr")).toHaveCount(20);
+  await page.getByRole("button", { name: "Voir plus", exact: true }).click();
+  await expect(page.locator("tbody tr")).toHaveCount(21);
+  await expect(
+    page.getByRole("link", { name: "Kitchen quote 0", exact: true }),
+  ).toHaveAttribute(
+    "href",
+    `/workspace/${org}/projects/project-a/estimates/estimate-0`,
+  );
+  await page
+    .getByRole("textbox", { name: "Rechercher un devis, projet ou client" })
+    .fill("absent");
+  await page.getByRole("button", { name: "Rechercher", exact: true }).click();
+  await expect(page.locator("tbody tr")).toHaveCount(0);
+  await page
+    .getByRole("textbox", { name: "Rechercher un devis, projet ou client" })
+    .fill("Dupont");
+  await page.getByRole("button", { name: "Rechercher", exact: true }).click();
+  await expect(page.locator("tbody tr")).toHaveCount(20);
+  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  await expect(
+    page.getByRole("heading", { name: "Estimates", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `/private/tmp/renvo-estimates-overview-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+});
+
+test("project budget, cost recovery, conflict and void history", async ({
+  page,
+}) => {
+  await mockApi(page);
+  let budget: number | null = null,
+    revision: number | null = null,
+    lose = true,
+    conflict = true;
+  const costs: Array<{
+    id: string;
+    organization_id: string;
+    project_id: string;
+    description: string;
+    category: string;
+    amount_cents: number;
+    incurred_on: string;
+    notes: string;
+    voided: boolean;
+    revision: number;
+  }> = [];
+  await page.route("**/rest/v1/rpc/project_cost_summary", (route) => {
+    const body = route.request().postDataJSON();
+    expect(body.p_organization_id).toBe(org);
+    const total = costs
+      .filter((c) => !c.voided)
+      .reduce((sum, c) => sum + c.amount_cents, 0);
+    return route.fulfill({
+      json: [
+        {
+          budget_cents: budget,
+          budget_revision: revision,
+          materials: String(total),
+          labor: "0",
+          subcontractors: "0",
+          other: "0",
+          total: String(total),
+        },
+      ],
+    });
+  });
+  await page.route("**/rest/v1/project_budgets**", async (route) => {
+    const body = route.request().postDataJSON();
+    if (route.request().method() === "POST") {
+      budget = body.budget_cents;
+      revision = 1;
+    } else {
+      expect(new URL(route.request().url()).searchParams.get("revision")).toBe(
+        `eq.${revision}`,
+      );
+      budget = body.budget_cents;
+      revision = body.revision;
+    }
+    await route.fulfill({
+      json:
+        route.request().method() === "POST"
+          ? { budget_cents: budget, revision }
+          : [{ budget_cents: budget, revision }],
+    });
+  });
+  await page.route("**/rest/v1/project_costs**", async (route) => {
+    const url = new URL(route.request().url()),
+      method = route.request().method();
+    if (method === "POST") {
+      const body = route.request().postDataJSON();
+      expect(body.organization_id).toBe(org);
+      if (costs.some((c) => c.id === body.id)) {
+        await route.fulfill({ status: 409, json: { code: "23505" } });
+        return;
+      }
+      const row = { ...body, revision: 1, voided: false };
+      costs.push(row);
+      if (lose) {
+        lose = false;
+        await route.abort();
+      } else await route.fulfill({ json: row });
+      return;
+    }
+    expect(url.searchParams.get("organization_id")).toBe(`eq.${org}`);
+    const row = costs.find((c) => `eq.${c.id}` === url.searchParams.get("id"));
+    if (method === "PATCH") {
+      const body = route.request().postDataJSON();
+      if (!row) throw new Error("Missing fixture");
+      if (conflict && !body.voided) {
+        row.revision++;
+        conflict = false;
+      }
+      if (url.searchParams.get("revision") !== `eq.${row.revision}`) {
+        await route.fulfill({ json: [] });
+        return;
+      }
+      Object.assign(row, body);
+      await route.fulfill({ json: [row] });
+      return;
+    }
+    await route.fulfill({
+      json: url.searchParams.has("id")
+        ? costs.filter((c) => `eq.${c.id}` === url.searchParams.get("id"))
+        : costs,
+    });
+  });
+  await login(page);
+  await page.getByLabel("Nom de l’entreprise").fill("Cost company");
+  await page.getByRole("button", { name: "Créer mon entreprise" }).click();
+  await page.getByRole("button", { name: "Nouveau projet" }).click();
+  await page.getByLabel("Nom du projet", { exact: true }).fill("Cost site");
+  await page.getByLabel("Client", { exact: true }).fill("Client");
+  await page.getByLabel("Ville", { exact: true }).fill("Bruxelles");
+  await page
+    .getByRole("button", { name: "Créer le projet", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Créer le projet", exact: true })
+    .click();
+  await page.getByRole("link", { name: "Cost site", exact: true }).click();
+  const panel = page.getByRole("region", {
+    name: "Budget et coûts",
+    exact: true,
+  });
+  await expect(panel.getByText("Non défini", { exact: true })).toBeVisible();
+  await panel.getByRole("button", { name: "Modifier le budget" }).click();
+  await panel.getByLabel("Budget de coûts", { exact: true }).fill("100.00");
+  await panel.getByRole("button", { name: "Enregistrer le budget" }).click();
+  await expect(
+    panel.locator(".metrics").getByText("100,00 €", { exact: true }),
+  ).toHaveCount(2);
+  await panel.getByRole("button", { name: "Ajouter un coût" }).click();
+  await panel.getByLabel("Description du coût").fill("Peinture");
+  await panel.getByLabel("Montant HT (€)").fill("120,29");
+  await panel.getByRole("button", { name: "Enregistrer le coût" }).click();
+  await expect(panel.getByRole("alert")).toContainText(
+    "Enregistrement non confirmé",
+  );
+  await panel.getByRole("button", { name: "Enregistrer le coût" }).click();
+  await expect(panel.locator("article")).toHaveCount(1);
+  expect(costs).toHaveLength(1);
+  await expect(
+    panel.locator(".metrics").getByText("20,29 €", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(panel.locator("article")).toHaveCount(1);
+  await panel.getByRole("button", { name: "Modifier", exact: true }).click();
+  await panel.getByLabel("Montant HT (€)").fill("90.29");
+  await panel.getByRole("button", { name: "Enregistrer le coût" }).click();
+  await expect(panel.getByRole("alert")).toContainText(
+    "Les données ont changé",
+  );
+  await expect(panel.getByLabel("Montant HT (€)")).toHaveValue("90.29");
+  await panel.getByRole("button", { name: "Recharger les coûts" }).click();
+  await panel.getByRole("button", { name: "Modifier", exact: true }).click();
+  await panel.getByLabel("Montant HT (€)").fill("90.29");
+  await panel.getByRole("button", { name: "Enregistrer le coût" }).click();
+  await expect(
+    panel.locator(".metrics").getByText("9,71 €", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  const english = page.getByRole("region", {
+    name: "Budget and costs",
+    exact: true,
+  });
+  await expect(
+    english.locator(".metrics").getByText("€9.71", { exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.locator("main").focus();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: `/private/tmp/renvo-costs-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  await english.getByRole("button", { name: "Void cost", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await expect(english.locator("article")).toHaveCount(1);
+  await english.getByRole("button", { name: "Void cost", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Void cost", exact: true })
+    .click();
+  await expect(english.getByText("Voided cost", { exact: true })).toBeVisible();
+  await expect(
+    english.locator(".metrics").getByText("€0.00", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    english.getByRole("button", { name: "Edit", exact: true }),
   ).toHaveCount(0);
 });

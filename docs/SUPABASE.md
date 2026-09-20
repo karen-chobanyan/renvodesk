@@ -110,3 +110,13 @@ passed against the connected development project in a rolled-back transaction,
 covering authorized CRUD, invalid input, stale writes/deletes, cross-tenant denial,
 cross-company project links and anonymous denial. Security advisor reports no new
 findings; the existing leaked-password protection warning remains.
+
+### Cost budgets and actual costs
+
+Applied `20260920113045_project_costs.sql`; regenerated browser types. Budget and
+cost tables use existing tenant membership/owner policies and same-company project
+FKs. The SECURITY INVOKER `project_cost_summary` RPC returns exact totals across all
+non-voided costs, independent of list pagination. `supabase/tests/cost_isolation.sql`
+passed in a rolled-back transaction: writes, validation, revisions, void immutability,
+retained history, aggregate totals beyond one page, tenant/FK and anonymous denial.
+No new security advisor findings; the existing password-protection warning remains.

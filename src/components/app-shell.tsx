@@ -121,12 +121,17 @@ export function AppShell({
           </NavLink>
         )}
         <NavLink
-          to="/estimates/maison-ixelles"
+          to={
+            live
+              ? activeOrg
+                ? `/workspace/${activeOrg}/estimates`
+                : home
+              : "/estimates/maison-ixelles"
+          }
           onClick={() => setMobileOpen(false)}
         >
           <FileText size={18} />
           {t("estimates")}{" "}
-          {live && <small className="demo-chip">{t("demo")}</small>}
         </NavLink>
       </nav>
       <p className="nav-label resource-label">{t("resources")}</p>

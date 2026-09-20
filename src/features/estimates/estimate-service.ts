@@ -61,3 +61,30 @@ export async function saveEstimate(
   if (error) throw error;
   return data;
 }
+
+export async function listCompanyEstimates(
+  org: string,
+  search = "",
+  offset = 0,
+) {
+  let query = requireSupabase()
+    .from("estimates")
+    .select(
+      "id,project_id,title,total_cents,revision,status,created_at,projects(name,client_name),match:projects()",
+    )
+    .eq("organization_id", org);
+  if (search.trim()) {
+    const pattern = `"%${search.trim().replaceAll("\\", "\\\\").replaceAll('"', '\\"')}%"`;
+    query = query
+      .or(`name.ilike.${pattern},client_name.ilike.${pattern}`, {
+        referencedTable: "match",
+      })
+      .or(`title.ilike.${pattern},match.not.is.null`);
+  }
+  const { data, error } = await query
+    .order("created_at", { ascending: false })
+    .order("id")
+    .range(offset, offset + 19);
+  if (error) throw error;
+  return data;
+}

@@ -110,7 +110,7 @@ as complete transactions; their temporary fixtures roll back. They cover tenant
 isolation, anonymous denial, write restrictions, validation, revision increments and stale-update rejection.
 
 Last implementation verification (2026-09-20): lint, typecheck and build passed;
-25 unit tests and 21 browser tests passed, with one intentional desktop skip for
+28 unit tests and 25 browser tests passed, with one intentional desktop skip for
 the mobile navigation test. Live SQL isolation tests passed. The security advisor reported leaked-password
 protection disabled in Auth; no estimate-schema findings were reported. This is a dated result, not a production-readiness claim.
 
@@ -170,11 +170,11 @@ Protected workspace, project and estimate pages reuse the demo application shell
 The saved project register uses the same visual hierarchy and table styles, with
 search/status filters and counts scoped to loaded projects. Company settings have a dedicated page. Saved project pages provide links to details, estimates and files.
 Sketch previews are explicitly fictional; task navigation opens the live company schedule.
-The global estimates link is labeled Demo; saved estimates remain inside projects.
+The global estimates link opens the live company estimate register.
 Keep demo records separate from live data while replacing previews incrementally.
 See docs/decisions/007-shared-workspace-design.md.
 
-Saved project overview now mirrors the demo detail composition: real project header/status and client/address sidebar, explicitly fictional financial metrics and breakdown, illustrative plan, and live estimate/file sections. Example amounts are integer cents, never saved budgets. Site editing and revision-conflict recovery remain available below the overview.
+Saved project overview now mirrors the demo detail composition: real project header/status and client/address sidebar, live cost-budget metrics and breakdown, illustrative plan, and live estimate/file sections. Financial amounts are saved integer cents. Site editing and revision-conflict recovery remain available below the overview.
 
 ## Project tasks and schedule
 
@@ -187,7 +187,7 @@ another 50 matching tasks. Task edits survive a failed save in the current page;
 revision conflicts require an explicit reload. Unsaved fields do not survive navigation.
 
 Team assignments, dependencies, Gantt charts, calendar integration and notifications
-are not implemented. Financial and sketch examples remain demonstrations, but task
+are not implemented. Sketch examples remain demonstrations, but task
 tracking is now connected. See decision 008 and `supabase/tests/task_isolation.sql`.
 
 ## Company and account navigation
@@ -199,3 +199,17 @@ routes carry the company ID in the path. Switching companies returns to that com
 register. `/workspace/:organizationId/settings` contains document contact details.
 Selection is explicit in the URL and survives reload; unqualified `/workspace` uses
 the first available membership. No permissions or database schema changed.
+
+Company estimates: `/workspace/:organizationId/estimates` lists saved drafts with server-side title/project/client search, 20-row pagination and direct draft/project links. Creation starts from a project. No schema or permission changes; demo estimate routes remain separate.
+
+## Project cost budgets
+
+Saved project pages now show real **Budget and costs**: set a cost allowance, add
+materials/labor/subcontractor/other expenses with date and notes, correct entries or
+void them with confirmation. Voided entries remain visible but are excluded from
+totals. Financial figures use EUR excluding tax. Budget remaining is not profit;
+contract revenue, commitments, VAT, refunds and accounting are not implemented.
+`src/features/costs` owns this feature; see decision 010. Preserve exact integer-cent
+parsing and BigInt aggregate formatting, company/project scoping, independent revision
+checks, same-company FKs and the invoker summary RPC. Never sum a paginated list to
+produce project totals. No automatic changes to draft estimates or project revisions.

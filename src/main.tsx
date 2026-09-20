@@ -9,6 +9,7 @@ import { Button } from "./components/ui/button";
 import { AuthCallback, AuthPage } from "./features/auth/auth-page";
 import { AuthProvider, RequireAuth } from "./features/auth/auth-provider";
 import { DesignPage } from "./features/design/design-page";
+import { CompanyEstimatesPage } from "./features/estimates/company-estimates-page";
 import { EstimatePage } from "./features/estimates/estimate-page";
 import { SavedEstimatePage } from "./features/estimates/saved-estimate-page";
 import { WorkspacePage } from "./features/organizations/workspace-page";
@@ -84,6 +85,10 @@ function Application() {
               <Route path="auth/callback" element={<AuthCallback />} />
               <Route element={<RequireAuth />}>
                 <Route path="workspace" element={<WorkspacePage />} />
+                <Route
+                  path="workspace/:organizationId/estimates"
+                  element={<CompanyEstimatesPage />}
+                />
                 <Route
                   path="workspace/:organizationId/settings"
                   element={<WorkspacePage settings />}

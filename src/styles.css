@@ -2232,3 +2232,39 @@ details[open] > .compact-identity > svg {
 .compact-identity:hover {
   background: var(--soft);
 }
+
+.estimate-search {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 20px 0;
+  border-block: 1px solid var(--border);
+}
+.estimate-search .search-field {
+  flex: 1;
+  min-width: 220px;
+}
+.estimate-revision {
+  display: block;
+  color: var(--muted);
+  margin-top: 8px;
+  font-size: 11px;
+}
+
+.costs-heading {
+  margin-top: 32px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.cost-notice {
+  max-width: 75ch;
+  margin-top: 24px;
+}
+#project-costs {
+  scroll-margin-top: 24px;
+}
+#project-costs .metrics strong {
+  font-size: clamp(18px, 2vw, 28px);
+  overflow-wrap: anywhere;
+}

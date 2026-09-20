@@ -129,6 +129,85 @@ export type Database = {
         };
         Relationships: [];
       };
+      project_budgets: {
+        Row: {
+          budget_cents: number;
+          organization_id: string;
+          project_id: string;
+          revision: number;
+        };
+        Insert: {
+          budget_cents: number;
+          organization_id: string;
+          project_id: string;
+          revision?: number;
+        };
+        Update: {
+          budget_cents?: number;
+          organization_id?: string;
+          project_id?: string;
+          revision?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_budgets_organization_id_project_id_fkey";
+            columns: ["organization_id", "project_id"];
+            isOneToOne: true;
+            referencedRelation: "projects";
+            referencedColumns: ["organization_id", "id"];
+          },
+        ];
+      };
+      project_costs: {
+        Row: {
+          amount_cents: number;
+          category: string;
+          created_at: string;
+          description: string;
+          id: string;
+          incurred_on: string;
+          notes: string;
+          organization_id: string;
+          project_id: string;
+          revision: number;
+          voided: boolean;
+        };
+        Insert: {
+          amount_cents: number;
+          category: string;
+          created_at?: string;
+          description: string;
+          id?: string;
+          incurred_on: string;
+          notes?: string;
+          organization_id: string;
+          project_id: string;
+          revision?: number;
+          voided?: boolean;
+        };
+        Update: {
+          amount_cents?: number;
+          category?: string;
+          created_at?: string;
+          description?: string;
+          id?: string;
+          incurred_on?: string;
+          notes?: string;
+          organization_id?: string;
+          project_id?: string;
+          revision?: number;
+          voided?: boolean;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_costs_organization_id_project_id_fkey";
+            columns: ["organization_id", "project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["organization_id", "id"];
+          },
+        ];
+      };
       project_files: {
         Row: {
           created_at: string;
@@ -278,6 +357,18 @@ export type Database = {
       create_organization: {
         Args: { p_country: string; p_name: string; p_request_id: string };
         Returns: string;
+      };
+      project_cost_summary: {
+        Args: { p_organization_id: string; p_project_id: string };
+        Returns: {
+          budget_cents: number;
+          budget_revision: number;
+          labor: string;
+          materials: string;
+          other: string;
+          subcontractors: string;
+          total: string;
+        }[];
       };
     };
     Enums: {
