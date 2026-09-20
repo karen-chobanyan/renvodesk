@@ -160,6 +160,13 @@ async function mockApi(page: Page) {
         await route.fulfill({ json: [] });
         return;
       }
+      if (
+        url.pathname.endsWith("/clients") ||
+        url.pathname.endsWith("/properties")
+      ) {
+        await route.fulfill({ json: [] });
+        return;
+      }
       if (url.pathname.endsWith("/project_tasks")) {
         await route.fulfill({ json: [] });
         return;
@@ -1273,4 +1280,119 @@ test("project budget, cost recovery, conflict and void history", async ({
   await expect(
     english.getByRole("button", { name: "Edit", exact: true }),
   ).toHaveCount(0);
+});
+
+test("clients and properties prefill a linked project", async ({
+  page,
+  isMobile,
+}) => {
+  await mockApi(page);
+  const clients: Record<string, unknown>[] = [];
+  const properties: Record<string, unknown>[] = [];
+  let lost = false;
+  for (const [table, rows] of [
+    ["clients", clients],
+    ["properties", properties],
+  ] as const) {
+    await page.route(`**/rest/v1/${table}**`, async (route) => {
+      const request = route.request();
+      const url = new URL(request.url());
+      expect(
+        url.searchParams.get("organization_id") ??
+          request.postDataJSON()?.organization_id,
+      ).toBe(request.method() === "POST" ? org : `eq.${org}`);
+      if (request.method() === "POST") {
+        const body = request.postDataJSON();
+        if (rows.some((row) => row.id === body.id))
+          return route.fulfill({ status: 409, json: { code: "23505" } });
+        rows.push({ ...body, revision: 1, created_at: "2026-09-20T00:00:00Z" });
+        if (table === "clients" && !lost) {
+          lost = true;
+          return route.abort();
+        }
+        return route.fulfill({ json: rows.at(-1) });
+      }
+      await route.fulfill({
+        json: url.searchParams.has("id")
+          ? rows.filter((row) => `eq.${row.id}` === url.searchParams.get("id"))
+          : rows,
+      });
+    });
+  }
+  await login(page);
+  await page.getByLabel("Nom de l’entreprise").fill("Directory company");
+  await page.getByRole("button", { name: "Créer mon entreprise" }).click();
+  await expect(
+    page.getByRole("button", { name: "Nouveau projet" }),
+  ).toBeVisible();
+  if (isMobile)
+    await page.getByRole("button", { name: "Navigation", exact: true }).click();
+  await page.getByRole("link", { name: "Clients", exact: true }).click();
+  await page.getByRole("button", { name: "Ajouter un client" }).click();
+  await page
+    .getByLabel("Nom du client", { exact: true })
+    .fill("Client exemple");
+  await page.getByLabel("E-mail du client").fill("client@example.test");
+  await page.getByRole("button", { name: "Enregistrer le client" }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Enregistrement non confirmé",
+  );
+  await page.getByRole("button", { name: "Enregistrer le client" }).click();
+  await page
+    .getByRole("button", { name: "Client exemple", exact: true })
+    .click();
+  expect(clients).toHaveLength(1);
+  await page.getByRole("button", { name: "Ajouter un bien" }).click();
+  await page.getByLabel("Nom du bien").fill("Maison exemple");
+  await page.getByLabel("Adresse du bien").fill("12 rue Exemple");
+  await page.getByLabel("Ville du bien").fill("Namur");
+  await page.getByRole("button", { name: "Enregistrer le bien" }).click();
+  await expect(page.getByText("Maison exemple", { exact: true })).toBeVisible();
+  await page.screenshot({
+    path: `/private/tmp/renvo-directory-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  await page.getByRole("link", { name: "Retour aux projets" }).click();
+  await page.getByRole("button", { name: "Nouveau projet" }).click();
+  await page
+    .getByLabel("Nom du projet", { exact: true })
+    .fill("Rénovation exemple");
+  await page
+    .getByLabel("Client enregistré (facultatif)")
+    .selectOption(String(clients[0].id));
+  await page
+    .getByLabel("Bien enregistré (facultatif)")
+    .selectOption(String(properties[0].id));
+  await expect(page.getByLabel("Client", { exact: true })).toHaveValue(
+    "Client exemple",
+  );
+  await expect(page.getByLabel("Ville", { exact: true })).toHaveValue("Namur");
+  await expect(page.getByLabel("Nom du projet", { exact: true })).toHaveValue(
+    "Rénovation exemple",
+  );
+  const posted = page.waitForRequest(
+    (request) =>
+      request.method() === "POST" &&
+      request.url().includes("/rest/v1/projects"),
+  );
+  await page
+    .getByRole("button", { name: "Créer le projet", exact: true })
+    .click();
+  expect((await posted).postDataJSON()).toMatchObject({
+    client_id: clients[0].id,
+    property_id: properties[0].id,
+    address: "12 rue Exemple",
+  });
+  await expect(page.getByRole("alert")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Créer le projet", exact: true })
+    .click();
+  await expect(
+    page.getByRole("link", { name: "Rénovation exemple", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
 });

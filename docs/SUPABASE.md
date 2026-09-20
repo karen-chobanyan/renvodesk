@@ -120,3 +120,11 @@ non-voided costs, independent of list pagination. `supabase/tests/cost_isolation
 passed in a rolled-back transaction: writes, validation, revisions, void immutability,
 retained history, aggregate totals beyond one page, tenant/FK and anonymous denial.
 No new security advisor findings; the existing password-protection warning remains.
+
+## Client directory
+
+Migration `20260920114313_clients_properties.sql` adds clients, properties and nullable
+project links. Composite foreign keys enforce organization and property/client identity.
+Members read; owners insert/update editable columns with revision checks. No deletion
+or project-link update grants. Run `supabase/tests/client_isolation.sql` as a rollback-only
+SQL verification; it checks tenant denial, link constraints, revisions and snapshots.

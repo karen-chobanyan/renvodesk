@@ -6,6 +6,7 @@ import {
   FolderKanban,
   Menu,
   PanelsTopLeft,
+  Users,
   X,
 } from "lucide-react";
 import { type ReactNode, useState, useSyncExternalStore } from "react";
@@ -111,6 +112,15 @@ export function AppShell({
             </span>
           )}
         </NavLink>
+        {live && activeOrg && (
+          <NavLink
+            to={`/workspace/${activeOrg}/clients`}
+            onClick={() => setMobileOpen(false)}
+          >
+            <Users size={18} />
+            {locale === "fr" ? "Clients" : "Clients"}
+          </NavLink>
+        )}
         {live && activeOrg && (
           <NavLink
             to={`/workspace/${activeOrg}/schedule`}

@@ -2268,3 +2268,50 @@ details[open] > .compact-identity > svg {
   font-size: clamp(18px, 2vw, 28px);
   overflow-wrap: anywhere;
 }
+
+.client-directory-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 40px;
+  margin-top: 24px;
+}
+.client-properties {
+  border-left: 1px solid var(--border);
+  padding-left: 28px;
+}
+.client-properties .section-heading {
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.client-name-button {
+  padding: 0;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  font-weight: 550;
+  font-size: 14px;
+}
+.client-name-button[aria-pressed="true"] {
+  color: var(--green);
+  text-decoration: underline;
+  text-underline-offset: 5px;
+}
+.project-directory-picker {
+  grid-column: 1 / -1;
+  padding: 20px;
+  background: var(--soft);
+  border-radius: 7px;
+}
+.project-directory-picker > .button {
+  margin-bottom: 16px;
+}
+@media (max-width: 900px) {
+  .client-directory-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .client-properties {
+    border-left: 0;
+    border-top: 1px solid var(--border);
+    padding: 24px 0 0;
+  }
+}

@@ -1,4 +1,5 @@
 import { MapPin } from "lucide-react";
+import { Link } from "react-router";
 import { PlanMark } from "@/components/shared";
 import { ProjectCosts } from "@/features/costs/project-costs";
 import { useLocale } from "@/lib/i18n";
@@ -21,6 +22,16 @@ export function SavedProjectOverview({ project }: { project: SavedProject }) {
         <dl>
           <dt>{t("client")}</dt>
           <dd>{project.client_name}</dd>
+          {project.client_id && (
+            <dd>
+              <Link
+                className="account-link"
+                to={`/workspace/${project.organization_id}/clients`}
+              >
+                {locale === "fr" ? "Répertoire clients" : "Client directory"}
+              </Link>
+            </dd>
+          )}
           <dt>{t("address")}</dt>
           <dd>
             <MapPin size={14} />

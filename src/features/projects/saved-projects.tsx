@@ -4,9 +4,9 @@ import { Link } from "react-router";
 import { PlanMark, StatusBadge } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NewProjectFields } from "@/features/clients/project-client-picker";
 import { useLocale } from "@/lib/i18n";
 import { projectCopy } from "./project-copy";
-import { ProjectFields } from "./project-fields";
 import {
   createProject,
   listProjects,
@@ -72,6 +72,8 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
     if (busy) return;
     const values = new FormData(event.currentTarget);
     const input = {
+      client_id: String(values.get("client_id") ?? "") || null,
+      property_id: String(values.get("property_id") ?? "") || null,
       name: String(values.get("name") ?? "").trim(),
       client_name: String(values.get("client_name") ?? "").trim(),
       city: String(values.get("city") ?? "").trim(),
@@ -141,7 +143,7 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
       {creating && (
         <form className="company-form" onSubmit={submit}>
           <fieldset disabled={busy} className="project-fields">
-            <ProjectFields />
+            <NewProjectFields org={organizationId} />
             <div className="dialog-actions">
               <Button
                 type="button"

@@ -366,3 +366,18 @@ contract revenue, commitments, VAT, refunds and accounting are not implemented.
 parsing and BigInt aggregate formatting, company/project scoping, independent revision
 checks, same-company FKs and the invoker summary RPC. Never sum a paginated list to
 produce project totals. No automatic changes to draft estimates or project revisions.
+
+## Clients and properties
+
+The live sidebar opens `/workspace/:organizationId/clients`. Create and edit
+individual or company contacts, optional email/phone/billing address, and multiple
+properties with site address, city and country (BE/FR/NL). Lists use 20-row pages;
+client name search runs on the server. New projects can select a saved client and
+property to copy their details, or use manual entry.
+
+Project text remains a snapshot: directory edits do not change existing projects.
+Existing projects are not automatically linked; linked IDs cannot be reassigned yet.
+No directory deletion, merging, imports or automatic billing-address PDF integration
+is implemented. Owners write and members read; revision checks prevent stale edits,
+and stable request IDs recover interrupted creates without overwriting records.
+See `docs/decisions/011-clients-properties.md`.

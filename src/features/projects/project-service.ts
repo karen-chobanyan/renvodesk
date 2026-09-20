@@ -20,7 +20,10 @@ export async function listProjects(organizationId: string, offset = 0) {
 export async function createProject(
   organizationId: string,
   id: string,
-  input: ProjectInput,
+  input: ProjectInput & {
+    client_id?: string | null;
+    property_id?: string | null;
+  },
 ) {
   const client = requireSupabase();
   const { data, error } = await client

@@ -81,3 +81,10 @@ contract revenue, commitments, VAT, refunds and accounting are not implemented.
 parsing and BigInt aggregate formatting, company/project scoping, independent revision
 checks, same-company FKs and the invoker summary RPC. Never sum a paginated list to
 produce project totals. No automatic changes to draft estimates or project revisions.
+
+## Client directory
+
+Reuse the workspace shell and flat task rows. Client selection reveals a property
+column on desktop; stack it below the list on mobile. Editors are inline and reuse
+project fields. The project creation picker is optional and clearly explains copied
+details. Preserve manual entry and display retry/conflict states in context.

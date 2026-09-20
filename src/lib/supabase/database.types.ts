@@ -14,6 +14,50 @@ export type Database = {
   };
   public: {
     Tables: {
+      clients: {
+        Row: {
+          billing_address: string;
+          created_at: string;
+          email: string;
+          id: string;
+          kind: string;
+          name: string;
+          organization_id: string;
+          phone: string;
+          revision: number;
+        };
+        Insert: {
+          billing_address?: string;
+          created_at?: string;
+          email?: string;
+          id?: string;
+          kind?: string;
+          name: string;
+          organization_id: string;
+          phone?: string;
+          revision?: number;
+        };
+        Update: {
+          billing_address?: string;
+          created_at?: string;
+          email?: string;
+          id?: string;
+          kind?: string;
+          name?: string;
+          organization_id?: string;
+          phone?: string;
+          revision?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "clients_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       estimates: {
         Row: {
           created_at: string;
@@ -309,43 +353,107 @@ export type Database = {
         Row: {
           address: string;
           city: string;
+          client_id: string | null;
           client_name: string;
           created_at: string;
           id: string;
           name: string;
           organization_id: string;
+          property_id: string | null;
           revision: number;
           status: string;
         };
         Insert: {
           address?: string;
           city: string;
+          client_id?: string | null;
           client_name: string;
           created_at?: string;
           id?: string;
           name: string;
           organization_id: string;
+          property_id?: string | null;
           revision?: number;
           status?: string;
         };
         Update: {
           address?: string;
           city?: string;
+          client_id?: string | null;
           client_name?: string;
           created_at?: string;
           id?: string;
           name?: string;
           organization_id?: string;
+          property_id?: string | null;
           revision?: number;
           status?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "projects_client_fk";
+            columns: ["organization_id", "client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["organization_id", "id"];
+          },
           {
             foreignKeyName: "projects_organization_id_fkey";
             columns: ["organization_id"];
             isOneToOne: false;
             referencedRelation: "organizations";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "projects_property_fk";
+            columns: ["organization_id", "client_id", "property_id"];
+            isOneToOne: false;
+            referencedRelation: "properties";
+            referencedColumns: ["organization_id", "client_id", "id"];
+          },
+        ];
+      };
+      properties: {
+        Row: {
+          address: string;
+          city: string;
+          client_id: string;
+          country: string;
+          created_at: string;
+          id: string;
+          label: string;
+          organization_id: string;
+          revision: number;
+        };
+        Insert: {
+          address: string;
+          city: string;
+          client_id: string;
+          country?: string;
+          created_at?: string;
+          id?: string;
+          label: string;
+          organization_id: string;
+          revision?: number;
+        };
+        Update: {
+          address?: string;
+          city?: string;
+          client_id?: string;
+          country?: string;
+          created_at?: string;
+          id?: string;
+          label?: string;
+          organization_id?: string;
+          revision?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "properties_organization_id_client_id_fkey";
+            columns: ["organization_id", "client_id"];
+            isOneToOne: false;
+            referencedRelation: "clients";
+            referencedColumns: ["organization_id", "id"];
           },
         ];
       };
