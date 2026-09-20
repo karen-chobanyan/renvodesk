@@ -17,7 +17,8 @@ repository rules into this project without an explicit licensing review.
 
 ## Current state and decision status
 
-This repository contains a Vite/React frontend foundation with fictional, session-only demo data. Do not describe planned features,
+This repository contains a Vite/React frontend, Supabase Auth/company onboarding,
+and separate fictional, session-only project/estimate demos. Do not describe planned features,
 commands, integrations, or tests as implemented before they exist.
 
 Agreed direction:
@@ -28,10 +29,10 @@ Agreed direction:
 - Detailed, measured floor planning is a separate future module.
 
 Still to decide before dependent implementation:
-- Deployment provider and production region. React + Vite + React Router are selected.
+- Deployment provider. Supabase is in Frankfurt; React + Vite + React Router are selected.
 - Invoicing/accounting provider and country rollout details.
 - Background processing, email delivery, and monitoring providers.
-- Final role/permission matrix and billing/subscription model.
+- Team role/permission matrix and billing/subscription model. Initial onboarding creates owners only.
 
 Use pnpm. Keep dependencies minimal; check current documentation, compatibility,
 and licenses before adoption. Do not install competing UI systems for the same
@@ -175,3 +176,10 @@ Do not invent a command or report an unrun check as passing.
 - After database schema changes, regenerate database types before typechecking.
 - For drawings, verify save/reopen with embedded images and permission boundaries.
 - Never call a feature complete based only on a successful compile or static mockup.
+
+## Supabase implementation
+
+See docs/SUPABASE.md and docs/decisions/002-auth-and-company-isolation.md.
+Generated types live in src/lib/supabase/database.types.ts; never edit by hand.
+Auth UI session state is not authorization; RLS remains the enforcement boundary.
+Never replace the demo provider with live data until its domain schema and isolation tests exist.

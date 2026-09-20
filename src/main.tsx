@@ -6,8 +6,11 @@ import "./styles.css";
 import { AppShell } from "./components/app-shell";
 import { EmptyState } from "./components/shared";
 import { Button } from "./components/ui/button";
+import { AuthCallback, AuthPage } from "./features/auth/auth-page";
+import { AuthProvider, RequireAuth } from "./features/auth/auth-provider";
 import { DesignPage } from "./features/design/design-page";
 import { EstimatePage } from "./features/estimates/estimate-page";
+import { WorkspacePage } from "./features/organizations/workspace-page";
 import { ProjectPage } from "./features/projects/project-page";
 import { ProjectsPage } from "./features/projects/projects-page";
 import { DemoProvider } from "./lib/demo-store";
@@ -55,20 +58,43 @@ function Application() {
         />
       }
     >
-      <DemoProvider>
-        <BrowserRouter>
-          <Routes>
-            <Route element={<AppShell />}>
-              <Route index element={<Navigate to="/projects" replace />} />
-              <Route path="projects" element={<ProjectsPage />} />
-              <Route path="projects/:id" element={<ProjectPage />} />
-              <Route path="estimates/:id" element={<EstimatePage />} />
-              <Route path="design-system" element={<DesignPage />} />
-              <Route path="*" element={<NotFound />} />
-            </Route>
-          </Routes>
-        </BrowserRouter>
-      </DemoProvider>
+      <AuthProvider>
+        <DemoProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route
+                path="login"
+                element={<AuthPage key="login" mode="login" />}
+              />
+              <Route
+                path="signup"
+                element={<AuthPage key="signup" mode="signup" />}
+              />
+              <Route
+                path="auth/forgot"
+                element={<AuthPage key="request" mode="request" />}
+              />
+              <Route
+                path="auth/reset"
+                element={<AuthPage key="update" mode="update" />}
+              />
+              <Route path="auth/callback" element={<AuthCallback />} />
+              <Route element={<RequireAuth />}>
+                <Route path="workspace" element={<WorkspacePage />} />
+              </Route>
+
+              <Route element={<AppShell />}>
+                <Route index element={<Navigate to="/workspace" replace />} />
+                <Route path="projects" element={<ProjectsPage />} />
+                <Route path="projects/:id" element={<ProjectPage />} />
+                <Route path="estimates/:id" element={<EstimatePage />} />
+                <Route path="design-system" element={<DesignPage />} />
+                <Route path="*" element={<NotFound />} />
+              </Route>
+            </Routes>
+          </BrowserRouter>
+        </DemoProvider>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }

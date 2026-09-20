@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet } from "react-router";
+import { useAuthCopy } from "@/features/auth/copy";
 import { useDemo } from "@/lib/demo-store";
 import { useLocale } from "@/lib/i18n";
 import { Button } from "./ui/button";
@@ -21,6 +22,7 @@ function subscribeMobile(callback: () => void) {
 export function AppShell() {
   const { t, locale, setLocale } = useLocale();
   const { projects } = useDemo();
+  const authText = useAuthCopy();
   const [mobileOpen, setMobileOpen] = useState(false);
   const isMobile = useSyncExternalStore(
     subscribeMobile,
@@ -139,6 +141,9 @@ export function AppShell() {
               </span>
             </div>
             <div className="topbar-right">
+              <NavLink className="account-link" to="/workspace">
+                {authText("account")}
+              </NavLink>
               <span className="demo-chip">{t("demo")}</span>
               <label className="language-picker">
                 <span className="sr-only">{t("language")}</span>

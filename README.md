@@ -1,6 +1,7 @@
 # RenvoDesk
 
-Frontend foundation for a renovation SaaS. French and English; fictional demo data.
+Renovation SaaS foundation with French/English authentication and company onboarding,
+plus separate fictional project/estimate demos.
 
 ## Run
 
@@ -11,7 +12,9 @@ pnpm install
 pnpm dev
 ```
 
-Open http://127.0.0.1:5173. No environment variables or Supabase account required.
+Open http://127.0.0.1:5173/login. Copy `.env.example` to `.env.local` and fill in the
+Supabase URL and publishable key for authentication. See [Supabase setup](docs/SUPABASE.md)
+for required email redirect settings. `/projects` remains a demo without credentials.
 
 ## Verify
 
@@ -32,9 +35,13 @@ saving, French/English switch, component showcase, shared visual tokens.
 
 ## Boundaries
 
-Demo data only. No real accounts, file storage, invoice issuance, tax configuration,
-payments, or drawing editor yet. Reloading resets demo edits. Do not use for customer
-data. Costs and contracts are illustrative, not derived from invoice records.
+Authentication and organization records use Supabase. Projects and estimates are still
+fictional demos; reloading resets their edits. File storage, invoice issuance, tax,
+payments and drawings are not connected. Do not enter customer records into the demo.
+Costs and contracts are illustrative, not derived from invoice records.
+
+Live SQL verifies company isolation; browser auth tests use mocked API responses.
+Real email confirmation and recovery delivery require the setup steps in docs/SUPABASE.md.
 The floor-plan thumbnail is decorative and not an actual or editable project plan.
 
 ## Layout

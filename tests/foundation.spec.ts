@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 test("projects search, reset and locale switch", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/projects");
   await expect(
     page.getByRole("heading", { name: "Vos projets, au clair." }),
   ).toBeVisible();
