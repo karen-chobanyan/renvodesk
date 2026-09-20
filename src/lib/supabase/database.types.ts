@@ -129,6 +129,56 @@ export type Database = {
         };
         Relationships: [];
       };
+      project_files: {
+        Row: {
+          created_at: string;
+          id: string;
+          mime_type: string;
+          object_key: string | null;
+          organization_id: string;
+          original_name: string;
+          project_id: string;
+          size_bytes: number;
+          state: string;
+          uploaded_by: string;
+          version: number;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          mime_type: string;
+          object_key?: string | null;
+          organization_id: string;
+          original_name: string;
+          project_id: string;
+          size_bytes: number;
+          state?: string;
+          uploaded_by?: string;
+          version?: number;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          mime_type?: string;
+          object_key?: string | null;
+          organization_id?: string;
+          original_name?: string;
+          project_id?: string;
+          size_bytes?: number;
+          state?: string;
+          uploaded_by?: string;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_files_organization_id_project_id_fkey";
+            columns: ["organization_id", "project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["organization_id", "id"];
+          },
+        ];
+      };
       projects: {
         Row: {
           address: string;

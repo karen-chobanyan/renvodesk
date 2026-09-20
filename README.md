@@ -73,8 +73,8 @@ already-saved record without overwriting it.
 - React + TypeScript, Vite and React Router declarative routing; pnpm for packages.
 - Tailwind v4, semantic CSS tokens, locally owned shadcn-style Radix primitives,
   Lucide icons and self-hosted Inter. See [DESIGN.md](DESIGN.md).
-- Supabase Auth and Postgres are connected. Private Supabase Storage is selected
-  for future files; uploads and file policies are not implemented.
+- Supabase Auth and Postgres are connected. Private Supabase Storage is connected
+  for project files with metadata, recovery states and access policies.
 - Excalidraw is selected for quick sketches and annotations, but not integrated.
   Detailed measured floor planning is a separate future module.
 - Monetary calculations use integer cents and decimal-safe helpers. Demo amounts
@@ -110,7 +110,7 @@ as complete transactions; their temporary fixtures roll back. They cover tenant
 isolation, anonymous denial, write restrictions, validation, revision increments and stale-update rejection.
 
 Last implementation verification (2026-09-20): lint, typecheck and build passed;
-19 unit tests and 17 browser tests passed, with one intentional desktop skip for
+21 unit tests and 17 browser tests passed, with one intentional desktop skip for
 the mobile navigation test. Live SQL isolation tests passed. The security advisor reported leaked-password
 protection disabled in Auth; no estimate-schema findings were reported. This is a dated result, not a production-readiness claim.
 
@@ -144,3 +144,22 @@ PDF generation runs locally in the browser using lazy-loaded jsPDF 4.2.1 and
 jsPDF-AutoTable 5.0.8 (MIT). Noto Sans is bundled under SIL OFL in public/fonts.
 No external PDF service or email is used. One-page French and seven-page English
 fixtures were rendered and visually checked, with PDF text/total assertions.
+
+## Project files
+
+Open a saved project and scroll to **Project files**. Select a PDF, JPEG, PNG,
+WebP, TXT, DOCX or XLSX file up to 10 MiB, then upload. Images and PDFs have private
+previews; other documents download. Deletion requires confirmation. HEIC/HEIF
+conversion is not implemented: convert these photos to JPG/PNG first.
+
+Uploads show transfer progress. If a response is lost, retry or use Verify upload;
+pending entries can also be removed. Interrupted deletions remain available to
+retry. This is not resumable/offline upload support. Files use unique immutable
+keys; replacement/version history and malware scanning are not implemented.
+Preview URLs expire after 60 seconds; the UI closes their content after 55 seconds.
+PDF.js renders pages inside the app with previous/next controls; download remains
+the fallback for unsupported or damaged documents. The viewer loads only when needed.
+
+Storage API upload/download/signing/deletion was tested live using a temporary
+synthetic account and object, then cleaned up. SQL tests verify tenant policies;
+browser tests mock the API and cover errors, recovery, previews and deletion.

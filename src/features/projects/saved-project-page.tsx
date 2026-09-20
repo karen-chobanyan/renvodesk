@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { AuthLayout } from "@/features/auth/auth-page";
 import { useAuth } from "@/features/auth/auth-provider";
 import { ProjectEstimates } from "@/features/estimates/project-estimates";
+import { ProjectFiles } from "@/features/files/project-files";
 import { useLocale } from "@/lib/i18n";
 import { projectCopy } from "./project-copy";
 import { ProjectFields } from "./project-fields";
@@ -190,7 +191,10 @@ function ProjectDetail({
           </form>
         )}
         {project && !loading && !failed && (
-          <ProjectEstimates organizationId={organizationId} projectId={id} />
+          <>
+            <ProjectEstimates organizationId={organizationId} projectId={id} />
+            <ProjectFiles organizationId={organizationId} projectId={id} />
+          </>
         )}
       </section>
     </AuthLayout>

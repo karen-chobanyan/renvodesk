@@ -86,3 +86,17 @@ and contact_revision to organizations. Owner-only column updates and a revision
 trigger protect changes. Name, country, creator and organization identity remain
 unmodifiable from the browser. supabase/tests/company_contacts.sql verifies own
 updates, stale writes, input validation and cross-company denial in a rollback.
+
+## Private project files
+
+Migration 20260920094807 creates the private project-files bucket and metadata.
+Storage read/insert/delete policies reference project_files and memberships; no
+storage update permission is added. Metadata state transitions verify uploaded
+object metadata and object absence on final deletion. The upload policy locks the
+reservation against deletion races. Metadata tombstones retain immutable paths.
+
+supabase/tests/file_isolation.sql uses rollback-only synthetic storage metadata to
+exercise RLS and transitions. No real object bytes are created by that SQL test.
+A separate live test confirmed raw Storage upload, metadata finalization, exact
+bytes on download, signed URLs, anonymous denial, overwrite denial and API deletion.
+Temporary account, company, project, file metadata and object were removed afterward.

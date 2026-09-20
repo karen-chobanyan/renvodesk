@@ -34,7 +34,7 @@ Current implementation:
 Agreed direction:
 - Tailwind v4 and locally owned shadcn-style Radix primitives; reuse existing UI.
 - Supabase/Postgres and Supabase Auth are connected. Private Supabase Storage is
-  selected but uploads, file metadata and storage policies are not implemented.
+  connected for project files, including metadata, upload/download, previews and deletion.
 - French is the default language; English is available. Dutch is deferred.
 - Excalidraw is selected, not integrated, for quick sketches and annotations.
   Detailed measured floor planning is a separate future module.
@@ -289,3 +289,23 @@ Read README.md and the latest milestone plans for current implementation status.
   are not immutable issued documents and are not uploaded or emailed automatically.
 - Verify generated PDF text and render short/multi-page FR/EN fixtures before
   changing layout; a passing browser download test alone does not verify pagination.
+
+## Project file invariants
+
+- project_files links to projects through a composite organization/project FK.
+  Keys are generated organization/project/file UUID paths. Original names are data,
+  never paths. Metadata includes uploader, MIME, size and initial version 1.
+- Private project-files bucket limits uploads to 10 MiB and the supported MIME list.
+  Client extension/MIME validation improves UX; it is not malware/content scanning.
+  HTML/SVG and HEIC/HEIF are not supported. No thumbnail/HEIC conversion pipeline yet.
+- Reserve metadata before uploading. State transitions are pending → ready or
+  deleting → deleted; ready may only move to deleting. Repeated same-state requests
+  are safe. Finalization verifies object MIME/size. Retain deleted tombstones.
+- Upload policy locks the pending reservation FOR SHARE until the Storage transaction
+  commits, so deletion cannot race it. No object UPDATE policy: never upsert/overwrite.
+- Owners upload/delete; members read. Every metadata query filters organization and
+  project. Sign preview URLs for 60 seconds; do not persist or log signed URLs/tokens.
+- Delete via Storage API, then finalize metadata. Never delete storage.objects rows
+  directly. Failed transfers/deletions remain recoverable; do not hide pending work.
+- Back up object bytes as well as Postgres metadata. Do not claim database backups
+  alone recover files or that upload retry is resumable/offline support.

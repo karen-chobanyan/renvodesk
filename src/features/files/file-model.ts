@@ -1,0 +1,35 @@
+export const MAX_FILE_BYTES = 10 * 1024 * 1024;
+export const fileTypes: Record<string, string> = {
+  pdf: "application/pdf",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+  txt: "text/plain",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+};
+export function validateFile(
+  file: Pick<File, "name" | "size" | "type">,
+): "heic" | "invalid" | null {
+  const ext = file.name.split(".").at(-1)?.toLowerCase() ?? "";
+  if (["heic", "heif"].includes(ext) || /image\/hei[cf]/.test(file.type))
+    return "heic";
+  if (
+    !fileTypes[ext] ||
+    !file.size ||
+    file.size > MAX_FILE_BYTES ||
+    file.name.length > 255 ||
+    (file.type && file.type !== fileTypes[ext])
+  )
+    return "invalid";
+  return null;
+}
+export function fileMime(name: string) {
+  return fileTypes[name.split(".").at(-1)?.toLowerCase() ?? ""];
+}
+export function canPreview(mime: string) {
+  return ["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(
+    mime,
+  );
+}

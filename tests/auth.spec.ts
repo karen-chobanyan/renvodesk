@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { jsPDF } from "jspdf";
 
 const id = "11111111-1111-4111-8111-111111111111";
 const org = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -17,6 +18,9 @@ const encode = (data: unknown) =>
 const token = `${encode({ alg: "HS256", typ: "JWT" })}.${encode({ sub: id, role: "authenticated", exp: 4102444800 })}.test-signature`;
 async function mockApi(page: Page) {
   let company: string | null = null;
+  let storedFile: Record<string, unknown> | null = null;
+  let objectPresent = false;
+  let loseUpload = true;
   let contacts = {
     contact_address: "",
     contact_email: "",
@@ -186,6 +190,83 @@ async function mockApi(page: Page) {
               : projects,
           });
         }
+        return;
+      }
+      if (url.pathname.endsWith("/project_files")) {
+        const body = method === "GET" ? null : route.request().postDataJSON();
+        if (method === "POST") {
+          expect(body.organization_id).toBe(org);
+          expect(body.project_id).toBe(projects[0].id);
+          storedFile = {
+            ...body,
+            object_key: `${org}/${body.project_id}/${body.id}`,
+            state: "pending",
+            version: 1,
+          };
+          await route.fulfill({ json: storedFile });
+        } else {
+          expect(url.searchParams.get("organization_id")).toBe(`eq.${org}`);
+          expect(url.searchParams.get("project_id")).toBe(
+            `eq.${projects[0].id}`,
+          );
+          if (method === "PATCH") {
+            if (body.state === "ready" && !objectPresent) {
+              await route.fulfill({
+                status: 400,
+                json: { message: "Missing object" },
+              });
+              return;
+            }
+            storedFile = { ...storedFile, state: body.state };
+            await route.fulfill({ json: storedFile });
+          } else
+            await route.fulfill({
+              json:
+                storedFile && storedFile.state !== "deleted"
+                  ? [storedFile]
+                  : [],
+            });
+        }
+        return;
+      }
+      if (url.pathname.startsWith("/storage/v1/object/")) {
+        if (method === "POST" && url.pathname.includes("/sign/")) {
+          await route.fulfill({
+            json: {
+              signedURL: "/object/sign/project-files/preview.png?token=test",
+            },
+          });
+          return;
+        }
+        if (method === "POST") {
+          expect(route.request().headers()["x-upsert"]).toBe("false");
+          objectPresent = true;
+          if (loseUpload) {
+            loseUpload = false;
+            await route.abort();
+          } else await route.fulfill({ json: { Key: storedFile?.object_key } });
+        } else if (method === "DELETE") {
+          expect(storedFile?.state).toBe("deleting");
+          objectPresent = false;
+          await route.fulfill({ json: [] });
+        } else
+          await route.fulfill({
+            contentType:
+              storedFile?.mime_type === "application/pdf"
+                ? "application/pdf"
+                : "image/png",
+            body:
+              storedFile?.mime_type === "application/pdf"
+                ? (() => {
+                    const doc = new jsPDF();
+                    doc.text("Project plan preview", 20, 30);
+                    return Buffer.from(doc.output("arraybuffer"));
+                  })()
+                : Buffer.from(
+                    "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j8ioAAAAASUVORK5CYII=",
+                    "base64",
+                  ),
+          });
         return;
       }
       if (url.pathname.endsWith("/organizations")) {
@@ -399,6 +480,80 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await expect(
     page.getByText("Aucun devis pour ce projet.", { exact: true }),
   ).toBeVisible();
+  const files = page.locator(".project-files");
+  await expect(
+    files.getByText("Aucun fichier pour ce projet.", { exact: true }),
+  ).toBeVisible();
+  await files.locator('input[type="file"]').setInputFiles({
+    name: "plan.heic",
+    mimeType: "image/heic",
+    buffer: Buffer.from("test"),
+  });
+  await expect(files.getByRole("alert")).toContainText("HEIC/HEIF");
+  await files.locator('input[type="file"]').setInputFiles({
+    name: "chantier.png",
+    mimeType: "image/png",
+    buffer: Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j8ioAAAAASUVORK5CYII=",
+      "base64",
+    ),
+  });
+  await files.getByRole("button", { name: "Importer", exact: true }).click();
+  await expect(
+    files.getByText("Import incomplet", { exact: false }),
+  ).toBeVisible();
+  await files.getByRole("button", { name: "Vérifier l’import" }).click();
+  await expect(
+    files.getByText("Import terminé.", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(files.getByText("chantier.png", { exact: true })).toBeVisible();
+  await files.getByRole("button", { name: "Aperçu", exact: true }).click();
+  await expect(
+    page.getByRole("dialog").getByRole("img", { name: "chantier.png" }),
+  ).toBeVisible();
+  await page.keyboard.press("Escape");
+  const fileDownload = page.waitForEvent("download");
+  await files.getByRole("button", { name: "Télécharger", exact: true }).click();
+  expect((await fileDownload).suggestedFilename()).toBe("chantier.png");
+  await files.getByRole("button", { name: "Supprimer", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Annuler" })
+    .click();
+  await expect(files.getByText("chantier.png", { exact: true })).toBeVisible();
+  await files.getByRole("button", { name: "Supprimer", exact: true }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Supprimer", exact: true })
+    .click();
+  await expect(
+    files.getByText("Fichier supprimé.", { exact: true }),
+  ).toBeVisible();
+  await expect(files.getByText("chantier.png", { exact: true })).toHaveCount(0);
+  const pdf = new jsPDF();
+  pdf.text("Project plan preview", 20, 30);
+  await files.locator('input[type="file"]').setInputFiles({
+    name: "plan.pdf",
+    mimeType: "application/pdf",
+    buffer: Buffer.from(pdf.output("arraybuffer")),
+  });
+  await files.getByRole("button", { name: "Importer", exact: true }).click();
+  await expect(
+    files.getByText("Import terminé.", { exact: true }),
+  ).toBeVisible();
+  await files.getByRole("button", { name: "Aperçu", exact: true }).click();
+  await expect(
+    page.getByRole("dialog").locator('canvas[data-rendered="true"]'),
+  ).toBeVisible();
+  await page.screenshot({
+    path: `/private/tmp/renvo-file-preview-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  await page.keyboard.press("Escape");
+  await files.screenshot({
+    path: `/private/tmp/renvo-files-${test.info().project.name}.png`,
+  });
   await page
     .getByLabel("Titre du devis", { exact: true })
     .fill("Rénovation étage");
