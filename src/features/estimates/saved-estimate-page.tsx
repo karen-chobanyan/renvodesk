@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
+import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AuthLayout } from "@/features/auth/auth-page";
 import { useAuth } from "@/features/auth/auth-provider";
 import { formatMoney, useLocale } from "@/lib/i18n";
 import { draftCopy } from "./draft-copy";
@@ -62,7 +62,7 @@ function Draft({
     };
   }, [org, project, id, reload]);
   return (
-    <AuthLayout>
+    <AppShell live>
       <section className="connected-workspace live-estimate">
         <Link
           className="back-link"
@@ -87,7 +87,7 @@ function Draft({
           <p role="alert">{c.missing}</p>
         )}
       </section>
-    </AuthLayout>
+    </AppShell>
   );
 }
 function Editor({

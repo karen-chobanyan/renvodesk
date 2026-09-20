@@ -1,8 +1,9 @@
-import { Plus } from "lucide-react";
+import { ArrowUpRight, Plus, Search } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router";
-import { StatusBadge } from "@/components/shared";
+import { PlanMark, StatusBadge } from "@/components/shared";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useLocale } from "@/lib/i18n";
 import { projectCopy } from "./project-copy";
 import { ProjectFields } from "./project-fields";
@@ -16,6 +17,8 @@ import {
 export function SavedProjects({ organizationId }: { organizationId: string }) {
   const { locale, t } = useLocale(),
     c = projectCopy[locale];
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("all");
   const [projects, setProjects] = useState<SavedProject[]>([]);
   const [loading, setLoading] = useState(true),
     [failed, setFailed] = useState(false);
@@ -93,6 +96,13 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
       setBusy(false);
     }
   }
+  const visible = projects.filter(
+    (p) =>
+      (status === "all" || p.status === status) &&
+      `${p.name} ${p.client_name} ${p.city}`
+        .toLocaleLowerCase(locale)
+        .includes(query.toLocaleLowerCase(locale)),
+  );
   return (
     <section className="saved-projects" aria-labelledby="saved-projects-title">
       <div className="section-heading workspace-heading">
@@ -110,7 +120,24 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
           </Button>
         )}
       </div>
-      <p className="helper-text">{c.hint}</p>
+
+      <section className="metrics" aria-label={t("figures")}>
+        {(["active", "planning", "completed"] as const).map((value) => (
+          <div key={value}>
+            <span>{t(value)}</span>
+            <strong>
+              {loading || failed
+                ? "—"
+                : projects.filter((p) => p.status === value).length}
+            </strong>
+            <small>
+              {locale === "fr"
+                ? "Parmi les projets chargés"
+                : "Among loaded projects"}
+            </small>
+          </div>
+        ))}
+      </section>
       {creating && (
         <form className="company-form" onSubmit={submit}>
           <fieldset disabled={busy} className="project-fields">
@@ -148,27 +175,152 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
       ) : !loading && projects.length === 0 ? (
         <p className="workspace-loading">{c.empty}</p>
       ) : null}
-      <ul className="saved-project-list">
-        {projects.map((project) => (
-          <li key={project.id}>
-            <div>
-              <Link
-                className="saved-project-link"
-                to={`/workspace/${organizationId}/projects/${project.id}`}
-              >
-                {project.name}
-              </Link>
-              <p>
-                {project.client_name} · {project.city}
-              </p>
-              {project.address && <small>{project.address}</small>}
+      <div className="project-workspace">
+        <div className="project-main">
+          <fieldset className="section-tabs" aria-label={t("status")}>
+            {(["all", "active", "planning", "completed"] as const).map(
+              (value) => (
+                <button
+                  type="button"
+                  key={value}
+                  className={status === value ? "selected" : ""}
+                  aria-pressed={status === value}
+                  onClick={() => setStatus(value)}
+                >
+                  {t(value)}
+                </button>
+              ),
+            )}
+          </fieldset>
+          <div className="table-toolbar">
+            <div className="search-field">
+              <Search size={17} />
+              <Input
+                aria-label={t("search")}
+                placeholder={t("search")}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
             </div>
-            <StatusBadge
-              status={project.status as "planning" | "active" | "completed"}
-            />
-          </li>
-        ))}
-      </ul>
+          </div>
+          <p className="helper-text">
+            {locale === "fr"
+              ? "Recherche et filtres sur les projets chargés."
+              : "Search and filters apply to loaded projects."}
+          </p>
+          <div className="table-scroll">
+            <table className="project-table">
+              <thead>
+                <tr>
+                  <th>{t("project")}</th>
+                  <th>{t("status")}</th>
+                  <th>{t("city")}</th>
+                  <th>
+                    <span className="sr-only">{t("open")}</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((project) => (
+                  <tr key={project.id}>
+                    <td>
+                      <Link
+                        className="project-link"
+                        aria-label={project.name}
+                        to={`/workspace/${organizationId}/projects/${project.id}`}
+                      >
+                        <span className="project-thumbnail sage">
+                          <PlanMark />
+                        </span>
+                        <span>
+                          <strong>{project.name}</strong>
+                          <small>{project.client_name}</small>
+                        </span>
+                      </Link>
+                    </td>
+                    <td>
+                      <StatusBadge
+                        status={
+                          project.status as "planning" | "active" | "completed"
+                        }
+                      />
+                    </td>
+                    <td>{project.city}</td>
+                    <td>
+                      <Link
+                        className="row-arrow"
+                        aria-label={`${t("open")} — ${project.name}`}
+                        to={`/workspace/${organizationId}/projects/${project.id}`}
+                      >
+                        <ArrowUpRight size={17} />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          {!loading &&
+            !failed &&
+            projects.length > 0 &&
+            visible.length === 0 && (
+              <p className="workspace-loading">{t("noResults")}</p>
+            )}
+        </div>
+        <aside className="context-panel" aria-label={t("demo")}>
+          <div className="context-title">
+            <h2>{t("attention")}</h2>
+            <span className="demo-chip">{t("demo")}</span>
+          </div>
+          <p className="muted context-description">
+            {locale === "fr"
+              ? "Exemples fictifs — le suivi des tâches arrive prochainement."
+              : "Fictional examples — task tracking is coming later."}
+          </p>
+          <div className="next-steps">
+            <Link to="/projects/maison-ixelles">
+              <span className="step-index">01</span>
+              <span>
+                <strong>
+                  {locale === "fr"
+                    ? "Confirmer les matériaux"
+                    : "Confirm materials"}
+                </strong>
+                <small>Maison des Tilleuls · {t("demo")}</small>
+              </span>
+              <ArrowUpRight size={15} />
+            </Link>
+            <Link to="/estimates/maison-ixelles">
+              <span className="step-index">02</span>
+              <span>
+                <strong>
+                  {locale === "fr" ? "Finaliser le devis" : "Finalize estimate"}
+                </strong>
+                <small>Maison des Tilleuls · {t("demo")}</small>
+              </span>
+              <ArrowUpRight size={15} />
+            </Link>
+          </div>
+          <div className="project-note">
+            <div className="note-top">
+              {t("preview")} · {t("demo")}
+            </div>
+            <div className="blueprint">
+              <PlanMark large />
+            </div>
+            <h3>{locale === "fr" ? "Croquis du chantier" : "Site sketches"}</h3>
+            <p>
+              {locale === "fr"
+                ? "Illustration fictive. L’éditeur de plans sera intégré plus tard."
+                : "Fictional illustration. The drawing editor will be integrated later."}
+            </p>
+            <Link to="/projects/maison-ixelles">
+              {t("viewProject")}
+              <ArrowUpRight size={15} />
+            </Link>
+          </div>
+        </aside>
+      </div>
       {hasMore && !failed && (
         <Button disabled={loading} variant="outline" onClick={more}>
           {c.more}

@@ -7,7 +7,7 @@ import {
   PanelsTopLeft,
   X,
 } from "lucide-react";
-import { useState, useSyncExternalStore } from "react";
+import { type ReactNode, useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet } from "react-router";
 import { useAuthCopy } from "@/features/auth/copy";
 import { useDemo } from "@/lib/demo-store";
@@ -19,7 +19,15 @@ function subscribeMobile(callback: () => void) {
   query.addEventListener("change", callback);
   return () => query.removeEventListener("change", callback);
 }
-export function AppShell() {
+export function AppShell({
+  children,
+  live = false,
+  company,
+}: {
+  children?: ReactNode;
+  live?: boolean;
+  company?: string;
+}) {
   const { t, locale, setLocale } = useLocale();
   const { projects } = useDemo();
   const authText = useAuthCopy();
@@ -49,7 +57,7 @@ export function AppShell() {
       )}
       <NavLink
         className="brand"
-        to="/projects"
+        to={live ? "/workspace" : "/projects"}
         onClick={() => setMobileOpen(false)}
       >
         <span className="brand-mark">
@@ -58,27 +66,37 @@ export function AppShell() {
         RenvoDesk
       </NavLink>
       <div className="workspace-switch">
-        <span className="company-avatar">AH</span>
+        <span className="company-avatar">
+          {live ? company?.slice(0, 2).toUpperCase() || "R." : "AH"}
+        </span>
         <div>
-          <strong>{t("company")}</strong>
-          <small>{t("companyDetail")}</small>
+          <strong>
+            {live ? company || authText("workspace") : t("company")}
+          </strong>
+          <small>{live ? authText("realData") : t("companyDetail")}</small>
         </div>
       </div>
       <p className="nav-label">{t("workspace")}</p>
       <nav aria-label={t("workspace")}>
-        <NavLink to="/projects" onClick={() => setMobileOpen(false)}>
+        <NavLink
+          to={live ? "/workspace" : "/projects"}
+          onClick={() => setMobileOpen(false)}
+        >
           <FolderKanban size={18} />
           {t("projects")}
-          <span className="nav-count">
-            {String(projects.length).padStart(2, "0")}
-          </span>
+          {!live && (
+            <span className="nav-count">
+              {String(projects.length).padStart(2, "0")}
+            </span>
+          )}
         </NavLink>
         <NavLink
           to="/estimates/maison-ixelles"
           onClick={() => setMobileOpen(false)}
         >
           <FileText size={18} />
-          {t("estimates")}
+          {t("estimates")}{" "}
+          {live && <small className="demo-chip">{t("demo")}</small>}
         </NavLink>
       </nav>
       <p className="nav-label resource-label">{t("resources")}</p>
@@ -91,16 +109,24 @@ export function AppShell() {
       <div className="sidebar-bottom">
         <div className="demo-label">
           <span className="live-dot" />
-          {t("demo")}
+          {live ? authText("realData") : t("demo")}
         </div>
-        <p>{t("demoNotice")}</p>
-        <div className="profile">
-          <span className="profile-avatar">AM</span>
-          <div>
-            <strong>Alex Morgan</strong>
-            <small>{t("sample")}</small>
+        <p>
+          {live
+            ? locale === "fr"
+              ? "Projets enregistrés. Les aperçus de démonstration sont signalés."
+              : "Saved projects. Demonstration previews are labeled."
+            : t("demoNotice")}
+        </p>
+        {!live && (
+          <div className="profile">
+            <span className="profile-avatar">AM</span>
+            <div>
+              <strong>Alex Morgan</strong>
+              <small>{t("sample")}</small>
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </aside>
   );
@@ -109,7 +135,7 @@ export function AppShell() {
       open={isMobile && mobileOpen}
       onOpenChange={setMobileOpen}
     >
-      <div className="app-shell">
+      <div className={`app-shell ${live ? "live-shell" : ""}`}>
         <a className="skip-link" href="#main">
           {t("overview")}
         </a>
@@ -134,7 +160,9 @@ export function AppShell() {
                   <Menu size={20} />
                 </Button>
               </DialogPrimitive.Trigger>
-              <span className="topbar-brand">Atelier & Habitat</span>
+              <span className="topbar-brand">
+                {live ? company || "RenvoDesk" : "Atelier & Habitat"}
+              </span>
               <span className="topbar-slash">/</span>
               <span className="muted">
                 {t("workspace").toLocaleLowerCase(locale)}
@@ -144,7 +172,9 @@ export function AppShell() {
               <NavLink className="account-link" to="/workspace">
                 {authText("account")}
               </NavLink>
-              <span className="demo-chip">{t("demo")}</span>
+              <span className="demo-chip">
+                {live ? authText("realData") : t("demo")}
+              </span>
               <label className="language-picker">
                 <span className="sr-only">{t("language")}</span>
                 <select
@@ -160,11 +190,12 @@ export function AppShell() {
             </div>
           </div>
           <main id="main" tabIndex={-1}>
-            <Outlet />
+            {children ?? <Outlet />}
           </main>
           <footer className="app-footer">
             <span>
-              RenvoDesk <span className="footer-divider">/</span> {t("sample")}
+              RenvoDesk <span className="footer-divider">/</span>{" "}
+              {live ? authText("realData") : t("sample")}
             </span>
             <NavLink to="/design-system">
               {t("design")}

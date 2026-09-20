@@ -309,3 +309,16 @@ Read README.md and the latest milestone plans for current implementation status.
   directly. Failed transfers/deletions remain recoverable; do not hide pending work.
 - Back up object bytes as well as Postgres metadata. Do not claim database backups
   alone recover files or that upload retry is resumable/offline support.
+
+## Shared workspace layout
+
+Protected workspace, project and estimate pages reuse the demo application shell.
+The saved project register uses the same visual hierarchy and table styles, with
+search/status filters and counts scoped to loaded projects. Company settings follow
+the register. Saved project pages provide links to details, estimates and files.
+Task and sketch previews are explicitly fictional; their links lead to demo routes.
+The global estimates link is labeled Demo; saved estimates remain inside projects.
+Keep demo records separate from live data while replacing previews incrementally.
+See docs/decisions/007-shared-workspace-design.md.
+
+Saved project overview now mirrors the demo detail composition: real project header/status and client/address sidebar, explicitly fictional financial metrics and breakdown, illustrative plan, and live estimate/file sections. Example amounts are integer cents, never saved budgets. Site editing and revision-conflict recovery remain available below the overview.

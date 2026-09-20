@@ -1,12 +1,13 @@
 import { ArrowUpRight, Building2, Check, LogOut, Plus } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import { Link } from "react-router";
+import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { AuthLayout } from "@/features/auth/auth-page";
 import { useAuth } from "@/features/auth/auth-provider";
 import { authErrorKey, useAuthCopy } from "@/features/auth/copy";
 import { SavedProjects } from "@/features/projects/saved-projects";
+import { useLocale } from "@/lib/i18n";
 import { requireSupabase } from "@/lib/supabase/client";
 import { CompanyContacts } from "./company-contacts";
 import {
@@ -26,6 +27,7 @@ export function WorkspacePage() {
 }
 function Workspace({ userId, email }: { userId: string; email: string }) {
   const t = useAuthCopy();
+  const { t: ui } = useLocale();
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -100,22 +102,12 @@ function Workspace({ userId, email }: { userId: string; email: string }) {
   const showForm = creating || organizations.length === 0;
   const activeOrganization = organizations.find((o) => o.id === selected);
   return (
-    <AuthLayout>
+    <AppShell live company={activeOrganization?.name}>
       <section className="connected-workspace">
-        <div className="connected-toolbar">
-          <span className="status status-active">
-            <span />
-            {t("realData")}
-          </span>
-          <Button variant="ghost" disabled={busy} onClick={signOut}>
-            <LogOut size={15} />
-            {t("logout")}
-          </Button>
-        </div>
-        <p className="eyebrow">{email}</p>
-        <h1>{t(showForm ? "companyTitle" : "workspace")}</h1>
+        <p className="eyebrow">{ui("projects")}</p>
+        <h1>{showForm ? t("companyTitle") : ui("title")}</h1>
         <p className="page-description">
-          {t(showForm ? "companyHint" : "workspaceHint")}
+          {showForm ? t("companyHint") : ui("subtitle")}
         </p>
         {loading ? (
           <p role="status" className="workspace-loading">
@@ -174,6 +166,12 @@ function Workspace({ userId, email }: { userId: string; email: string }) {
           </form>
         ) : (
           <>
+            {activeOrganization && (
+              <SavedProjects
+                key={activeOrganization.id}
+                organizationId={activeOrganization.id}
+              />
+            )}
             <div className="section-heading workspace-heading">
               <h2>{t("companies")}</h2>
               <Button
@@ -223,12 +221,6 @@ function Workspace({ userId, email }: { userId: string; email: string }) {
                 id={activeOrganization.id}
               />
             )}
-            {activeOrganization && (
-              <SavedProjects
-                key={activeOrganization.id}
-                organizationId={activeOrganization.id}
-              />
-            )}
             <div className="workspace-next">
               <p>{t("demoHint")}</p>
               <Button asChild variant="outline">
@@ -245,7 +237,14 @@ function Workspace({ userId, email }: { userId: string; email: string }) {
             {error}
           </p>
         )}
+        <div className="connected-toolbar">
+          <span className="helper-text">{email}</span>
+          <Button variant="ghost" disabled={busy} onClick={signOut}>
+            <LogOut size={15} />
+            {t("logout")}
+          </Button>
+        </div>
       </section>
-    </AuthLayout>
+    </AppShell>
   );
 }

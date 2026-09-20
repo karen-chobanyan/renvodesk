@@ -404,6 +404,29 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+  const register = page.getByRole("region", { name: "Company projects" });
+  await register
+    .getByRole("textbox", { name: /Search projects/ })
+    .fill("no matching project");
+  await expect(
+    register.getByRole("link", { name: "Rénovation cuisine", exact: true }),
+  ).toHaveCount(0);
+  await register.getByRole("textbox").fill("");
+  await register
+    .getByRole("button", { name: "Completed", exact: true })
+    .click();
+  await expect(
+    register.getByRole("link", { name: "Rénovation cuisine", exact: true }),
+  ).toHaveCount(0);
+  await register
+    .getByRole("button", { name: "All projects", exact: true })
+    .click();
+  await expect(
+    register.getByRole("link", { name: "Rénovation cuisine", exact: true }),
+  ).toBeVisible();
+  await expect(
+    register.getByText("Fictional examples — task tracking is coming later."),
+  ).toBeVisible();
   await page.screenshot({
     path: `/private/tmp/renvo-projects-${test.info().project.name}.png`,
     fullPage: true,

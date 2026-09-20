@@ -34,3 +34,16 @@ French is default; English is selectable. Product copy uses typed translation ke
 Proper names and fictional addresses stay unchanged between locales. Dutch is later.
 All demo changes intentionally reset on browser reload. Do not imply persistent or
 production-safe behavior. Browser QA is required at desktop and mobile sizes.
+
+## Shared workspace layout
+
+Protected workspace, project and estimate pages reuse the demo application shell.
+The saved project register uses the same visual hierarchy and table styles, with
+search/status filters and counts scoped to loaded projects. Company settings follow
+the register. Saved project pages provide links to details, estimates and files.
+Task and sketch previews are explicitly fictional; their links lead to demo routes.
+The global estimates link is labeled Demo; saved estimates remain inside projects.
+Keep demo records separate from live data while replacing previews incrementally.
+See docs/decisions/007-shared-workspace-design.md.
+
+Saved project overview now mirrors the demo detail composition: real project header/status and client/address sidebar, explicitly fictional financial metrics and breakdown, illustrative plan, and live estimate/file sections. Example amounts are integer cents, never saved budgets. Site editing and revision-conflict recovery remain available below the overview.

@@ -119,7 +119,7 @@ export function ProjectFiles({
     }
   }
   return (
-    <section className="saved-projects project-files">
+    <section id="project-files" className="saved-projects project-files">
       <h2>{c.title}</h2>
       <p className="helper-text">{c.hint}</p>
       <label className="field" htmlFor="project-file-input">

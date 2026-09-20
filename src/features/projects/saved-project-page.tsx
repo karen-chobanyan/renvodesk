@@ -1,7 +1,9 @@
+import { ArrowLeft, ArrowUpRight } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
+import { AppShell } from "@/components/app-shell";
+import { PageHeader, StatusBadge } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { AuthLayout } from "@/features/auth/auth-page";
 import { useAuth } from "@/features/auth/auth-provider";
 import { ProjectEstimates } from "@/features/estimates/project-estimates";
 import { ProjectFiles } from "@/features/files/project-files";
@@ -13,6 +15,7 @@ import {
   type SavedProject,
   updateProject,
 } from "./project-service";
+import { SavedProjectOverview } from "./saved-project-overview";
 
 const copy = {
   fr: {
@@ -126,14 +129,51 @@ function ProjectDetail({
     }
   }
   return (
-    <AuthLayout>
+    <AppShell live>
       <section className="connected-workspace">
-        <Button asChild variant="ghost">
-          <Link to="/workspace">{c.back}</Link>
-        </Button>
-        <p className="eyebrow">{c.title}</p>
-        <h1>{project?.name ?? c.title}</h1>
-        <p className="page-description">{c.hint}</p>
+        <Link className="back-link" to="/workspace">
+          <ArrowLeft size={14} />
+          {c.back}
+        </Link>
+        <PageHeader
+          eyebrow={t("project")}
+          title={!loading && !failed && project ? project.name : c.title}
+          description={
+            !loading && !failed && project
+              ? `${project.client_name} · ${project.city}`
+              : c.hint
+          }
+          action={
+            project && !loading && !failed ? (
+              <Button asChild>
+                <a href="#project-estimates">
+                  {t("allEstimates")}
+                  <ArrowUpRight size={16} />
+                </a>
+              </Button>
+            ) : undefined
+          }
+        />
+        {project && !loading && !failed && (
+          <>
+            <div className="detail-status">
+              <StatusBadge
+                status={project.status as "planning" | "active" | "completed"}
+              />
+              <span>
+                {locale === "fr" ? "Projet enregistré" : "Saved project"}
+              </span>
+            </div>
+            <SavedProjectOverview project={project} />
+            <nav className="detail-navigation" aria-label={c.title}>
+              <a href="#site-details">{c.title}</a>
+              <a href="#project-estimates">{t("estimates")}</a>
+              <a href="#project-files">
+                {locale === "fr" ? "Fichiers" : "Files"}
+              </a>
+            </nav>
+          </>
+        )}
         {loading ? (
           <p role="status">{shared.loading}</p>
         ) : failed ? (
@@ -145,10 +185,12 @@ function ProjectDetail({
           <p role="alert">{c.missing}</p>
         ) : (
           <form
+            id="site-details"
             className="company-form"
             key={`${project.revision}:${reload}`}
             onSubmit={submit}
           >
+            <h2 className="site-edit-heading">{c.title}</h2>
             <fieldset className="project-fields" disabled={busy}>
               <ProjectFields values={project} />
               <div className="field">
@@ -197,6 +239,6 @@ function ProjectDetail({
           </>
         )}
       </section>
-    </AuthLayout>
+    </AppShell>
   );
 }
