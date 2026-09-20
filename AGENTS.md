@@ -38,8 +38,8 @@ Agreed direction:
 - French is the default language; English is available. Dutch is deferred.
 - Excalidraw is selected, not integrated, for quick sketches and annotations.
   Detailed measured floor planning is a separate future module.
-- Persisted draft estimates now link to saved projects. PDF export, sending and
-  customer acceptance are future milestones.
+- Persisted draft estimates now link to saved projects. Draft PDF export is implemented; sending and
+  customer acceptance remain future milestones.
 
 Still to decide before dependent implementation:
 - Frontend deployment provider and production hosting configuration.
@@ -231,7 +231,8 @@ Do not invent a command or report an unrun check as passing.
   constrained SECURITY DEFINER function. Preserve that boundary. Before adding
   membership removal, revisit replay behavior: onboarding can repair the creator's membership.
 - Users can read only their own memberships and member organizations. Clients cannot
-  directly write memberships, update companies or delete companies.
+  directly write memberships, rename companies or delete companies. Owner contact
+  updates are restricted to contact_address/email/phone and contact_revision.
 - Projects use `(organization_id, id)` as a composite primary key. Reads require
   membership; inserts and updates require ownership. Column grants keep organization,
   id and creation timestamp immutable. Only editable fields and revision have update
@@ -273,3 +274,18 @@ Read README.md and the latest milestone plans for current implementation status.
   acceptance, version history or automatic budget updates are implemented.
 - Preserve inputs on failed saves; conflicts require explicit reload. Unsaved edits
   are memory-only and are lost when navigating away. Do not claim offline support.
+
+## Draft PDF exports and company contacts
+
+- Contact fields on organizations are optional, validated and owner-editable.
+  contact_revision protects concurrent edits; immutable company fields have no grants.
+- ExportEstimate rereads estimate, organization and project using RLS-scoped queries.
+  Block unsaved edits and stale estimate revisions. Never export demo or unsaved data
+  under a saved-draft label; never infer VAT, acceptance or invoice numbering.
+- estimate-pdf uses lazy-loaded jsPDF/AutoTable with local Noto Sans (OFL). Keep font
+  license attribution. Use exact integer-cent formatting, Unicode text, wrapping,
+  repeated headers, page numbers and a Draft marker on every page.
+- PDFs contain current company/project data alongside a saved draft revision. They
+  are not immutable issued documents and are not uploaded or emailed automatically.
+- Verify generated PDF text and render short/multi-page FR/EN fixtures before
+  changing layout; a passing browser download test alone does not verify pagination.

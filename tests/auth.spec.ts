@@ -17,6 +17,12 @@ const encode = (data: unknown) =>
 const token = `${encode({ alg: "HS256", typ: "JWT" })}.${encode({ sub: id, role: "authenticated", exp: 4102444800 })}.test-signature`;
 async function mockApi(page: Page) {
   let company: string | null = null;
+  let contacts = {
+    contact_address: "",
+    contact_email: "",
+    contact_phone: "",
+    contact_revision: 1,
+  };
   let requests = 0;
   const projects: Record<string, unknown>[] = [];
   let loseResponse = true;
@@ -182,6 +188,20 @@ async function mockApi(page: Page) {
         }
         return;
       }
+      if (url.pathname.endsWith("/organizations")) {
+        expect(url.searchParams.get("id")).toBe(`eq.${org}`);
+        if (method === "PATCH") {
+          const body = route.request().postDataJSON();
+          expect(url.searchParams.get("contact_revision")).toBe(
+            `eq.${contacts.contact_revision}`,
+          );
+          contacts = { ...contacts, ...body };
+        }
+        await route.fulfill({
+          json: [{ id: org, name: company, country: "BE", ...contacts }],
+        });
+        return;
+      }
       if (url.pathname.endsWith("/organization_memberships")) {
         expect(url.searchParams.get("user_id")).toBe(`eq.${id}`);
         await route.fulfill({
@@ -245,6 +265,24 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     page.getByRole("button", { name: /Atelier Test/ }),
   ).toBeVisible();
   expect(requests()).toBe(1);
+  await page
+    .getByText("Coordonnées pour les documents", { exact: true })
+    .click();
+  await page
+    .getByLabel("Adresse de l’entreprise", { exact: true })
+    .fill("12 rue de la Paix");
+  await page
+    .getByLabel("E-mail de contact", { exact: true })
+    .fill("office@example.test");
+  await page
+    .getByRole("button", { name: "Enregistrer les coordonnées" })
+    .click();
+  await expect(
+    page.getByText("Coordonnées enregistrées.", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByText("Coordonnées pour les documents", { exact: true })
+    .click();
   await expect(
     page.getByText("Aucun projet pour le moment.", { exact: false }),
   ).toBeVisible();
@@ -374,6 +412,9 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   ).toBeVisible();
   await page.getByRole("button", { name: "Ajouter une ligne" }).click();
   await page.getByLabel("Description 1", { exact: true }).fill("Peinture");
+  await expect(
+    page.getByRole("button", { name: "Télécharger le PDF" }),
+  ).toBeDisabled();
   await page.getByLabel("Quantité 1", { exact: true }).fill("1,5");
   await page.getByLabel("Prix unitaire HT 1", { exact: true }).fill("0,03");
   await expect(page.getByTestId("saved-estimate-total")).toContainText("0,05");
@@ -419,6 +460,13 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "Download PDF" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^draft-.*-r4.pdf$/);
+  await download.saveAs(
+    `/private/tmp/renvo-browser-${test.info().project.name}.pdf`,
+  );
   await page.getByRole("link", { name: "Back to project" }).click();
   await expect(
     page.getByRole("link", { name: "Other estimate edit", exact: true }),

@@ -78,3 +78,11 @@ Run supabase/tests/estimate_isolation.sql for rollback-only verification of exac
 rounding, atomic validation, tenant links, permissions and stale writes.
 
 Auth advisor follow-up: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection
+
+## Company document contacts
+
+Migration 20260920091401 adds optional contact_address, contact_email, contact_phone
+and contact_revision to organizations. Owner-only column updates and a revision
+trigger protect changes. Name, country, creator and organization identity remain
+unmodifiable from the browser. supabase/tests/company_contacts.sql verifies own
+updates, stale writes, input validation and cross-company denial in a rollback.

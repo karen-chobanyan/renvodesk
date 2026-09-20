@@ -13,6 +13,7 @@ import {
   type SavedEstimate,
   saveEstimate,
 } from "./estimate-service";
+import { ExportEstimate } from "./export-estimate";
 import { type EstimateLine, estimateTotal } from "./model";
 export function SavedEstimatePage() {
   const { organizationId = "", id = "", estimateId = "" } = useParams(),
@@ -142,6 +143,11 @@ function Editor({
       <p className="eyebrow">{t("draft")}</p>
       <h1>{current.title}</h1>
       <p className="page-description">{c.notice}</p>
+      <ExportEstimate
+        estimate={current}
+        dirty={dirty}
+        disabled={busy || !!error}
+      />
       <fieldset className="project-fields" disabled={busy}>
         <label className="field" htmlFor="estimate-title">
           {c.title}

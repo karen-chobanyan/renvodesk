@@ -14,10 +14,11 @@ not selected as the codebase.
 | Area | Implemented | Boundary |
 | --- | --- | --- |
 | Authentication | Email/password signup, login, logout, confirmation callback and password recovery UI | Real email delivery still needs dashboard/SMTP configuration and verification |
-| Companies | Create and select companies; users can belong to several organizations | Owner role only; no invitations or team administration |
+| Companies | Create and select companies; users can belong to several organizations | Optional document address/email/phone; owner role only; no invitations or team administration |
 | Saved projects | Create, list, open and edit company projects; status changes, pagination and stale-edit protection | No deletion or budgets yet |
 | Project demo | Search, status filters, create dialog and financial overview | Fictional data held in memory; edits reset on reload |
-| Saved estimates | Project-linked drafts, editable lines, atomic saves, server-calculated totals and conflict protection | EUR excluding tax; up to 100 lines; no PDF, sending, acceptance or invoicing |
+| Saved estimates | Project-linked drafts, editable lines, atomic saves, server-calculated totals and conflict protection | EUR excluding tax; up to 100 lines; no sending, acceptance or invoicing |
+| Draft PDF export | French/English downloads with contacts, client/site details, line items, exact cents and page numbers | Saved drafts only; no VAT calculation or issued-document snapshot |
 | Estimate demo | Editable lines, decimal-safe totals and session-only saving | No database persistence, PDF export, acceptance or invoicing |
 | Design foundation | Responsive layouts, French/English, reusable primitives and component showcase | Floor-plan thumbnail is illustrative, not an editable drawing |
 
@@ -81,7 +82,7 @@ already-saved record without overwriting it.
 - Deployment, SMTP provider, accounting/e-invoicing provider, billing model,
   expanded team permissions, background processing and monitoring remain open.
 
-Next estimate milestones are PDF export, customer sending and acceptance. Clients,
+Next estimate milestones are customer sending and acceptance. Clients,
 costs, variations, schedules, documents, invoicing, payments and drawings remain
 planned. Full accounting, payroll, warehouse management, BIM/CAD and automatic
 quantity takeoff are outside the initial scope.
@@ -109,7 +110,7 @@ as complete transactions; their temporary fixtures roll back. They cover tenant
 isolation, anonymous denial, write restrictions, validation, revision increments and stale-update rejection.
 
 Last implementation verification (2026-09-20): lint, typecheck and build passed;
-15 unit tests and 17 browser tests passed, with one intentional desktop skip for
+19 unit tests and 17 browser tests passed, with one intentional desktop skip for
 the mobile navigation test. Live SQL isolation tests passed. The security advisor reported leaked-password
 protection disabled in Auth; no estimate-schema findings were reported. This is a dated result, not a production-readiness claim.
 
@@ -129,3 +130,17 @@ protection disabled in Auth; no estimate-schema findings were reported. This is 
 Read [AGENTS.md](AGENTS.md) before implementation. Decision records describe their
 respective milestones; this README describes the current application. Before
 hosting the frontend, configure SPA history fallback and production auth redirects.
+
+## Export a draft PDF
+
+In Workspace, expand **Document contact details** for the selected company to save
+an optional address, email and phone. Open a saved project and estimate, save any
+changes, then choose **Download PDF**. The current interface language controls the
+PDF labels; customer descriptions remain unchanged. Export rereads the saved
+estimate and requires the displayed revision to match. Company/site details are
+current data, not an archived legal snapshot.
+
+PDF generation runs locally in the browser using lazy-loaded jsPDF 4.2.1 and
+jsPDF-AutoTable 5.0.8 (MIT). Noto Sans is bundled under SIL OFL in public/fonts.
+No external PDF service or email is used. One-page French and seven-page English
+fixtures were rendered and visually checked, with PDF text/total assertions.

@@ -92,6 +92,10 @@ export type Database = {
       };
       organizations: {
         Row: {
+          contact_address: string;
+          contact_email: string;
+          contact_phone: string;
+          contact_revision: number;
           country: string;
           created_at: string;
           created_by: string;
@@ -100,6 +104,10 @@ export type Database = {
           request_id: string;
         };
         Insert: {
+          contact_address?: string;
+          contact_email?: string;
+          contact_phone?: string;
+          contact_revision?: number;
           country: string;
           created_at?: string;
           created_by: string;
@@ -108,6 +116,10 @@ export type Database = {
           request_id: string;
         };
         Update: {
+          contact_address?: string;
+          contact_email?: string;
+          contact_phone?: string;
+          contact_revision?: number;
           country?: string;
           created_at?: string;
           created_by?: string;

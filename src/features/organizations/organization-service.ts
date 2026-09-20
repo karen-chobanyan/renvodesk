@@ -24,3 +24,32 @@ export async function createOrganization(
   if (error) throw error;
   return data;
 }
+
+export async function getOrganization(id: string) {
+  const { data, error } = await requireSupabase()
+    .from("organizations")
+    .select("*")
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+export async function saveContacts(
+  id: string,
+  revision: number,
+  contacts: {
+    contact_address: string;
+    contact_email: string;
+    contact_phone: string;
+  },
+) {
+  const { data, error } = await requireSupabase()
+    .from("organizations")
+    .update({ ...contacts, contact_revision: revision + 1 })
+    .eq("id", id)
+    .eq("contact_revision", revision)
+    .select("*")
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}

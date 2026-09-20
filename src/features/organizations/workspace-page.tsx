@@ -8,6 +8,7 @@ import { useAuth } from "@/features/auth/auth-provider";
 import { authErrorKey, useAuthCopy } from "@/features/auth/copy";
 import { SavedProjects } from "@/features/projects/saved-projects";
 import { requireSupabase } from "@/lib/supabase/client";
+import { CompanyContacts } from "./company-contacts";
 import {
   createOrganization,
   getOrganizations,
@@ -216,6 +217,12 @@ function Workspace({ userId, email }: { userId: string; email: string }) {
                 </button>
               ))}
             </div>
+            {activeOrganization && (
+              <CompanyContacts
+                key={`contacts-${activeOrganization.id}`}
+                id={activeOrganization.id}
+              />
+            )}
             {activeOrganization && (
               <SavedProjects
                 key={activeOrganization.id}
