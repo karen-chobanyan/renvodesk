@@ -153,3 +153,17 @@ export async function downloadFile(file: ProjectFile) {
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+
+export async function recentFiles(org: string, project: string) {
+  const { data, error } = await requireSupabase()
+    .from("project_files")
+    .select("*")
+    .eq("organization_id", org)
+    .eq("project_id", project)
+    .eq("state", "ready")
+    .order("created_at", { ascending: false })
+    .order("id")
+    .limit(3);
+  if (error) throw error;
+  return data;
+}

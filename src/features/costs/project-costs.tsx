@@ -22,6 +22,7 @@ import {
   saveCost,
   voidCost,
 } from "./cost-service";
+import { CostMetrics } from "./cost-summary";
 export function ProjectCosts({
   org,
   project,
@@ -29,7 +30,7 @@ export function ProjectCosts({
 }: {
   org: string;
   project: string;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   const { locale } = useLocale(),
     c = costCopy[locale];
@@ -103,10 +104,6 @@ export function ProjectCosts({
       setBusy(false);
     }
   }
-  const remaining =
-    summary?.budget_cents === null || !summary
-      ? null
-      : BigInt(summary.budget_cents) - BigInt(summary.total);
   return (
     <section id="project-costs" aria-label={c.title}>
       <p className="helper-text cost-notice">{c.notice}</p>
@@ -119,34 +116,8 @@ export function ProjectCosts({
       ) : (
         summary && (
           <>
-            <div className="metrics">
-              <div>
-                <span>{c.budget}</span>
-                <strong>
-                  {summary.budget_cents === null
-                    ? c.unset
-                    : exactMoney(BigInt(summary.budget_cents), locale)}
-                </strong>
-              </div>
-              <div>
-                <span>{c.actual}</span>
-                <strong>{exactMoney(BigInt(summary.total), locale)}</strong>
-              </div>
-              <div>
-                <span>
-                  {remaining !== null && remaining < 0n ? c.over : c.remaining}
-                </span>
-                <strong>
-                  {remaining === null
-                    ? "—"
-                    : exactMoney(
-                        remaining < 0n ? -remaining : remaining,
-                        locale,
-                      )}
-                </strong>
-              </div>
-            </div>
-            <div className="detail-grid">
+            <CostMetrics summary={summary} />
+            <div className={children ? "detail-grid" : "cost-ledger"}>
               <div>
                 <div className="section-heading">
                   <h2>{c.breakdown}</h2>

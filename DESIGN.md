@@ -40,12 +40,12 @@ production-safe behavior. Browser QA is required at desktop and mobile sizes.
 Protected workspace, project and estimate pages reuse the demo application shell.
 The saved project register uses the same visual hierarchy and table styles, with
 search/status filters and counts scoped to loaded projects. Company settings have a dedicated page. Saved project pages provide links to details, estimates and files.
-Sketch previews are explicitly fictional; task navigation opens the live company schedule.
+Saved project sketches have real private previews; task navigation opens the live company schedule.
 The global estimates link opens the live company estimate register.
 Keep demo records separate from live data while replacing previews incrementally.
 See docs/decisions/007-shared-workspace-design.md.
 
-Saved project overview now mirrors the demo detail composition: real project header/status and client/address sidebar, live cost-budget metrics and breakdown, illustrative plan, and live estimate/file sections. Financial amounts are saved integer cents. Site editing and revision-conflict recovery remain available below the overview.
+Saved project overview now mirrors the demo detail composition: real project header/status and client/address sidebar, live cost-budget metrics and breakdown, sketch previews, and live estimate/file sections. Financial amounts are saved integer cents. Site editing and revision-conflict recovery remain available below the overview.
 
 ## Tasks and planning
 
@@ -104,3 +104,17 @@ Saved project pages expose a Croquis/Sketches section with titled rows and actua
 private PNG previews. The editor opens as a focused full-width canvas, with a compact
 title/save/export toolbar and revision history below. Keep Excalidraw lazy-loaded,
 self-host its fonts, and preserve French/English across document navigation.
+
+## Saved project workspace
+
+Saved projects use a compact header and URL-backed Overview, Tasks, Budget & costs,
+Estimates, and Documents navigation. Members see operational panels only. The
+overview contains a flat financial summary, bounded task/estimate/sketch/file
+previews, and independent project context. Detailed ledgers live in their tabs.
+
+Use `project-detail-workspace` for this layout; `project-workspace` belongs to the
+demo register grid and must not be reused. Content is capped at 1400px with 32px
+desktop / 16px mobile horizontal padding. Mobile metrics become label/value rows
+to keep currency amounts intact. Horizontal tab scrolling is local to navigation.
+Project editing is a guarded dialog; creation fields open on demand. Keep skeletons
+and errors local so one failed request does not remove project context or navigation.

@@ -85,20 +85,23 @@ export function ProjectEstimates({
   return (
     <section id="project-estimates" className="saved-projects">
       <h2>{c.heading}</h2>
-      <form className="company-form" onSubmit={create}>
-        <label className="field" htmlFor="new-estimate-title">
-          {c.title}
-          <Input
-            id="new-estimate-title"
-            name="title"
-            maxLength={120}
-            required
-            disabled={busy}
-          />
-        </label>
-        <Button disabled={busy}>{busy ? c.loading : c.create}</Button>
-        {error && <p role="alert">{c.createError}</p>}
-      </form>
+      <details className="project-create">
+        <summary className="button button-primary">{c.new}</summary>
+        <form className="company-form" onSubmit={create}>
+          <label className="field" htmlFor="new-estimate-title">
+            {c.title}
+            <Input
+              id="new-estimate-title"
+              name="title"
+              maxLength={120}
+              required
+              disabled={busy}
+            />
+          </label>
+          <Button disabled={busy}>{busy ? c.loading : c.create}</Button>
+          {error && <p role="alert">{c.createError}</p>}
+        </form>
+      </details>
       {loading && <p role="status">{c.loading}</p>}
       {failed ? (
         <>

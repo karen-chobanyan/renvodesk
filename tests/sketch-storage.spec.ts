@@ -297,6 +297,7 @@ test("saved sketch route persists, reopens, restores history and restricts membe
   ).toHaveCount(0);
   role = "owner";
   await page.reload();
+  await page.locator("#project-sketches summary").click();
   await page.getByLabel("Nom du croquis", { exact: true }).fill("New kitchen");
   await page
     .getByRole("button", { name: "Créer le croquis", exact: true })

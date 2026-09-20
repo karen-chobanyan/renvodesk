@@ -282,3 +282,12 @@ PDF exports use the frozen snapshot after sending, even if company or site detai
 change later. Status labels identify decisions as recorded by the company. Existing
 draft exports retain their Draft marker. The approved migration is applied and
 `supabase/tests/estimate_workflow.sql` passes on the hosted development database.
+
+## Project workspace layout
+
+Open a saved project to see its overview, upcoming tasks, cost summary and recent
+records. Tabs separate Tasks, Budget & costs, Estimates and Documents (files and
+sketches). Financial sections are owner-only. Edit details opens a dialog; creation
+forms open when requested. Tab selections survive reload and browser history;
+working forms retain in-page drafts when switching tabs. Existing section links
+continue to open the appropriate panel.

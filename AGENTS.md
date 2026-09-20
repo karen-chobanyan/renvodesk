@@ -445,3 +445,18 @@ a separate draft for changed work. No budget/revenue changes happen automaticall
 PDFs for non-drafts must use `sent_snapshot`, never mutable company/project records.
 Keep draft PDF behavior and exact cents intact. See decision 014 and
 `supabase/tests/estimate_workflow.sql`.
+
+## Project detail layout
+
+Saved projects use `?tab=overview|tasks|budget|estimates|documents`, with old
+`#project-*` links mapped to matching panels and `#site-details` opening the editor.
+`ProjectHeader`, `ProjectNavigation`, and the independent `CostSummary` own the
+composition. Owner-only financial panels must never mount for members. Working
+panels mount on first visit and remain hidden thereafter so tab changes preserve
+form/file state. Overview remounts to refresh its bounded previews.
+
+Use scoped class `project-detail-workspace`, not the demo's `project-workspace`
+grid. Context must remain available when summary calls fail. Preview task/file
+queries filter by company AND project with server limits; don't turn loaded preview
+counts into aggregate claims. Project editing uses the shared dialog, revision
+checks, and an unsaved-close warning. See the project-view-layout plan.

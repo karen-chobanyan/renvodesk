@@ -95,3 +95,18 @@ export async function deleteTask(task: Task) {
   if (error) throw error;
   return data;
 }
+
+export async function nextProjectTasks(org: string, project: string) {
+  const { data, error } = await requireSupabase()
+    .from("project_tasks")
+    .select("*")
+    .eq("organization_id", org)
+    .eq("project_id", project)
+    .neq("status", "done")
+    .order("due_date", { ascending: true, nullsFirst: false })
+    .order("created_at")
+    .order("id")
+    .limit(3);
+  if (error) throw error;
+  return data;
+}

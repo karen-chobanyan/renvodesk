@@ -36,13 +36,17 @@ export function ProjectFiles({
     [requestId, setRequestId] = useState(() => crypto.randomUUID()),
     [busy, setBusy] = useState(false),
     [percent, setPercent] = useState(0),
-    [error, setError] = useState<"invalid" | "heic" | "error" | null>(null),
+    [error, setError] = useState<
+      "invalid" | "heic" | "error" | "single" | null
+    >(null),
     [notice, setNotice] = useState<"success" | "deleted" | null>(null);
   const [removing, setRemoving] = useState<ProjectFile | null>(null),
     [preview, setPreview] = useState<{ file: ProjectFile; url: string } | null>(
       null,
     ),
     [expired, setExpired] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const dragDepth = useRef(0);
   const input = useRef<HTMLInputElement>(null),
     controller = useRef<AbortController | null>(null);
   useEffect(() => () => controller.current?.abort(), []);
@@ -74,6 +78,14 @@ export function ProjectFiles({
       active = false;
     };
   }, [organizationId, projectId, reload]);
+  function selectFile(file: File | null) {
+    setNotice(null);
+    setRequestId(crypto.randomUUID());
+    setPercent(0);
+    const problem = file ? validateFile(file) : null;
+    setError(problem);
+    setSelected(problem ? null : file);
+  }
   async function upload() {
     if (!selected || busy) return;
     setBusy(true);
@@ -122,33 +134,77 @@ export function ProjectFiles({
   }
   return (
     <section id="project-files" className="saved-projects project-files">
-      <h2>{c.title}</h2>
-      <p className="helper-text">{c.hint}</p>
+      <header className="document-section-heading">
+        <span className="document-eyebrow">
+          {locale === "fr" ? "Bibliothèque" : "Library"}
+        </span>
+        <h2>{c.title}</h2>
+        <p className="helper-text">
+          {locale === "fr"
+            ? "Plans, photos et pièces utiles au chantier."
+            : "Plans, photos and essentials for your site."}
+        </p>
+      </header>
       {canManage && (
-        <>
-          <label className="field" htmlFor="project-file-input">
-            {c.choose}
-            <input
-              ref={input}
-              id="project-file-input"
-              type="file"
-              accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.docx,.xlsx"
-              disabled={busy}
-              onChange={(e) => {
-                const file = e.target.files?.[0] ?? null;
-                setNotice(null);
-                setRequestId(crypto.randomUUID());
-                setPercent(0);
-                const problem = file ? validateFile(file) : null;
-                setError(problem);
-                setSelected(problem ? null : file);
-              }}
-            />
-          </label>
-          <Button disabled={!selected || busy} onClick={upload}>
-            {busy ? c.loading : c.upload}
-          </Button>
-        </>
+        <fieldset
+          aria-label={c.choose}
+          className={`document-upload-shell${dragging ? " is-dragging" : ""}`}
+          onDragEnter={(event) => {
+            event.preventDefault();
+            if (!busy && event.dataTransfer.types.includes("Files")) {
+              dragDepth.current += 1;
+              setDragging(true);
+            }
+          }}
+          onDragOver={(event) => {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = busy ? "none" : "copy";
+          }}
+          onDragLeave={(event) => {
+            event.preventDefault();
+            dragDepth.current = Math.max(0, dragDepth.current - 1);
+            if (!dragDepth.current) setDragging(false);
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            dragDepth.current = 0;
+            setDragging(false);
+            if (busy) return;
+            const files = event.dataTransfer.files;
+            if (!files.length) return;
+            if (input.current) input.current.value = "";
+            if (files.length !== 1) {
+              selectFile(null);
+              setError("single");
+              return;
+            }
+            selectFile(files[0]);
+          }}
+        >
+          <div className="document-upload">
+            <p className="document-drop-hint">{dragging ? c.drop : c.drag}</p>
+            <label className="field" htmlFor="project-file-input">
+              {c.choose}
+              <input
+                ref={input}
+                id="project-file-input"
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.docx,.xlsx"
+                disabled={busy}
+                onChange={(e) => selectFile(e.target.files?.[0] ?? null)}
+              />
+            </label>
+            <p className="helper-text">{c.hint}</p>
+            {selected && (
+              <p className="document-selected" role="status">
+                {selected.name}
+              </p>
+            )}
+            <Button disabled={!selected || busy} onClick={upload}>
+              {busy ? c.loading : c.upload}
+            </Button>
+          </div>
+        </fieldset>
       )}
       {selected && busy && (
         <div>
@@ -169,22 +225,31 @@ export function ProjectFiles({
           <Button onClick={() => setReload((n) => n + 1)}>{c.retry}</Button>
         </>
       ) : !loading && !rows.length ? (
-        <p>{c.empty}</p>
+        <p className="document-empty">{c.empty}</p>
       ) : null}
-      <ul className="saved-project-list">
+      <ul className="saved-project-list document-file-list">
         {rows.map((file) => (
           <li key={file.id}>
-            <div>
-              <strong>{file.original_name}</strong>
-              <p>
-                {new Intl.NumberFormat(locale, {
-                  maximumFractionDigits: 1,
-                }).format(file.size_bytes / 1024)}{" "}
-                KiB
-                {file.state !== "ready"
-                  ? ` · ${file.state === "pending" ? c.pending : c.deleting}`
-                  : ""}
-              </p>
+            <div className="document-file-row">
+              <span className="document-file-type" aria-hidden="true">
+                {file.original_name
+                  .split(".")
+                  .pop()
+                  ?.slice(0, 5)
+                  .toUpperCase() || "FILE"}
+              </span>
+              <div className="document-file-info">
+                <strong>{file.original_name}</strong>
+                <p>
+                  {new Intl.NumberFormat(locale, {
+                    maximumFractionDigits: 1,
+                  }).format(file.size_bytes / 1024)}{" "}
+                  KiB
+                  {file.state !== "ready"
+                    ? ` · ${file.state === "pending" ? c.pending : c.deleting}`
+                    : ""}
+                </p>
+              </div>
               <div className="file-actions">
                 {file.state === "ready" ? (
                   <>

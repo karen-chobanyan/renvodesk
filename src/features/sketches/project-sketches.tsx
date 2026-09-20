@@ -11,7 +11,7 @@ import {
   type Sketch,
 } from "./sketch-service";
 
-function Preview({ sk }: { sk: Sketch }) {
+export function SketchPreview({ sk }: { sk: Sketch }) {
   const [url, setUrl] = useState("");
   useEffect(() => {
     let active = true,
@@ -90,31 +90,39 @@ export function ProjectSketches({
   }
   return (
     <section id="project-sketches" className="company-form">
-      <h2>{c.title}</h2>
-      <p>{c.hint}</p>
+      <header className="document-section-heading">
+        <span className="document-eyebrow">
+          {locale === "fr" ? "Atelier" : "Sketchbook"}
+        </span>
+        <h2>{c.title}</h2>
+        <p className="helper-text">{c.hint}</p>
+      </header>
       {owner && (
-        <form
-          className="sketch-toolbar"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void create();
-          }}
-        >
-          <label className="field" htmlFor="new-sketch">
-            {c.name}
-            <Input
-              id="new-sketch"
-              required
-              maxLength={120}
-              value={title}
-              disabled={busy || !!request.current}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </label>
-          <Button disabled={busy || !title.trim()}>
-            {request.current ? c.retry : c.create}
-          </Button>
-        </form>
+        <details className="project-create">
+          <summary className="button button-primary">{c.new}</summary>
+          <form
+            className="sketch-toolbar"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void create();
+            }}
+          >
+            <label className="field" htmlFor="new-sketch">
+              {c.name}
+              <Input
+                id="new-sketch"
+                required
+                maxLength={120}
+                value={title}
+                disabled={busy || !!request.current}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </label>
+            <Button disabled={busy || !title.trim()}>
+              {request.current ? c.retry : c.create}
+            </Button>
+          </form>
+        </details>
       )}
       {failed && (
         <p role="alert">
@@ -125,23 +133,41 @@ export function ProjectSketches({
         </p>
       )}
       {!loaded && !failed && <p role="status">{c.loading}</p>}
-      {loaded && !items.length && <p>{c.empty}</p>}
-      {items.map((sk) => (
-        <a
-          className="sketch-list-row"
-          key={sk.id}
-          href={`/workspace/${org}/projects/${project}/sketches/${sk.id}`}
-        >
-          <Preview sk={sk} />
-          <span>
-            <strong>{sk.title}</strong>
-            <small>
-              {sk.revision ? `${c.revision} ${sk.revision}` : c.unsaved}
-            </small>
-          </span>
-          <span>{c.open} ↗</span>
-        </a>
-      ))}
+      {loaded && !items.length && <p className="document-empty">{c.empty}</p>}
+      <div className="document-sketch-gallery">
+        {items.map((sk) => (
+          <a
+            className="sketch-list-row"
+            key={sk.id}
+            href={`/workspace/${org}/projects/${project}/sketches/${sk.id}`}
+          >
+            <div className="document-sketch-canvas">
+              <svg
+                className="document-sketch-placeholder"
+                viewBox="0 0 64 48"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1"
+                aria-hidden="true"
+              >
+                <path d="M10 8h44v32H10zM10 25h20V8m0 32V25h24M38 25v15" />
+                <path d="m22 35 22-22 4 4-22 22-6 2z" />
+              </svg>
+              <SketchPreview sk={sk} />
+            </div>
+            <span>
+              <strong>{sk.title}</strong>
+              <small>
+                {sk.revision ? `${c.revision} ${sk.revision}` : c.unsaved}
+              </small>
+            </span>
+            <span className="document-sketch-open">
+              {c.open}
+              <span aria-hidden="true">↗</span>
+            </span>
+          </a>
+        ))}
+      </div>
       {more && (
         <Button
           variant="outline"

@@ -478,6 +478,10 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await page
     .getByRole("link", { name: "Rénovation cuisine", exact: true })
     .click();
+  await page
+    .getByRole("button", { name: "Edit details", exact: true })
+    .first()
+    .click();
   await expect(page.getByLabel("Project name", { exact: true })).toHaveValue(
     "Rénovation cuisine",
   );
@@ -488,10 +492,22 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Changes saved.", { exact: true })).toBeVisible();
   await page.reload();
+  await page
+    .getByRole("button", { name: "Edit details", exact: true })
+    .first()
+    .click();
   await expect(page.getByLabel("Project name", { exact: true })).toHaveValue(
     "Kitchen renovation",
   );
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Close", exact: true })
+    .click();
   await page.getByRole("combobox", { name: "Language" }).selectOption("fr");
+  await page
+    .getByRole("button", { name: "Modifier les détails", exact: true })
+    .first()
+    .click();
   await expect(page.getByLabel("Nom du projet", { exact: true })).toHaveValue(
     "Kitchen renovation",
   );
@@ -541,16 +557,24 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await expect(page.getByRole("alert")).toHaveText(
     "Projet introuvable ou accès indisponible.",
   );
-  await page.getByRole("link", { name: "Retour aux entreprises" }).click();
+  await page.getByRole("link", { name: "Retour aux projets" }).click();
   await expect(
     page.getByRole("link", { name: "Reconciled project", exact: true }),
   ).toBeVisible();
   await page
     .getByRole("link", { name: "Reconciled project", exact: true })
     .click();
+  await page
+    .locator(".project-tabs")
+    .getByRole("link", { name: "Devis", exact: true })
+    .click();
   await expect(
     page.getByText("Aucun devis pour ce projet.", { exact: true }),
   ).toBeVisible();
+  await page
+    .locator(".project-tabs")
+    .getByRole("link", { name: "Documents", exact: true })
+    .click();
   const files = page.locator(".project-files");
   await expect(
     files.getByText("Aucun fichier pour ce projet.", { exact: true }),
@@ -561,14 +585,26 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     buffer: Buffer.from("test"),
   });
   await expect(files.getByRole("alert")).toContainText("HEIC/HEIF");
-  await files.locator('input[type="file"]').setInputFiles({
-    name: "chantier.png",
-    mimeType: "image/png",
-    buffer: Buffer.from(
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j8ioAAAAASUVORK5CYII=",
-      "base64",
-    ),
+  const droppedFiles = await page.evaluateHandle(() => {
+    const transfer = new DataTransfer();
+    const bytes = Uint8Array.from(
+      atob(
+        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j8ioAAAAASUVORK5CYII=",
+      ),
+      (char) => char.charCodeAt(0),
+    );
+    transfer.items.add(
+      new File([bytes], "chantier.png", { type: "image/png" }),
+    );
+    return transfer;
   });
+  const dropzone = files.locator(".document-upload-shell");
+  await dropzone.dispatchEvent("dragenter", { dataTransfer: droppedFiles });
+  await expect(dropzone).toHaveClass(/is-dragging/);
+  await dropzone.dispatchEvent("drop", { dataTransfer: droppedFiles });
+  await expect(dropzone).not.toHaveClass(/is-dragging/);
+  await expect(dropzone.getByRole("status")).toHaveText("chantier.png");
+  await droppedFiles.dispose();
   await files.getByRole("button", { name: "Importer", exact: true }).click();
   await expect(
     files.getByText("Import incomplet", { exact: false }),
@@ -579,6 +615,15 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   ).toBeVisible();
   await page.reload();
   await expect(files.getByText("chantier.png", { exact: true })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `/private/tmp/project-documents-${test.info().project.name}.png`,
+    fullPage: true,
+  });
   await files.getByRole("button", { name: "Aperçu", exact: true }).click();
   await expect(
     page.getByRole("dialog").getByRole("img", { name: "chantier.png" }),
@@ -625,6 +670,11 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await files.screenshot({
     path: `/private/tmp/renvo-files-${test.info().project.name}.png`,
   });
+  await page
+    .locator(".project-tabs")
+    .getByRole("link", { name: "Devis", exact: true })
+    .click();
+  await page.locator("#project-estimates summary").click();
   await page
     .getByLabel("Titre du devis", { exact: true })
     .fill("Rénovation étage");
@@ -694,10 +744,14 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     `/private/tmp/renvo-browser-${test.info().project.name}.pdf`,
   );
   await page.getByRole("link", { name: "Back to project" }).click();
+  await page
+    .locator(".project-tabs")
+    .getByRole("link", { name: "Estimates", exact: true })
+    .click();
   await expect(
     page.getByRole("link", { name: "Other estimate edit", exact: true }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Back to companies" }).click();
+  await page.getByRole("link", { name: "Back to projects" }).click();
   if (test.info().project.name === "mobile")
     await page.getByRole("button", { name: "Navigation" }).click();
   await page.locator(".account-menu > summary").click();
@@ -847,7 +901,11 @@ test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
     .getByRole("button", { name: "Créer le projet", exact: true })
     .click();
   await page.getByRole("link", { name: "Task site", exact: true }).click();
-  const projectUrl = page.url();
+  const projectUrl = `${page.url()}?tab=tasks`;
+  await page
+    .locator(".project-tabs")
+    .getByRole("link", { name: "Tâches", exact: true })
+    .click();
   const panel = page.getByRole("region", { name: "Tâches du projet" });
   await panel.getByRole("button", { name: "Nouvelle tâche" }).click();
   await panel.getByLabel("Nom de la tâche").fill("Préparer le chantier");
@@ -882,7 +940,10 @@ test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
   await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
   await expect(panel.locator("article .status")).toHaveText("En cours");
   await page
-    .getByRole("link", { name: "Planning", exact: true })
+    .getByRole("link", {
+      name: "Ouvrir le planning de l’entreprise",
+      exact: true,
+    })
     .last()
     .click();
   await expect(page.locator(".week-grid .task-row")).toHaveCount(3);
@@ -914,7 +975,10 @@ test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
   await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
   await expect(panel.getByText("En retard", { exact: true })).toBeVisible();
   await page
-    .getByRole("link", { name: "Planning", exact: true })
+    .getByRole("link", {
+      name: "Ouvrir le planning de l’entreprise",
+      exact: true,
+    })
     .last()
     .click();
   await page.getByRole("button", { name: "En retard", exact: true }).click();
@@ -924,7 +988,10 @@ test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
   await panel.getByLabel("Date limite").fill("");
   await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
   await page
-    .getByRole("link", { name: "Planning", exact: true })
+    .getByRole("link", {
+      name: "Ouvrir le planning de l’entreprise",
+      exact: true,
+    })
     .last()
     .click();
   await page.getByRole("button", { name: "Sans date", exact: true }).click();
@@ -935,7 +1002,10 @@ test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
   await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
   await expect(panel.locator("article .status")).toHaveText("Terminée");
   await page
-    .getByRole("link", { name: "Planning", exact: true })
+    .getByRole("link", {
+      name: "Ouvrir le planning de l’entreprise",
+      exact: true,
+    })
     .last()
     .click();
   await page.getByRole("button", { name: "Sans date", exact: true }).click();
@@ -1229,10 +1299,11 @@ test("project budget, cost recovery, conflict and void history", async ({
     .getByRole("button", { name: "Créer le projet", exact: true })
     .click();
   await page.getByRole("link", { name: "Cost site", exact: true }).click();
-  const panel = page.getByRole("region", {
-    name: "Budget et coûts",
-    exact: true,
-  });
+  await page
+    .locator(".project-tabs")
+    .getByRole("link", { name: "Budget et coûts", exact: true })
+    .click();
+  const panel = page.locator("#project-costs");
   await expect(panel.getByText("Non défini", { exact: true })).toBeVisible();
   await panel.getByRole("button", { name: "Modifier le budget" }).click();
   await panel.getByLabel("Budget de coûts", { exact: true }).fill("100.00");
@@ -1715,6 +1786,10 @@ test("member edits only assigned tasks and sees no owner controls", async ({
   ).toHaveCount(0);
   if (isMobile) await page.keyboard.press("Escape");
   await page.getByRole("link", { name: "Member site", exact: true }).click();
+  await page
+    .locator(".project-tabs")
+    .getByRole("link", { name: "Tâches", exact: true })
+    .click();
   const panel = page.getByRole("region", { name: "Tâches du projet" });
   await expect(panel.locator("article")).toHaveCount(2);
   await expect(
@@ -1740,7 +1815,10 @@ test("member edits only assigned tasks and sees no owner controls", async ({
   );
   expect(edits).toBe(1);
   await page
-    .getByRole("link", { name: "Planning", exact: true })
+    .getByRole("link", {
+      name: "Ouvrir le planning de l’entreprise",
+      exact: true,
+    })
     .last()
     .click();
   await page.getByRole("button", { name: "Sans date", exact: true }).click();
@@ -1762,4 +1840,198 @@ test("member edits only assigned tasks and sees no owner controls", async ({
   await expect(
     page.getByRole("heading", { name: "Accès réservé au propriétaire" }),
   ).toBeVisible();
+});
+
+test("project overview navigation, retained drafts, isolated failures and legacy links", async ({
+  page,
+}) => {
+  await mockApi(page);
+  await page.route("**/rest/v1/project_sketches**", (route) =>
+    route.fulfill({ json: [] }),
+  );
+  await page.route("**/rest/v1/project_tasks**", (route) =>
+    route.fulfill({
+      json: new URL(route.request().url()).searchParams.has("limit")
+        ? [
+            {
+              id: "preview-task",
+              title: "Confirmer les matériaux de finition",
+              due_date: "2026-09-23",
+              status: "todo",
+              assignee_id: null,
+            },
+          ]
+        : [],
+    }),
+  );
+  let failCosts = false;
+  await page.route("**/rest/v1/rpc/project_cost_summary", (route) =>
+    route.fulfill(
+      failCosts
+        ? { status: 500, json: { message: "fixture unavailable" } }
+        : {
+            json: [
+              {
+                budget_cents: 1845000,
+                budget_revision: 1,
+                total: "674350",
+                materials: "492000",
+                labor: "182350",
+                subcontractors: "0",
+                other: "0",
+              },
+            ],
+          },
+    ),
+  );
+  await login(page);
+  await page.getByLabel("Nom de l’entreprise").fill("Atelier du Parc");
+  await page.getByRole("button", { name: "Créer mon entreprise" }).click();
+  await page.getByRole("button", { name: "Nouveau projet" }).click();
+  await page
+    .getByLabel("Nom du projet", { exact: true })
+    .fill("Rénovation de la maison du Parc");
+  await page.getByLabel("Client", { exact: true }).fill("Camille Laurent");
+  await page.getByLabel("Ville", { exact: true }).fill("Bruxelles");
+  await page
+    .getByRole("button", { name: "Créer le projet", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Créer le projet", exact: true })
+    .click();
+  await page
+    .getByRole("link", { name: "Rénovation de la maison du Parc", exact: true })
+    .click();
+  const base = page.url(),
+    nav = page.locator(".project-tabs");
+  await expect(nav).toBeVisible();
+  await expect(
+    nav.getByRole("link", { name: "Vue d’ensemble" }),
+  ).toHaveAttribute("aria-current", "page");
+  await expect(page.locator(".metrics")).toContainText("18");
+  const bounds = await nav.boundingBox();
+  expect(bounds).not.toBeNull();
+  expect((bounds?.y ?? 9999) + (bounds?.height ?? 0)).toBeLessThan(
+    page.viewportSize()?.height ?? 0,
+  );
+  await expect(page.getByLabel("Nom du projet", { exact: true })).toHaveCount(
+    0,
+  );
+  await expect(
+    page.getByText("Confirmer les matériaux de finition", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Aucun croquis. Dessinez votre première idée depuis Documents.",
+      { exact: true },
+    ),
+  ).toBeVisible();
+  // Overlay-scrollbar browsers also verify the reserved-gutter policy.
+  expect(
+    await page.evaluate(
+      () => getComputedStyle(document.documentElement).scrollbarGutter,
+    ),
+  ).toBe("stable");
+  // Compare tab boundaries with forced and content-dependent vertical scrolling.
+  await page.addStyleTag({
+    content: "html::-webkit-scrollbar { width: 16px; }",
+  });
+  await page.evaluate(() => {
+    document.documentElement.style.overflowY = "scroll";
+  });
+  const boundaries = async () =>
+    page
+      .locator(".project-header, .project-tabs, .project-panel")
+      .evaluateAll((elements) =>
+        elements.map((element) => {
+          const { x, width } = element.getBoundingClientRect();
+          return { x, width };
+        }),
+      );
+  const expectedBoundaries = await boundaries();
+  await page.evaluate(() => {
+    document.documentElement.style.overflowY = "auto";
+  });
+  for (const tab of [
+    "Vue d’ensemble",
+    "Tâches",
+    "Budget et coûts",
+    "Devis",
+    "Documents",
+  ]) {
+    await nav.getByRole("link", { name: tab, exact: true }).click();
+    await expect(
+      nav.getByRole("link", { name: tab, exact: true }),
+    ).toHaveAttribute("aria-current", "page");
+    await expect.poll(boundaries).toEqual(expectedBoundaries);
+  }
+  await nav.getByRole("link", { name: "Vue d’ensemble" }).click();
+  await page.screenshot({
+    path: `/private/tmp/project-overview-new-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  await nav.getByRole("link", { name: "Tâches", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Nouvelle tâche", exact: true })
+    .click();
+  await page.getByLabel("Nom de la tâche").fill("Préparer les protections");
+  await nav.getByRole("link", { name: "Documents", exact: true }).click();
+  await expect(page.locator("#project-sketches input")).not.toBeVisible();
+  await page.goBack();
+  await expect(page.getByLabel("Nom de la tâche")).toHaveValue(
+    "Préparer les protections",
+  );
+  await page.goForward();
+  await expect(nav.getByRole("link", { name: "Documents" })).toHaveAttribute(
+    "aria-current",
+    "page",
+  );
+  await page.locator("#project-sketches summary").click();
+  await page.getByLabel("Nom du croquis").fill("Cuisine – implantation");
+  await nav.getByRole("link", { name: "Vue d’ensemble" }).click();
+  await nav.getByRole("link", { name: "Documents" }).click();
+  await expect(page.getByLabel("Nom du croquis")).toHaveValue(
+    "Cuisine – implantation",
+  );
+  await page.goto(`${base}#project-tasks`);
+  await expect(
+    page.getByRole("region", { name: "Tâches du projet" }),
+  ).toBeVisible();
+  await page.goto(`${base}#site-details`);
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page
+    .getByLabel("Nom du projet", { exact: true })
+    .fill("Modification non enregistrée");
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Fermer", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  page.once("dialog", (dialog) => dialog.accept());
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Fermer", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.locator(".project-header button")).toBeFocused();
+  failCosts = true;
+  await page.goto(base);
+  await expect(page.getByRole("alert")).toContainText(
+    "Impossible de charger les coûts",
+  );
+  await expect(page.locator(".project-context")).toContainText(
+    "Camille Laurent",
+  );
+  await expect(nav).toBeVisible();
+  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  await expect(
+    nav.getByRole("link", { name: "Overview", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
 });

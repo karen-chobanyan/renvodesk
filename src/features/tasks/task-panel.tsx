@@ -128,7 +128,7 @@ export function TaskPanel({
   }
   function taskItem(row: (typeof rows)[number]) {
     return (
-      <article className="task-row" key={row.id}>
+      <article className={`task-row task-card-${row.status}`} key={row.id}>
         <div className="task-content">
           <strong>{row.title}</strong>
           {!project && (
@@ -193,7 +193,15 @@ export function TaskPanel({
     >
       <div className="section-heading">
         <div>
-          <h2>{project ? c.tasks : c.schedule}</h2>
+          <h2>
+            {project
+              ? c.tasks
+              : mode === "week"
+                ? c.week
+                : mode === "overdue"
+                  ? c.overdue
+                  : c.undated}
+          </h2>
           {project && <p className="page-description">{c.hint}</p>}
         </div>
         <div className="task-actions">
@@ -244,14 +252,33 @@ export function TaskPanel({
                     key={date}
                     className={date === day ? "week-day is-today" : "week-day"}
                   >
-                    <h3>
-                      {new Intl.DateTimeFormat(locale, {
-                        weekday: "short",
-                        day: "numeric",
-                        month: "short",
-                        timeZone: "UTC",
-                      }).format(new Date(`${date}T12:00:00Z`))}
+                    <h3 className="calendar-day-heading">
+                      <time
+                        dateTime={date}
+                        aria-current={date === day ? "date" : undefined}
+                      >
+                        <span>
+                          {new Intl.DateTimeFormat(locale, {
+                            weekday: "short",
+                            timeZone: "UTC",
+                          }).format(new Date(`${date}T12:00:00Z`))}
+                        </span>
+                        <strong>{date.slice(8).replace(/^0/, "")}</strong>
+                        <small>
+                          {new Intl.DateTimeFormat(locale, {
+                            month: "short",
+                            timeZone: "UTC",
+                          }).format(new Date(`${date}T12:00:00Z`))}
+                        </small>
+                      </time>
                     </h3>
+                    {!loading && !rows.some((row) => onDay(row, date)) && (
+                      <p className="calendar-day-empty">
+                        {locale === "fr"
+                          ? "Rien de prévu"
+                          : "Nothing scheduled"}
+                      </p>
+                    )}
                     {rows.filter((row) => onDay(row, date)).map(taskItem)}
                   </section>
                 ),

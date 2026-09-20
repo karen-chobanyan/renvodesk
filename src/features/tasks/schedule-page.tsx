@@ -55,65 +55,77 @@ function CompanySchedule({ organizationId }: { organizationId: string }) {
     );
   return (
     <AppShell live company={company}>
-      <Link className="back-link" to={`/workspace?company=${organizationId}`}>
-        {c.back}
-      </Link>
-      <PageHeader eyebrow={company} title={c.schedule} description={c.scope} />
-      <fieldset className="section-tabs" aria-label={c.schedule}>
-        {(["week", "overdue", "undated"] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            className={mode === value ? "selected" : ""}
-            aria-pressed={mode === value}
-            onClick={() => setMode(value)}
-          >
-            {c[value]}
-          </button>
-        ))}
-      </fieldset>
-      {mode === "week" && (
-        <div className="week-toolbar">
-          <Button
-            variant="outline"
-            disabled={start <= "1900-01-08"}
-            onClick={() => setStart(addDays(start, -7))}
-          >
-            {c.previous}
-          </Button>
-          <strong>
-            {dateLabel(start, locale)} — {dateLabel(addDays(start, 6), locale)}
-          </strong>
-          <Button
-            variant="outline"
-            disabled={start >= "2100-12-24"}
-            onClick={() => setStart(addDays(start, 7))}
-          >
-            {c.next}
-          </Button>
-          <Button variant="ghost" onClick={() => setStart(weekStart(today()))}>
-            {c.today}
-          </Button>
-        </div>
-      )}
-      <label className="task-filter">
-        <input
-          type="checkbox"
-          checked={mine}
-          onChange={(e) => setMine(e.target.checked)}
+      <div className="schedule-workspace">
+        <Link className="back-link" to={`/workspace?company=${organizationId}`}>
+          {c.back}
+        </Link>
+        <PageHeader
+          eyebrow={company}
+          title={c.schedule}
+          description={c.scope}
         />
-        {teamCopy[locale].myTasks}
-      </label>
-      <TaskPanel
-        key={`${organizationId}:${mode}:${start}:${mine}`}
-        org={organizationId}
-        filter={{
-          mode,
-          start,
-          today: today(),
-          assignee: mine ? session?.user.id : undefined,
-        }}
-      />
+        <div className="schedule-controls">
+          <fieldset className="section-tabs" aria-label={c.schedule}>
+            {(["week", "overdue", "undated"] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                className={mode === value ? "selected" : ""}
+                aria-pressed={mode === value}
+                onClick={() => setMode(value)}
+              >
+                {c[value]}
+              </button>
+            ))}
+          </fieldset>
+          <label className="task-filter">
+            <input
+              type="checkbox"
+              checked={mine}
+              onChange={(e) => setMine(e.target.checked)}
+            />
+            {teamCopy[locale].myTasks}
+          </label>
+        </div>
+        {mode === "week" && (
+          <div className="week-toolbar">
+            <Button
+              variant="outline"
+              disabled={start <= "1900-01-08"}
+              onClick={() => setStart(addDays(start, -7))}
+            >
+              {c.previous}
+            </Button>
+            <strong aria-live="polite">
+              {dateLabel(start, locale)} —{" "}
+              {dateLabel(addDays(start, 6), locale)}
+            </strong>
+            <Button
+              variant="outline"
+              disabled={start >= "2100-12-24"}
+              onClick={() => setStart(addDays(start, 7))}
+            >
+              {c.next}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setStart(weekStart(today()))}
+            >
+              {c.today}
+            </Button>
+          </div>
+        )}
+        <TaskPanel
+          key={`${organizationId}:${mode}:${start}:${mine}`}
+          org={organizationId}
+          filter={{
+            mode,
+            start,
+            today: today(),
+            assignee: mine ? session?.user.id : undefined,
+          }}
+        />
+      </div>
     </AppShell>
   );
 }
