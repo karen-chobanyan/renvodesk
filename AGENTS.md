@@ -25,6 +25,8 @@ Current implementation:
   recoverable retries. Fields: name, client name, city, optional address. Initial
   status defaults to `planning`. Protected detail pages support editing and status
   changes with revision-based conflict checks. Deletion is not implemented.
+- Saved draft estimates support title/line editing, server totals, pagination and
+  revision-based conflict handling. EUR excluding tax; at most 100 lines.
 - Separate fictional `/projects`, `/projects/:id` and `/estimates/:id` demos.
   Their records remain in memory and reset on reload, even when signed in.
 - French/English UI, responsive layouts and `/design-system` component reference.
@@ -36,7 +38,8 @@ Agreed direction:
 - French is the default language; English is available. Dutch is deferred.
 - Excalidraw is selected, not integrated, for quick sketches and annotations.
   Detailed measured floor planning is a separate future module.
-- Next milestone: persisted estimates linked to saved projects.
+- Persisted draft estimates now link to saved projects. PDF export, sending and
+  customer acceptance are future milestones.
 
 Still to decide before dependent implementation:
 - Frontend deployment provider and production hosting configuration.
@@ -84,8 +87,11 @@ and automatic quantity takeoff unless explicitly requested.
 - `src/features/auth`: session provider, account screens and localized auth copy.
 - `src/features/organizations`: company onboarding, selection and data access.
 - `src/features/projects/project-service.ts` and `saved-projects.tsx`: live project register.
-- `saved-project-page.tsx`: live project details/editing. Other project screens
-  and `src/features/estimates`: fictional demo workflows.
+- `saved-project-page.tsx`: live project details/editing and estimate list. Other
+  project screens remain fictional demos.
+- `src/features/estimates`: estimate-service, project-estimates and saved-estimate-page
+  implement live drafts. estimate-lines is shared with the separate demo editor.
+  draft-model handles persisted line serialization; model owns decimal calculations.
 - `src/lib/demo-store.tsx`: in-memory demo state; never silently mix with live data.
 - `src/lib/i18n.tsx`: shared FR/EN copy and formatting; auth and saved projects also
   own domain copy. Keep both languages complete when adding or changing text.
@@ -218,7 +224,7 @@ Do not invent a command or report an unrun check as passing.
   Do not apply changes to other Supabase projects.
 - `.env.local` is ignored; `.env.example` documents the URL and publishable key.
   Only public configuration belongs in `VITE_*`; never put service-role secrets there.
-- `organizations`, `organization_memberships` and `projects` are implemented.
+- `organizations`, `organization_memberships`, `projects` and `estimates` are implemented.
   Organization onboarding atomically creates the company and owner membership via
   `create_organization`, with verified non-anonymous user checks and idempotency.
 - The public onboarding RPC is SECURITY INVOKER and delegates to a private,
@@ -248,3 +254,22 @@ Do not invent a command or report an unrun check as passing.
 Setup: docs/SUPABASE.md. Historical foundation decisions:
 docs/decisions/001-client-foundation.md and 002-auth-and-company-isolation.md.
 Read README.md and the latest milestone plans for current implementation status.
+
+## Draft estimate invariants
+
+- Composite (organization_id, project_id) FK links estimates to same-company projects.
+- Lines are a validated JSON array saved atomically on one draft row, capped at 100.
+  Do not write lines in a loop or permit partially saved documents.
+- Quantity and price are decimal strings (up to seven integer and two decimal digits).
+  Descriptions are required, max 500 characters; units are m², fixed or item.
+  Empty drafts and zero prices are allowed; quantities must be positive.
+- The database trigger computes total_cents using exact numeric arithmetic and
+  half-up rounding per line, capped at JS's safe integer maximum. Never accept a
+  client total as authoritative. Shared client helpers provide matching previews.
+- Only owners create/update drafts; member reads are scoped by organization and
+  project. Identity, project link, currency, status and totals have no client write
+  grants. Updates use the loaded revision and require an increment of one.
+- Draft status and EUR currency are fixed. No tax calculation, document issuance,
+  acceptance, version history or automatic budget updates are implemented.
+- Preserve inputs on failed saves; conflicts require explicit reload. Unsaved edits
+  are memory-only and are lost when navigating away. Do not claim offline support.

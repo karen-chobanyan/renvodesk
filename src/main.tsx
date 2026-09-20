@@ -10,6 +10,7 @@ import { AuthCallback, AuthPage } from "./features/auth/auth-page";
 import { AuthProvider, RequireAuth } from "./features/auth/auth-provider";
 import { DesignPage } from "./features/design/design-page";
 import { EstimatePage } from "./features/estimates/estimate-page";
+import { SavedEstimatePage } from "./features/estimates/saved-estimate-page";
 import { WorkspacePage } from "./features/organizations/workspace-page";
 import { ProjectPage } from "./features/projects/project-page";
 import { ProjectsPage } from "./features/projects/projects-page";
@@ -82,6 +83,10 @@ function Application() {
               <Route path="auth/callback" element={<AuthCallback />} />
               <Route element={<RequireAuth />}>
                 <Route path="workspace" element={<WorkspacePage />} />
+                <Route
+                  path="workspace/:organizationId/projects/:id/estimates/:estimateId"
+                  element={<SavedEstimatePage />}
+                />
                 <Route
                   path="workspace/:organizationId/projects/:id"
                   element={<SavedProjectPage />}

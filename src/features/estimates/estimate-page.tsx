@@ -1,17 +1,12 @@
-import { ArrowLeft, Check, FileText, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, FileText, Plus } from "lucide-react";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
 import { EmptyState, PageHeader } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useDemo } from "@/lib/demo-store";
 import { formatMoney, useLocale } from "@/lib/i18n";
-import {
-  type EstimateLine,
-  estimateTotal,
-  initialLines,
-  lineTotal,
-} from "./model";
+import { EstimateLines } from "./estimate-lines";
+import { type EstimateLine, estimateTotal, initialLines } from "./model";
 export function EstimatePage() {
   const { id } = useParams();
   return <EstimateEditor key={id} id={id ?? ""} />;
@@ -89,96 +84,15 @@ function EstimateEditor({ id }: { id: string }) {
             {t("draft")}
           </span>
         </div>
-        <div className="table-scroll">
-          <table className="estimate-table">
-            <thead>
-              <tr>
-                <th>{t("description")}</th>
-                <th>{t("quantity")}</th>
-                <th>{t("unit")}</th>
-                <th>{t("unitPrice")}</th>
-                <th className="numeric">{t("total")}</th>
-                <th>
-                  <span className="sr-only">{t("deleteLine")}</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {lines.map((line, index) => (
-                <tr key={line.id}>
-                  <td>
-                    <Input
-                      aria-label={`${t("description")} ${index + 1}`}
-                      value={line.customDescription ?? t(line.label)}
-                      onChange={(e) =>
-                        update(line.id, { customDescription: e.target.value })
-                      }
-                    />
-                  </td>
-                  <td>
-                    <Input
-                      aria-label={`${t("quantity")} ${index + 1}`}
-                      inputMode="decimal"
-                      value={line.quantity}
-                      aria-invalid={lineTotal(line) === null}
-                      onChange={(e) =>
-                        update(line.id, { quantity: e.target.value })
-                      }
-                    />
-                  </td>
-                  <td>
-                    <select
-                      className="input"
-                      aria-label={`${t("unit")} ${index + 1}`}
-                      value={line.unit}
-                      onChange={(e) =>
-                        update(line.id, {
-                          unit: e.target.value as EstimateLine["unit"],
-                        })
-                      }
-                    >
-                      <option value="m²">m²</option>
-                      <option value="item">{t("item")}</option>
-                      <option value="fixed">{t("fixed")}</option>
-                    </select>
-                  </td>
-                  <td>
-                    <Input
-                      aria-label={`${t("unitPrice")} ${index + 1}`}
-                      inputMode="decimal"
-                      value={line.price}
-                      aria-invalid={lineTotal(line) === null}
-                      onChange={(e) =>
-                        update(line.id, { price: e.target.value })
-                      }
-                    />
-                  </td>
-                  <td className="numeric">
-                    {lineTotal(line) === null
-                      ? "—"
-                      : formatMoney(lineTotal(line) ?? 0, locale)}
-                  </td>
-                  <td>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      aria-label={`${t("deleteLine")} ${index + 1}`}
-                      onClick={() => {
-                        setLines((current) =>
-                          current.filter((item) => item.id !== line.id),
-                        );
-                        setDirty(true);
-                        setSaved(false);
-                      }}
-                    >
-                      <Trash2 size={15} />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <EstimateLines
+          lines={lines}
+          update={update}
+          remove={(lineId) => {
+            setLines((current) => current.filter((line) => line.id !== lineId));
+            setDirty(true);
+            setSaved(false);
+          }}
+        />
         <div className="estimate-add">
           <Button
             variant="ghost"

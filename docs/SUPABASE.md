@@ -25,7 +25,7 @@ a generic account-existence message. Email links require the redirect settings a
 ## Database
 
 Migration: `supabase/migrations/20260919205112_company_auth_foundation.sql`.
-Organizations, memberships, the atomic onboarding RPC and projects are implemented.
+Organizations, memberships, the atomic onboarding RPC, projects and draft estimates are implemented.
 Subsequent migrations add the project register and revision-checked editing.
 Generated types: `src/lib/supabase/database.types.ts`; regenerate instead of editing.
 
@@ -42,8 +42,8 @@ recovery-email delivery is claimed until the dashboard settings and SMTP are ver
 No service-role secret is required or present in the frontend.
 
 Verified: email/password signup is enabled and automatic email confirmation is off.
-Anonymous REST reads of organizations return HTTP 401. Security advisors report no
-findings. Test users, memberships and organizations were rolled back and confirmed absent.
+Anonymous REST reads of organizations return HTTP 401. The latest security advisor check (2026-09-20) flags leaked-password protection
+as disabled; configure this in Auth before production. Test users, memberships and organizations were rolled back and confirmed absent.
 
 ## Saved projects
 
@@ -66,3 +66,15 @@ The UI preserves fields, blocks stale resubmission and offers an explicit reload
 A lost update response may also require reload; it never causes an automatic overwrite.
 Run supabase/tests/project_editing.sql to verify edits, stale writes, validation
 and tenant denial. All fixture changes roll back.
+
+## Draft estimates
+
+Migration 20260920081032 adds estimates with a composite project FK and RLS.
+Each row holds up to 100 validated JSON lines; the invoker trigger validates the
+snapshot, calculates total_cents and requires revision increments on update.
+Owner clients may create drafts or update title/lines/revision only. Project links,
+status, currency and authoritative totals cannot be overwritten by the browser.
+Run supabase/tests/estimate_isolation.sql for rollback-only verification of exact
+rounding, atomic validation, tenant links, permissions and stale writes.
+
+Auth advisor follow-up: https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection

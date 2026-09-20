@@ -1820,3 +1820,11 @@ main {
 .connected-workspace h1 {
   overflow-wrap: anywhere;
 }
+
+.connected-workspace.live-estimate {
+  width: 100%;
+  max-width: 1120px;
+}
+.live-estimate .project-fields {
+  margin-top: 2rem;
+}

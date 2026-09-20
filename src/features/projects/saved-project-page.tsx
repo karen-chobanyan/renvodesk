@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { AuthLayout } from "@/features/auth/auth-page";
 import { useAuth } from "@/features/auth/auth-provider";
+import { ProjectEstimates } from "@/features/estimates/project-estimates";
 import { useLocale } from "@/lib/i18n";
 import { projectCopy } from "./project-copy";
 import { ProjectFields } from "./project-fields";
@@ -187,6 +188,9 @@ function ProjectDetail({
             )}
             {saved && <p role="status">{c.saved}</p>}
           </form>
+        )}
+        {project && !loading && !failed && (
+          <ProjectEstimates organizationId={organizationId} projectId={id} />
         )}
       </section>
     </AuthLayout>

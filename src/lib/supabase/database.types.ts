@@ -14,6 +14,53 @@ export type Database = {
   };
   public: {
     Tables: {
+      estimates: {
+        Row: {
+          created_at: string;
+          currency: string;
+          id: string;
+          lines: Json;
+          organization_id: string;
+          project_id: string;
+          revision: number;
+          status: string;
+          title: string;
+          total_cents: number;
+        };
+        Insert: {
+          created_at?: string;
+          currency?: string;
+          id?: string;
+          lines?: Json;
+          organization_id: string;
+          project_id: string;
+          revision?: number;
+          status?: string;
+          title: string;
+          total_cents?: number;
+        };
+        Update: {
+          created_at?: string;
+          currency?: string;
+          id?: string;
+          lines?: Json;
+          organization_id?: string;
+          project_id?: string;
+          revision?: number;
+          status?: string;
+          title?: string;
+          total_cents?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "estimates_organization_id_project_id_fkey";
+            columns: ["organization_id", "project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["organization_id", "id"];
+          },
+        ];
+      };
       organization_memberships: {
         Row: {
           created_at: string;

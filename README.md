@@ -15,8 +15,9 @@ not selected as the codebase.
 | --- | --- | --- |
 | Authentication | Email/password signup, login, logout, confirmation callback and password recovery UI | Real email delivery still needs dashboard/SMTP configuration and verification |
 | Companies | Create and select companies; users can belong to several organizations | Owner role only; no invitations or team administration |
-| Saved projects | Create, list, open and edit company projects; status changes, pagination and stale-edit protection | No deletion, budgets or connected estimates yet |
+| Saved projects | Create, list, open and edit company projects; status changes, pagination and stale-edit protection | No deletion or budgets yet |
 | Project demo | Search, status filters, create dialog and financial overview | Fictional data held in memory; edits reset on reload |
+| Saved estimates | Project-linked drafts, editable lines, atomic saves, server-calculated totals and conflict protection | EUR excluding tax; up to 100 lines; no PDF, sending, acceptance or invoicing |
 | Estimate demo | Editable lines, decimal-safe totals and session-only saving | No database persistence, PDF export, acceptance or invoicing |
 | Design foundation | Responsive layouts, French/English, reusable primitives and component showcase | Floor-plan thumbnail is illustrative, not an editable drawing |
 
@@ -55,7 +56,8 @@ and recovery email flows verified.
 | `/login`, `/signup` | Account access |
 | `/auth/forgot`, `/auth/reset`, `/auth/callback` | Recovery and email callback handling |
 | `/workspace` | Authenticated company selection, onboarding and persisted project register |
-| `/workspace/:organizationId/projects/:id` | Saved project details, editing and status changes |
+| `/workspace/:organizationId/projects/:id` | Saved project details, editing, status changes and estimates |
+| `/workspace/:organizationId/projects/:id/estimates/:estimateId` | Persistent draft estimate editor |
 | `/projects`, `/projects/:id` | Separate fictional project demo |
 | `/estimates/:id` | Separate fictional estimate editor |
 | `/design-system` | Shared design/component reference |
@@ -79,7 +81,7 @@ already-saved record without overwriting it.
 - Deployment, SMTP provider, accounting/e-invoicing provider, billing model,
   expanded team permissions, background processing and monitoring remain open.
 
-Next milestone is persisted estimates linked to real projects. Clients,
+Next estimate milestones are PDF export, customer sending and acceptance. Clients,
 costs, variations, schedules, documents, invoicing, payments and drawings remain
 planned. Full accounting, payroll, warehouse management, BIM/CAD and automatic
 quantity takeoff are outside the initial scope.
@@ -101,14 +103,15 @@ API: they verify UI behavior, reloads, lost-response retries and editing conflic
 They are not evidence of real email delivery or an end-to-end live browser connection.
 
 Live database isolation tests are in `supabase/tests/company_isolation.sql` and
-`supabase/tests/project_isolation.sql` and `supabase/tests/project_editing.sql`. Execute them against the development database
+`supabase/tests/project_isolation.sql`, `supabase/tests/project_editing.sql` and
+`supabase/tests/estimate_isolation.sql`. Execute them against the development database
 as complete transactions; their temporary fixtures roll back. They cover tenant
 isolation, anonymous denial, write restrictions, validation, revision increments and stale-update rejection.
 
 Last implementation verification (2026-09-20): lint, typecheck and build passed;
-11 unit tests and 17 browser tests passed, with one intentional desktop skip for
-the mobile navigation test. Live SQL isolation tests passed and the security
-advisor reported no findings. This is a dated result, not a production-readiness claim.
+15 unit tests and 17 browser tests passed, with one intentional desktop skip for
+the mobile navigation test. Live SQL isolation tests passed. The security advisor reported leaked-password
+protection disabled in Auth; no estimate-schema findings were reported. This is a dated result, not a production-readiness claim.
 
 ## Repository map
 
@@ -116,7 +119,7 @@ advisor reported no findings. This is a dated result, not a production-readiness
 - `src/components/ui`, `src/components/shared.tsx`: primitives and shared patterns.
 - `src/features/auth`, `src/features/organizations`: account and company workflows.
 - `src/features/projects`: demo screens plus `saved-projects.tsx` and `project-service.ts` for live data.
-- `src/features/estimates`: demo editor and decimal-safe calculations.
+- `src/features/estimates`: shared line editor, calculations, live draft services/screens and separate demo.
 - `src/lib/i18n.tsx`, `src/lib/demo-store.tsx`: localization and separate demo state.
 - `src/lib/supabase`: browser client and generated database types.
 - `supabase/migrations`, `supabase/tests`: schema history and SQL isolation tests.

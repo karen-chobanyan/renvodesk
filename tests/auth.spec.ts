@@ -21,6 +21,9 @@ async function mockApi(page: Page) {
   const projects: Record<string, unknown>[] = [];
   let loseResponse = true;
   let edits = 0;
+  let estimateEdits = 0;
+  let loseEstimateResponse = true;
+  let estimate: Record<string, unknown> | null = null;
   await page.route(
     "https://oripsywzngftarbprlgk.supabase.co/**",
     async (route) => {
@@ -66,6 +69,65 @@ async function mockApi(page: Page) {
       }
       if (url.pathname.endsWith("/user")) {
         await route.fulfill({ json: user });
+        return;
+      }
+      if (url.pathname.endsWith("/estimates")) {
+        const body = method === "GET" ? null : route.request().postDataJSON();
+        if (method === "POST") {
+          expect(body.organization_id).toBe(org);
+          expect(body.project_id).toBe(projects[0].id);
+          if (estimate)
+            await route.fulfill({ status: 409, json: { code: "23505" } });
+          else {
+            estimate = {
+              ...body,
+              lines: [],
+              total_cents: 0,
+              revision: 1,
+              status: "draft",
+              currency: "EUR",
+            };
+            if (loseEstimateResponse) {
+              loseEstimateResponse = false;
+              await route.abort();
+            } else await route.fulfill({ json: estimate });
+          }
+        } else {
+          expect(url.searchParams.get("organization_id")).toBe(`eq.${org}`);
+          expect(url.searchParams.get("project_id")).toBe(
+            `eq.${projects[0].id}`,
+          );
+          if (method === "PATCH") {
+            estimateEdits++;
+            if (estimateEdits === 2 && estimate)
+              estimate = {
+                ...estimate,
+                title: "Other estimate edit",
+                revision: 3,
+              };
+            if (
+              estimate &&
+              url.searchParams.get("revision") === `eq.${estimate.revision}`
+            ) {
+              expect(body).not.toHaveProperty("total_cents");
+              const total = body.lines.reduce(
+                (n: number, l: { quantity: string; price: string }) =>
+                  n + Math.round(Number(l.quantity) * Number(l.price) * 100),
+                0,
+              );
+              estimate = { ...estimate, ...body, total_cents: total };
+              await route.fulfill({ json: [estimate] });
+            } else await route.fulfill({ json: [] });
+          } else
+            await route.fulfill({
+              json:
+                estimate &&
+                (!url.searchParams.has("id") ||
+                  url.searchParams.get("id") === `eq.${estimate.id}`)
+                  ? [estimate]
+                  : [],
+            });
+        }
         return;
       }
       if (url.pathname.endsWith("/projects")) {
@@ -293,7 +355,76 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await expect(
     page.getByRole("link", { name: "Reconciled project", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Se déconnecter" }).click();
+  await page
+    .getByRole("link", { name: "Reconciled project", exact: true })
+    .click();
+  await expect(
+    page.getByText("Aucun devis pour ce projet.", { exact: true }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Titre du devis", { exact: true })
+    .fill("Rénovation étage");
+  await page.getByRole("button", { name: "Créer le brouillon" }).click();
+  await expect(
+    page.getByText("Création non confirmée.", { exact: false }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Créer le brouillon" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Rénovation étage" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Ajouter une ligne" }).click();
+  await page.getByLabel("Description 1", { exact: true }).fill("Peinture");
+  await page.getByLabel("Quantité 1", { exact: true }).fill("1,5");
+  await page.getByLabel("Prix unitaire HT 1", { exact: true }).fill("0,03");
+  await expect(page.getByTestId("saved-estimate-total")).toContainText("0,05");
+  await page
+    .getByRole("button", { name: "Enregistrer le brouillon", exact: true })
+    .click();
+  await expect(
+    page.getByText("Brouillon enregistré.", { exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(page.getByLabel("Description 1", { exact: true })).toHaveValue(
+    "Peinture",
+  );
+  await page.getByLabel("Quantité 1", { exact: true }).fill("0");
+  await expect(
+    page.getByRole("button", { name: "Enregistrer le brouillon", exact: true }),
+  ).toBeDisabled();
+  await page.getByLabel("Quantité 1", { exact: true }).fill("2");
+  await page
+    .getByRole("button", { name: "Enregistrer le brouillon", exact: true })
+    .click();
+  await expect(page.getByRole("alert")).toContainText("Ce devis a changé");
+  await expect(page.getByLabel("Quantité 1", { exact: true })).toHaveValue("2");
+  await page
+    .getByRole("button", { name: "Recharger et remplacer mes champs" })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Other estimate edit" }),
+  ).toBeVisible();
+  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  await expect(page.getByLabel("Description 1", { exact: true })).toHaveValue(
+    "Peinture",
+  );
+  await page.getByLabel("Quantity 1", { exact: true }).fill("2");
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(page.getByText("Draft saved.", { exact: true })).toBeVisible();
+  await page.screenshot({
+    path: `/private/tmp/renvo-estimate-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByRole("link", { name: "Back to project" }).click();
+  await expect(
+    page.getByRole("link", { name: "Other estimate edit", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Back to companies" }).click();
+  await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page).toHaveURL(/\/login$/);
   await page.goto("/workspace");
   await expect(page).toHaveURL(/\/login$/);
