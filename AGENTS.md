@@ -38,7 +38,7 @@ Agreed direction:
 - Supabase/Postgres and Supabase Auth are connected. Private Supabase Storage is
   connected for project files, including metadata, upload/download, previews and deletion.
 - French is the default language; English is available. Dutch is deferred.
-- Excalidraw is selected, not integrated, for quick sketches and annotations.
+- Excalidraw 0.18.1 is integrated for saved project sketches and annotations.
   Detailed measured floor planning is a separate future module.
 - Persisted draft estimates now link to saved projects. Draft PDF export is implemented; sending and
   customer acceptance remain future milestones.
@@ -316,12 +316,12 @@ Read README.md and the latest milestone plans for current implementation status.
 Protected workspace, project and estimate pages reuse the demo application shell.
 The saved project register uses the same visual hierarchy and table styles, with
 search/status filters and counts scoped to loaded projects. Company settings have a dedicated page. Saved project pages provide links to details, estimates and files.
-Sketch previews are explicitly fictional; task navigation opens the live company schedule.
+Saved projects have private editable sketches; task navigation opens the live company schedule.
 The global estimates link opens the live company estimate register.
 Keep demo records separate from live data while replacing previews incrementally.
 See docs/decisions/007-shared-workspace-design.md.
 
-Saved project overview now mirrors the demo detail composition: real project header/status and client/address sidebar, live cost-budget metrics and breakdown, illustrative plan, and live estimate/file sections. Financial amounts are saved integer cents. Site editing and revision-conflict recovery remain available below the overview.
+Saved project overview now mirrors the demo detail composition: real project header/status and client/address sidebar, live cost-budget metrics and breakdown, sketch navigation, and live estimate/file sections. Financial amounts are saved integer cents. Site editing and revision-conflict recovery remain available below the overview.
 
 ## Project tasks and schedule invariants
 
@@ -339,7 +339,7 @@ Saved project overview now mirrors the demo detail composition: real project hea
   server before 50-row pagination; do not label loaded counts as global totals.
 - Overdue excludes done and requires a past due date. Undated excludes done and
   requires both dates null. A start-only task is one scheduled day, not open-ended.
-- Task demo prompts have been replaced with live schedule navigation. Only sketch previews remain fictional. Task assignment is implemented; dependencies and realtime remain deferred.
+- Task demo prompts have been replaced with live schedule navigation. Project sketches are connected to private storage. Task assignment is implemented; dependencies and realtime remain deferred.
 
 ## Company and account navigation
 
@@ -401,3 +401,25 @@ and constrained private functions enforce permissions independently of the UI. N
 add role escalation, allow arbitrary acceptance email/user IDs, expose privileged
 keys, or silently retry stale task updates. Owners cannot be removed through this API.
 See decision 012 and `supabase/tests/team_isolation.sql`.
+
+## Project sketches
+
+`src/features/sketches` owns project sketch lists, immutable scene/PNG bundles,
+lazy-loaded Excalidraw, autosave/retry and history. Owners create/edit/restore;
+members view committed revisions and export. Every query filters company/project.
+Sources include embedded PNG/JPEG/WebP images (8 MiB, 2,000 elements); previews are
+limited to 1 MiB. No measured geometry, realtime collaboration, deletion, PDF page
+import or offline sync. Failed pending uploads remain private; cleanup is deferred.
+
+Reserve an immutable save UUID, upload both objects without upsert, then call
+`publish_sketch`. Publication checks owner, object MIME/size and loaded revision
+under row locks. Retry the same snapshot/UUID; verify bytes when recovering duplicate
+uploads. Committed saves are immutable; restore creates a new revision. SHA-256
+verification runs in the client; server publication validates metadata, not hashes
+or semantic drawing content. Never claim malware scanning.
+
+Keep editor code lazy-loaded and fonts self-hosted via the build/dev copy script.
+Editor navigation uses full document links so beforeunload can warn about pending
+edits. Preserve locale across reloads. Database tests are rollback-only fixtures;
+browser tests mock APIs and do not establish real Storage network delivery.
+See `docs/decisions/013-project-sketches.md`.

@@ -14,17 +14,16 @@ not selected as the codebase.
 | Area | Implemented | Boundary |
 | --- | --- | --- |
 | Authentication | Email/password signup, login, logout, confirmation callback and password recovery UI | Real email delivery still needs dashboard/SMTP configuration and verification |
-| Companies | Create and select companies; users can belong to several organizations | Optional document address/email/phone; owner role only; no invitations or team administration |
-| Saved projects | Create, list, open and edit company projects; status changes, pagination and stale-edit protection | No deletion or budgets yet |
+| Companies | Create and select companies; users can belong to several organizations | Optional document address/email/phone; owner/member roles and invitation links; no automated invitation emails |
+| Saved projects | Create, list, open and edit company projects; status changes, pagination and stale-edit protection | Cost budgets and expense tracking; no project deletion |
 | Project demo | Search, status filters, create dialog and financial overview | Fictional data held in memory; edits reset on reload |
 | Saved estimates | Project-linked drafts, editable lines, atomic saves, server-calculated totals and conflict protection | EUR excluding tax; up to 100 lines; no sending, acceptance or invoicing |
 | Draft PDF export | French/English downloads with contacts, client/site details, line items, exact cents and page numbers | Saved drafts only; no VAT calculation or issued-document snapshot |
 | Estimate demo | Editable lines, decimal-safe totals and session-only saving | No database persistence, PDF export, acceptance or invoicing |
-| Design foundation | Responsive layouts, French/English, reusable primitives and component showcase | Floor-plan thumbnail is illustrative, not an editable drawing |
+| Design foundation | Responsive layouts, French/English, reusable primitives and component showcase | Demo thumbnails are illustrative; saved projects have editable sketches |
 
 Saved projects capture a name, client name, city and optional site address. The
-server sets the initial status to preparing. Client names are text fields, not
-records in a separate client-management module. No real financial totals are
+server sets the initial status to preparing. Projects can select saved clients and properties, retaining a snapshot of their details. No real financial totals are
 inferred from demo data.
 
 ## Run locally
@@ -75,16 +74,16 @@ already-saved record without overwriting it.
   Lucide icons and self-hosted Inter. See [DESIGN.md](DESIGN.md).
 - Supabase Auth and Postgres are connected. Private Supabase Storage is connected
   for project files with metadata, recovery states and access policies.
-- Excalidraw is selected for quick sketches and annotations, but not integrated.
+- Excalidraw is integrated for quick sketches and annotations in saved projects.
   Detailed measured floor planning is a separate future module.
 - Monetary calculations use integer cents and decimal-safe helpers. Demo amounts
   do not implement country-specific VAT or invoicing compliance.
 - Deployment, SMTP provider, accounting/e-invoicing provider, billing model,
   expanded team permissions, background processing and monitoring remain open.
 
-Next estimate milestones are customer sending and acceptance. Clients,
-costs, variations, schedules, documents, invoicing, payments and drawings remain
-planned. Full accounting, payroll, warehouse management, BIM/CAD and automatic
+Next estimate milestones are customer sending and acceptance. Variations,
+invoicing and payments remain planned. Clients/properties, cost budgets, tasks,
+schedules, project files, team access and sketches are implemented. Full accounting, payroll, warehouse management, BIM/CAD and automatic
 quantity takeoff are outside the initial scope.
 
 ## Verification
@@ -248,3 +247,21 @@ and constrained private functions enforce permissions independently of the UI. N
 add role escalation, allow arbitrary acceptance email/user IDs, expose privileged
 keys, or silently retry stale task updates. Owners cannot be removed through this API.
 See decision 012 and `supabase/tests/team_isolation.sql`.
+
+### Project sketches
+
+Open **My workspace → a saved project → Sketches / Croquis**, enter a name and
+create a sketch. Draw with Excalidraw or import a `.excalidraw` file. Wait for
+**Saved / Enregistré**, return to the project and reopen the sketch. Embedded
+PNG/JPEG/WebP images are included in private storage alongside a PNG preview.
+
+Owners can edit and restore older revisions; members can view and export. History
+restoration publishes a new revision. Autosave pauses on errors or conflicts and
+keeps the open draft for retry or local export. Limits: 8 MiB and 2,000 elements.
+These are rough sketches, not measured CAD. No realtime, offline sync, sketch
+deletion or PDF-background import yet. Incomplete uploads remain private and
+require a future cleanup policy. The fictional demo stays separate.
+
+The approved sketch migration is applied to the development Supabase project.
+`pnpm exec playwright test tests/sketch-editor.spec.ts tests/sketch-storage.spec.ts`
+checks the editor and storage integration with mocked APIs.

@@ -34,3 +34,6 @@ supabase/.branches/
 *.swo
 .DS_Store
 Thumbs.db
+
+# Copied from the pinned Excalidraw package during dev/build
+public/excalidraw/

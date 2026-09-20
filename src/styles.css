@@ -2346,3 +2346,86 @@ details[open] > .compact-identity > svg {
 .member-project-details .detail-plan {
   display: none;
 }
+
+.sketch-workspace {
+  padding: 24px;
+  max-width: 1800px;
+  margin: 0 auto;
+}
+.sketch-toolbar {
+  display: flex;
+  gap: 20px;
+  align-items: end;
+  flex-wrap: wrap;
+}
+.sketch-toolbar .field {
+  flex: 1 1 240px;
+}
+.sketch-toolbar .back-link {
+  margin: 0 0 12px;
+}
+.sketch-canvas {
+  height: max(520px, 72dvh);
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  overflow: hidden;
+  margin: 16px 0;
+}
+.sketch-import {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 12px 0;
+}
+.sketch-import input {
+  max-width: 100%;
+}
+.sketch-notice {
+  padding: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  margin: 12px 0;
+}
+.sketch-preview {
+  width: 180px;
+  height: 110px;
+  object-fit: contain;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+}
+@media (max-width: 760px) {
+  .sketch-workspace {
+    padding: 16px;
+  }
+  .sketch-canvas {
+    height: 70dvh;
+    min-height: 480px;
+  }
+  .sketch-toolbar .task-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .sketch-preview {
+    width: 120px;
+    height: 80px;
+  }
+}
+
+.sketch-list-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--border);
+}
+.sketch-list-row small {
+  display: block;
+}
+.sketch-list-row > span:last-child {
+  margin-left: auto;
+}

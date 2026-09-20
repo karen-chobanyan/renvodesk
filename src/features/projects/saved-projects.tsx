@@ -296,22 +296,12 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
             </Link>
           </div>
           <div className="project-note">
-            <div className="note-top">
-              {t("preview")} · {t("demo")}
-            </div>
-            <div className="blueprint">
-              <PlanMark large />
-            </div>
             <h3>{locale === "fr" ? "Croquis du chantier" : "Site sketches"}</h3>
             <p>
               {locale === "fr"
-                ? "Illustration fictive. L’éditeur de plans sera intégré plus tard."
-                : "Fictional illustration. The drawing editor will be integrated later."}
+                ? "Ouvrez un projet pour créer ou consulter ses croquis."
+                : "Open a project to create or view its sketches."}
             </p>
-            <Link to="/projects/maison-ixelles">
-              {t("viewProject")}
-              <ArrowUpRight size={15} />
-            </Link>
           </div>
         </aside>
       </div>

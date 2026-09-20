@@ -302,6 +302,54 @@ export type Database = {
           },
         ];
       };
+      project_sketches: {
+        Row: {
+          created_at: string;
+          current_save_id: string | null;
+          id: string;
+          organization_id: string;
+          project_id: string;
+          revision: number;
+          title: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          current_save_id?: string | null;
+          id?: string;
+          organization_id: string;
+          project_id: string;
+          revision?: number;
+          title: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          current_save_id?: string | null;
+          id?: string;
+          organization_id?: string;
+          project_id?: string;
+          revision?: number;
+          title?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_sketches_organization_id_project_id_fkey";
+            columns: ["organization_id", "project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["organization_id", "id"];
+          },
+          {
+            foreignKeyName: "sketch_current_save_fk";
+            columns: ["organization_id", "id", "current_save_id"];
+            isOneToOne: false;
+            referencedRelation: "sketch_saves";
+            referencedColumns: ["organization_id", "sketch_id", "id"];
+          },
+        ];
+      };
       project_tasks: {
         Row: {
           assignee_id: string | null;
@@ -467,6 +515,77 @@ export type Database = {
           },
         ];
       };
+      sketch_saves: {
+        Row: {
+          base_revision: number;
+          committed_at: string | null;
+          created_at: string;
+          created_by: string;
+          editor: string;
+          format_version: number;
+          id: string;
+          organization_id: string;
+          preview_bytes: number;
+          preview_hash: string;
+          preview_key: string | null;
+          project_id: string;
+          revision: number | null;
+          scene_bytes: number;
+          scene_hash: string;
+          scene_key: string | null;
+          sketch_id: string;
+          title: string;
+        };
+        Insert: {
+          base_revision: number;
+          committed_at?: string | null;
+          created_at?: string;
+          created_by?: string;
+          editor?: string;
+          format_version?: number;
+          id: string;
+          organization_id: string;
+          preview_bytes: number;
+          preview_hash: string;
+          preview_key?: string | null;
+          project_id: string;
+          revision?: number | null;
+          scene_bytes: number;
+          scene_hash: string;
+          scene_key?: string | null;
+          sketch_id: string;
+          title: string;
+        };
+        Update: {
+          base_revision?: number;
+          committed_at?: string | null;
+          created_at?: string;
+          created_by?: string;
+          editor?: string;
+          format_version?: number;
+          id?: string;
+          organization_id?: string;
+          preview_bytes?: number;
+          preview_hash?: string;
+          preview_key?: string | null;
+          project_id?: string;
+          revision?: number | null;
+          scene_bytes?: number;
+          scene_hash?: string;
+          scene_key?: string | null;
+          sketch_id?: string;
+          title?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "sketch_saves_organization_id_project_id_sketch_id_fkey";
+            columns: ["organization_id", "project_id", "sketch_id"];
+            isOneToOne: false;
+            referencedRelation: "project_sketches";
+            referencedColumns: ["organization_id", "project_id", "id"];
+          },
+        ];
+      };
       team_invitations: {
         Row: {
           accepted_at: string | null;
@@ -534,6 +653,10 @@ export type Database = {
           subcontractors: string;
           total: string;
         }[];
+      };
+      publish_sketch: {
+        Args: { p_org: string; p_save: string; p_sketch: string };
+        Returns: number;
       };
       team_invitation: {
         Args: { p_accept?: boolean; p_id: string };

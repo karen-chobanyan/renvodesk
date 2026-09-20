@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/auth-provider";
 import { ProjectEstimates } from "@/features/estimates/project-estimates";
 import { ProjectFiles } from "@/features/files/project-files";
+import { ProjectSketches } from "@/features/sketches/project-sketches";
 import { TaskPanel } from "@/features/tasks/task-panel";
 import { useCompanyAccess } from "@/features/team/company-access";
 import { useLocale } from "@/lib/i18n";
@@ -188,6 +189,9 @@ function ProjectDetail({
                 {locale === "fr" ? "Planning" : "Schedule"}
               </Link>
               {owner && <a href="#project-estimates">{t("estimates")}</a>}
+              <a href="#project-sketches">
+                {locale === "fr" ? "Croquis" : "Sketches"}
+              </a>
               <a href="#project-files">
                 {locale === "fr" ? "Fichiers" : "Files"}
               </a>
@@ -256,6 +260,7 @@ function ProjectDetail({
         ) : null}
         {project && !loading && !failed && (
           <>
+            <ProjectSketches org={organizationId} project={id} owner={owner} />
             <TaskPanel org={organizationId} project={id} />
             {owner && (
               <ProjectEstimates

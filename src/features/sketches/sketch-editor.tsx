@@ -1,0 +1,274 @@
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import SketchCanvas from "./sketch-canvas";
+import { sketchCopy } from "./sketch-copy";
+import { prepareSave, type SaveAttempt } from "./sketch-export";
+import {
+  downloadScene,
+  MAX_SCENE_BYTES,
+  normalizeScene,
+  type Scene,
+} from "./sketch-model";
+export function SketchEditor({
+  initial,
+  title: originalTitle,
+  revision,
+  readOnly,
+  locale,
+  restored = false,
+  persist,
+  onSaved,
+  reload,
+  back,
+}: {
+  initial: Scene;
+  title: string;
+  revision: number;
+  readOnly: boolean;
+  locale: "fr" | "en";
+  restored?: boolean;
+  persist: (attempt: SaveAttempt) => Promise<number>;
+  onSaved: (version: number) => void;
+  reload: () => void;
+  back: string;
+}) {
+  const c = sketchCopy[locale];
+  const [title, setTitle] = useState(originalTitle),
+    [canvasScene, setCanvasScene] = useState(initial),
+    [canvasKey, setCanvasKey] = useState(0),
+    [dirty, setDirty] = useState(restored),
+    [generation, setGeneration] = useState(0),
+    [status, setStatus] = useState<
+      "idle" | "saving" | "failed" | "conflict" | "invalid"
+    >("idle");
+  const lastCanvasSignature = useRef("");
+  const forceSave = useRef(restored || revision === 0);
+  const current = useRef({ scene: initial, title: originalTitle }),
+    base = useRef(revision),
+    pending = useRef<SaveAttempt | null>(null),
+    running = useRef(false),
+    mounted = useRef(true),
+    initialized = useRef(false),
+    savedSignature = useRef(
+      JSON.stringify([originalTitle, JSON.stringify(initial)]),
+    ),
+    hasUnsaved = useRef(restored);
+  const signature = () =>
+    JSON.stringify([
+      current.current.title,
+      JSON.stringify(current.current.scene),
+    ]);
+  const change = useCallback(
+    (value: unknown) => {
+      try {
+        const scene = normalizeScene(value);
+        const canvasSignature = JSON.stringify(scene);
+        if (canvasSignature === lastCanvasSignature.current) return;
+        lastCanvasSignature.current = canvasSignature;
+        current.current.scene = scene;
+        const sig = JSON.stringify([
+          current.current.title,
+          JSON.stringify(scene),
+        ]);
+        if (!initialized.current) {
+          initialized.current = true;
+          if (!restored)
+            savedSignature.current = JSON.stringify([
+              originalTitle,
+              JSON.stringify(scene),
+            ]);
+        }
+        const changed =
+          !readOnly && (forceSave.current || sig !== savedSignature.current);
+        hasUnsaved.current = changed;
+        setDirty(changed);
+        setGeneration((n) => n + 1);
+        setStatus((old) => (old === "invalid" ? "idle" : old));
+      } catch {
+        setStatus("invalid");
+        hasUnsaved.current = true;
+        setDirty(true);
+      }
+    },
+    [originalTitle, restored, readOnly],
+  );
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
+  useEffect(() => {
+    const before = (e: BeforeUnloadEvent) => {
+      if (hasUnsaved.current || running.current) {
+        e.preventDefault();
+        e.returnValue = "";
+      }
+    };
+    window.addEventListener("beforeunload", before);
+    return () => window.removeEventListener("beforeunload", before);
+  }, []);
+  const saveRef = useRef<() => void>(() => {});
+  async function save() {
+    if (
+      readOnly ||
+      running.current ||
+      !current.current.title.trim() ||
+      current.current.title.trim().length > 120 ||
+      status === "conflict" ||
+      status === "invalid"
+    )
+      return;
+    running.current = true;
+    setStatus("saving");
+    try {
+      if (!pending.current)
+        pending.current = await prepareSave(
+          current.current.scene,
+          current.current.title,
+          base.current,
+        );
+      const attempt = pending.current;
+      const version = await persist(attempt);
+      base.current = version;
+      savedSignature.current = attempt.signature;
+      pending.current = null;
+      forceSave.current = false;
+      if (mounted.current) {
+        onSaved(version);
+        setStatus("idle");
+        const changed = signature() !== savedSignature.current;
+        hasUnsaved.current = changed;
+        setDirty(changed);
+        setGeneration((n) => n + 1);
+      }
+    } catch (error) {
+      if (mounted.current)
+        setStatus(
+          (error as { code?: string })?.code === "40001"
+            ? "conflict"
+            : "failed",
+        );
+    } finally {
+      running.current = false;
+    }
+  }
+  saveRef.current = () => {
+    void save();
+  };
+  // biome-ignore lint/correctness/useExhaustiveDependencies: each drawing change resets the autosave delay
+  useEffect(() => {
+    if (!dirty || readOnly || status !== "idle" || !title.trim()) return;
+    const timer = setTimeout(() => saveRef.current(), 2500);
+    return () => clearTimeout(timer);
+  }, [dirty, generation, readOnly, status, title]);
+  function reloadCurrent() {
+    if (!hasUnsaved.current || window.confirm(c.leave)) reload();
+  }
+  async function importFile(file: File) {
+    try {
+      if (file.size > MAX_SCENE_BYTES) throw new Error("large");
+      const scene = normalizeScene(JSON.parse(await file.text()));
+      if (hasUnsaved.current && !window.confirm(c.leave)) return;
+      current.current.scene = scene;
+      initialized.current = true;
+      setCanvasScene(scene);
+      setCanvasKey((n) => n + 1);
+      setDirty(true);
+      hasUnsaved.current = true;
+      setGeneration((n) => n + 1);
+    } catch {
+      setStatus("invalid");
+    }
+  }
+  return (
+    <>
+      <header className="sketch-toolbar">
+        <a className="back-link" href={back}>
+          {c.back}
+        </a>
+        <label className="field" htmlFor="sketch-title">
+          {c.name}
+          <Input
+            id="sketch-title"
+            value={title}
+            maxLength={120}
+            required
+            readOnly={readOnly}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              current.current.title = e.target.value;
+              hasUnsaved.current = signature() !== savedSignature.current;
+              setDirty(hasUnsaved.current);
+              setGeneration((n) => n + 1);
+            }}
+          />
+        </label>
+        <div className="task-actions">
+          <span role="status">
+            {readOnly
+              ? c.readOnly
+              : status === "saving"
+                ? c.saving
+                : dirty
+                  ? c.dirty
+                  : c.saved}
+          </span>
+          {!readOnly && (
+            <Button
+              disabled={
+                status === "saving" ||
+                status === "conflict" ||
+                status === "invalid" ||
+                !title.trim() ||
+                (!dirty && !pending.current)
+              }
+              onClick={() => void save()}
+            >
+              {status === "failed" ? c.retry : c.save}
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            onClick={() => downloadScene(current.current.scene, title)}
+          >
+            {c.download}
+          </Button>
+        </div>
+      </header>
+      <p className="helper-text">{readOnly ? c.hint : c.autosave}</p>
+      {restored && <p>{c.restoring}</p>}
+      {["failed", "conflict", "invalid"].includes(status) && (
+        <div className="sketch-notice" role="alert">
+          <p>{c[status as "failed" | "conflict" | "invalid"]}</p>
+          <Button variant="outline" onClick={reloadCurrent}>
+            {c.reload}
+          </Button>
+        </div>
+      )}
+      {!readOnly && (
+        <label className="sketch-import">
+          {c.import}
+          <input
+            type="file"
+            accept=".excalidraw,application/json"
+            disabled={status === "saving" || !!pending.current}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) void importFile(file);
+              e.target.value = "";
+            }}
+          />
+        </label>
+      )}
+      <SketchCanvas
+        key={canvasKey}
+        scene={canvasScene}
+        readOnly={readOnly}
+        locale={locale}
+        onChange={change}
+      />
+    </>
+  );
+}

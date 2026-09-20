@@ -148,3 +148,15 @@ redirect configuration; keep the production origin and path restricted. If an em
 callback drops the return parameter, reopen the original invitation after confirmation.
 A localhost invitation works only on the same device; use a deployed origin for real
 team testing. Existing SMTP/signup/recovery delivery limitations remain unchanged.
+
+## Sketch storage
+
+Migration `20260920141258_project_sketches.sql` is applied. It adds the private
+`project-sketches` bucket, `project_sketches`, `sketch_saves`, and constrained
+publication functions. Owners write; members read committed content. There are no
+object overwrite/delete policies. Generated types are refreshed.
+
+Run `supabase/tests/sketch_isolation.sql` only as a rollback test; its writes and
+delete-denial assertions are scoped to fresh fixture users/company. Hosted Storage
+blocks direct metadata deletion independently of RLS. Use Storage APIs for actual
+object operations. The SQL test proves metadata/policy behavior, not byte transport.

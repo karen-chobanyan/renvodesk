@@ -97,3 +97,10 @@ and explain that links are copied rather than emailed. Member views retain the s
 shell and project context while hiding owner actions and financial sections. Assignee
 selection uses a labeled select with paging; the schedule has an explicit My tasks
 filter. An unavailable invitation explains email verification, expiry and revocation.
+
+## Sketch workspace
+
+Saved project pages expose a Croquis/Sketches section with titled rows and actual
+private PNG previews. The editor opens as a focused full-width canvas, with a compact
+title/save/export toolbar and revision history below. Keep Excalidraw lazy-loaded,
+self-host its fonts, and preserve French/English across document navigation.

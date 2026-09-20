@@ -1,6 +1,5 @@
 import { MapPin } from "lucide-react";
 import { Link } from "react-router";
-import { PlanMark } from "@/components/shared";
 import { ProjectCosts } from "@/features/costs/project-costs";
 import { useLocale } from "@/lib/i18n";
 import type { SavedProject } from "./project-service";
@@ -14,18 +13,9 @@ export function SavedProjectOverview({
   const { t, locale } = useLocale();
   const details = (
     <aside className="detail-aside">
-      {owner && (
-        <>
-          <div className="detail-plan sage">
-            <PlanMark large />
-          </div>
-          <p className="helper-text">
-            {locale === "fr"
-              ? "Illustration de démonstration · aucun plan du chantier"
-              : "Demo illustration · not a site drawing"}
-          </p>
-        </>
-      )}
+      <a className="account-link" href="#project-sketches">
+        {locale === "fr" ? "Croquis du chantier ↗" : "Site sketches ↗"}
+      </a>
       <h2>{t("projectDetails")}</h2>
       <dl>
         <dt>{t("client")}</dt>

@@ -301,9 +301,20 @@ const LocaleContext = createContext<{
   t: (key: Key) => string;
 }>({ locale: "fr", setLocale: () => {}, t: (key) => fr[key] });
 export function LocaleProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocale] = useState<Locale>("fr");
+  const [locale, setLocale] = useState<Locale>(() => {
+    try {
+      return localStorage.getItem("renvodesk-locale") === "en" ? "en" : "fr";
+    } catch {
+      return "fr";
+    }
+  });
   useEffect(() => {
     document.documentElement.lang = locale;
+    try {
+      localStorage.setItem("renvodesk-locale", locale);
+    } catch {
+      /* Storage may be unavailable. */
+    }
   }, [locale]);
   return (
     <LocaleContext.Provider
