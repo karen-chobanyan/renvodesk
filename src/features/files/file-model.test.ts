@@ -21,6 +21,19 @@ describe("file validation", () => {
       validateFile({ name: "plan.pdf", size: 0, type: "application/pdf" }),
     ).toBe("invalid");
   });
+  it("accepts recorded audio containers but rejects video disguised as audio", () => {
+    for (const [name, type] of [
+      ["note.webm", "audio/webm"],
+      ["note.m4a", "audio/mp4"],
+      ["note.ogg", "audio/ogg"],
+    ]) {
+      expect(validateFile({ name, size: 1024, type })).toBeNull();
+      expect(canPreview(type)).toBe(true);
+    }
+    expect(
+      validateFile({ name: "note.webm", size: 1024, type: "video/webm" }),
+    ).toBe("invalid");
+  });
   it("rejects active content, MIME mismatches and HEIC explicitly", () => {
     expect(validateFile({ name: "photo.heic", size: 20, type: "" })).toBe(
       "heic",

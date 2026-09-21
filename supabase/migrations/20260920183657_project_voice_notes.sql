@@ -1,0 +1,4 @@
+-- Extend supported attachments without changing grants, RLS, or size limits.
+alter table public.project_files drop constraint project_files_mime_type_check;
+alter table public.project_files add constraint project_files_mime_type_check check (mime_type in ('application/pdf','image/jpeg','image/png','image/webp','text/plain','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','audio/webm','audio/mp4','audio/ogg'));
+update storage.buckets set allowed_mime_types = array['application/pdf','image/jpeg','image/png','image/webp','text/plain','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','audio/webm','audio/mp4','audio/ogg'] where id = 'project-files';

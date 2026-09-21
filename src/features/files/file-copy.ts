@@ -1,7 +1,7 @@
 export const fileCopy = {
   fr: {
     title: "Fichiers du projet",
-    hint: "PDF, JPG, PNG, WebP, TXT, DOCX, XLSX · 10 Mio maximum par fichier.",
+    hint: "PDF, JPG, PNG, WebP, TXT, DOCX, XLSX, WEBM, M4A, OGG · 10 Mio maximum par fichier.",
     choose: "Choisir un fichier",
     drag: "Glissez un fichier ici, ou choisissez-le ci-dessous.",
     drop: "Déposez le fichier ici.",
@@ -37,7 +37,7 @@ export const fileCopy = {
   },
   en: {
     title: "Project files",
-    hint: "PDF, JPG, PNG, WebP, TXT, DOCX, XLSX · up to 10 MiB per file.",
+    hint: "PDF, JPG, PNG, WebP, TXT, DOCX, XLSX, WEBM, M4A, OGG · up to 10 MiB per file.",
     choose: "Choose a file",
     drag: "Drag a file here, or choose one below.",
     drop: "Drop your file here.",

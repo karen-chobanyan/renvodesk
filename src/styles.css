@@ -3315,3 +3315,20 @@ details[open] > .compact-identity > svg {
     transform: scale(0.98);
   }
 }
+
+.capture-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 24px;
+}
+.capture-preview {
+  width: 100%;
+  max-height: 55vh;
+  object-fit: contain;
+  border-radius: 12px;
+  background: #17231e;
+}
+.dialog-content audio {
+  max-width: 100%;
+}

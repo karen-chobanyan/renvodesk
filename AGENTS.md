@@ -460,3 +460,5 @@ grid. Context must remain available when summary calls fail. Preview task/file
 queries filter by company AND project with server limits; don't turn loaded preview
 counts into aggregate claims. Project editing uses the shared dialog, revision
 checks, and an unsaved-close warning. See the project-view-layout plan.
+
+- Project files support camera JPEG capture and MediaRecorder voice notes (WebM, MP4/M4A, Ogg). Review before upload; existing owner-only writes and member reads apply. Capture must release tracks on close/unmount; recording is capped at five minutes / 10 MiB. Audio MIME allowlists are in the project_voice_notes migration; do not broaden them to arbitrary video.

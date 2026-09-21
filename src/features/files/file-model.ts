@@ -1,5 +1,8 @@
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 export const fileTypes: Record<string, string> = {
+  webm: "audio/webm",
+  m4a: "audio/mp4",
+  ogg: "audio/ogg",
   pdf: "application/pdf",
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
@@ -29,7 +32,13 @@ export function fileMime(name: string) {
   return fileTypes[name.split(".").at(-1)?.toLowerCase() ?? ""];
 }
 export function canPreview(mime: string) {
-  return ["image/jpeg", "image/png", "image/webp", "application/pdf"].includes(
-    mime,
-  );
+  return [
+    "audio/webm",
+    "audio/mp4",
+    "audio/ogg",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+  ].includes(mime);
 }

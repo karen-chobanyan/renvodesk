@@ -579,6 +579,79 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await expect(
     files.getByText("Aucun fichier pour ce projet.", { exact: true }),
   ).toBeVisible();
+  await page.evaluate(() => {
+    const streams: MediaStream[] = [];
+    Object.assign(window, { captureStreams: streams });
+    navigator.mediaDevices.getUserMedia = async (constraints) => {
+      if (constraints?.video) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 320;
+        canvas.height = 240;
+        canvas.getContext("2d")?.fillRect(0, 0, 320, 240);
+        const stream = canvas.captureStream(5);
+        streams.push(stream);
+        return stream;
+      }
+      const context = new AudioContext();
+      const tone = context.createOscillator();
+      const destination = context.createMediaStreamDestination();
+      tone.connect(destination);
+      tone.start();
+      streams.push(destination.stream);
+      return destination.stream;
+    };
+  });
+  await files
+    .getByRole("button", { name: "Prendre une photo", exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      page
+        .locator("video")
+        .evaluate((video: HTMLVideoElement) => video.videoWidth),
+    )
+    .toBeGreaterThan(0);
+  await page
+    .getByRole("button", { name: "Prendre la photo", exact: true })
+    .click();
+  await expect(page.getByRole("dialog").locator("img")).toBeVisible();
+  await page.getByRole("button", { name: "Utiliser ce fichier" }).click();
+  await expect(files.locator(".document-selected")).toContainText("photo-");
+  await files.getByRole("button", { name: "Note vocale", exact: true }).click();
+  await page.getByRole("button", { name: "Démarrer l’enregistrement" }).click();
+  await expect(page.getByRole("dialog").getByRole("status")).toContainText(
+    "Enregistrement en cours",
+  );
+  await expect(page.getByRole("dialog").getByRole("status")).toContainText(
+    "0:01",
+  );
+  await page.getByRole("button", { name: "Arrêter", exact: true }).click();
+  await expect(page.getByRole("dialog").locator("audio")).toBeVisible();
+  await page.getByRole("button", { name: "Utiliser ce fichier" }).click();
+  await expect(files.locator(".document-selected")).toContainText("voice-");
+  expect(
+    await page.evaluate(() =>
+      (
+        window as unknown as { captureStreams: MediaStream[] }
+      ).captureStreams.every((stream) =>
+        stream.getTracks().every((track) => track.readyState === "ended"),
+      ),
+    ),
+  ).toBe(true);
+  await page.evaluate(() => {
+    navigator.mediaDevices.getUserMedia = async () => {
+      throw new DOMException("Denied", "NotAllowedError");
+    };
+  });
+  await files.getByRole("button", { name: "Note vocale", exact: true }).click();
+  await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
+    "accès refusé",
+  );
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Annuler", exact: true })
+    .last()
+    .click();
   await files.locator('input[type="file"]').setInputFiles({
     name: "plan.heic",
     mimeType: "image/heic",

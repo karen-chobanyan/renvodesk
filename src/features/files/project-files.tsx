@@ -15,6 +15,8 @@ import {
   uploadFile,
 } from "./file-service";
 
+import { MediaCapture } from "./media-capture";
+
 const PdfPreview = lazy(() => import("./pdf-preview"));
 export function ProjectFiles({
   organizationId,
@@ -45,6 +47,7 @@ export function ProjectFiles({
       null,
     ),
     [expired, setExpired] = useState(false);
+  const [capture, setCapture] = useState<"photo" | "voice" | null>(null);
   const [dragging, setDragging] = useState(false);
   const dragDepth = useRef(0);
   const input = useRef<HTMLInputElement>(null),
@@ -182,6 +185,22 @@ export function ProjectFiles({
           }}
         >
           <div className="document-upload">
+            <div className="capture-actions">
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() => setCapture("photo")}
+              >
+                {locale === "fr" ? "Prendre une photo" : "Take a photo"}
+              </Button>
+              <Button
+                variant="outline"
+                disabled={busy}
+                onClick={() => setCapture("voice")}
+              >
+                {locale === "fr" ? "Note vocale" : "Voice note"}
+              </Button>
+            </div>
             <p className="document-drop-hint">{dragging ? c.drop : c.drag}</p>
             <label className="field" htmlFor="project-file-input">
               {c.choose}
@@ -189,7 +208,7 @@ export function ProjectFiles({
                 ref={input}
                 id="project-file-input"
                 type="file"
-                accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.docx,.xlsx"
+                accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.docx,.xlsx,.webm,.m4a,.ogg"
                 disabled={busy}
                 onChange={(e) => selectFile(e.target.files?.[0] ?? null)}
               />
@@ -205,6 +224,16 @@ export function ProjectFiles({
             </Button>
           </div>
         </fieldset>
+      )}
+      {capture && (
+        <MediaCapture
+          kind={capture}
+          close={() => setCapture(null)}
+          select={(file) => {
+            if (input.current) input.current.value = "";
+            selectFile(file);
+          }}
+        />
       )}
       {selected && busy && (
         <div>
@@ -384,6 +413,14 @@ export function ProjectFiles({
                 title={preview.file.original_name}
               />
             </Suspense>
+          ) : preview?.file.mime_type.startsWith("audio/") ? (
+            // biome-ignore lint/a11y/useMediaCaption: uploaded voice notes do not include transcripts
+            <audio
+              controls
+              src={preview.url}
+              aria-label={preview.file.original_name}
+              onError={() => setExpired(true)}
+            />
           ) : preview ? (
             <img
               className="file-preview"
