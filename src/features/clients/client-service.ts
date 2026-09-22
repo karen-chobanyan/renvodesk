@@ -10,11 +10,17 @@ export type PropertyInput = Pick<
   Property,
   "label" | "address" | "city" | "country"
 >;
-export async function listClients(org: string, search = "", offset = 0) {
+export async function listClients(
+  org: string,
+  search = "",
+  offset = 0,
+  kind?: "individual" | "company",
+) {
   let query = requireSupabase()
     .from("clients")
     .select("*")
     .eq("organization_id", org);
+  if (kind) query = query.eq("kind", kind);
   if (search.trim()) query = query.ilike("name", `%${search.trim()}%`);
   const { data, error } = await query
     .order("name")

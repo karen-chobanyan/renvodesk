@@ -16,11 +16,13 @@ export function DirectoryEditor({
   property,
   done,
   cancel,
+  clientSaved,
 }: {
   org: string;
   clientId?: string;
   client?: Client;
   property?: Property;
+  clientSaved?: (client: Client) => void;
   done: () => void;
   cancel: () => void;
 }) {
@@ -33,6 +35,7 @@ export function DirectoryEditor({
     [error, setError] = useState<"failed" | "conflict" | null>(null);
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    e.stopPropagation();
     if (busy) return;
     const data = new FormData(e.currentTarget);
     const text = (key: string) => String(data.get(key) ?? "").trim();
@@ -65,7 +68,10 @@ export function DirectoryEditor({
             client,
           );
       if (!result) setError("conflict");
-      else done();
+      else {
+        if (!clientId && "kind" in result) clientSaved?.(result as Client);
+        done();
+      }
     } catch {
       setError("failed");
     } finally {

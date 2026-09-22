@@ -39,6 +39,14 @@ async function mockApi(page: Page) {
     async (route) => {
       const url = new URL(route.request().url());
       const method = route.request().method();
+      if (url.pathname.endsWith("/clients")) {
+        return route.fulfill({
+          json:
+            method === "POST"
+              ? { ...route.request().postDataJSON(), revision: 1 }
+              : [],
+        });
+      }
       if (url.pathname.endsWith("/token")) {
         const body = route.request().postDataJSON();
         if (body.password === "incorrect") {
@@ -417,7 +425,7 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await page
     .getByLabel("Nom du projet", { exact: true })
     .fill("Rénovation cuisine");
-  await page.getByLabel("Client", { exact: true }).fill("Client Test");
+  await page.getByLabel("Nom du client", { exact: true }).fill("Client Test");
   await page.getByLabel("Ville", { exact: true }).fill("Bruxelles");
   await page
     .getByRole("button", { name: "Créer le projet", exact: true })
@@ -964,7 +972,7 @@ test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
   await page.getByRole("button", { name: "Créer mon entreprise" }).click();
   await page.getByRole("button", { name: "Nouveau projet" }).click();
   await page.getByLabel("Nom du projet", { exact: true }).fill("Task site");
-  await page.getByLabel("Client", { exact: true }).fill("Test Client");
+  await page.getByLabel("Nom du client", { exact: true }).fill("Test Client");
   await page.getByLabel("Ville", { exact: true }).fill("Bruxelles");
   await page
     .getByRole("button", { name: "Créer le projet", exact: true })
@@ -1362,7 +1370,7 @@ test("project budget, cost recovery, conflict and void history", async ({
   await page.getByRole("button", { name: "Créer mon entreprise" }).click();
   await page.getByRole("button", { name: "Nouveau projet" }).click();
   await page.getByLabel("Nom du projet", { exact: true }).fill("Cost site");
-  await page.getByLabel("Client", { exact: true }).fill("Client");
+  await page.getByLabel("Nom du client", { exact: true }).fill("Client");
   await page.getByLabel("Ville", { exact: true }).fill("Bruxelles");
   await page
     .getByRole("button", { name: "Créer le projet", exact: true })
@@ -1522,18 +1530,40 @@ test("clients and properties prefill a linked project", async ({
     path: `/private/tmp/renvo-directory-${test.info().project.name}.png`,
     fullPage: true,
   });
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Fermer", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Client exemple", exact: true }),
+  ).toBeFocused();
+  await expect(page.getByRole("table")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `/private/tmp/renvo-client-table-${test.info().project.name}.png`,
+    fullPage: true,
+  });
   await page.getByRole("link", { name: "Retour aux projets" }).click();
   await page.getByRole("button", { name: "Nouveau projet" }).click();
   await page
     .getByLabel("Nom du projet", { exact: true })
     .fill("Rénovation exemple");
-  await page
-    .getByLabel("Client enregistré (facultatif)")
-    .selectOption(String(clients[0].id));
+  await page.getByLabel("Client existant").selectOption(String(clients[0].id));
+  await expect(page.getByLabel("E-mail du client")).toHaveValue(
+    "client@example.test",
+  );
+  await expect(
+    page.getByRole("button", { name: "Enregistrer le client" }),
+  ).toHaveCount(0);
+  await expect(page.getByLabel("Rechercher un client")).toHaveCount(0);
   await page
     .getByLabel("Bien enregistré (facultatif)")
     .selectOption(String(properties[0].id));
-  await expect(page.getByLabel("Client", { exact: true })).toHaveValue(
+  await expect(page.getByLabel("Nom du client", { exact: true })).toHaveValue(
     "Client exemple",
   );
   await expect(page.getByLabel("Ville", { exact: true })).toHaveValue("Namur");
@@ -1964,7 +1994,9 @@ test("project overview navigation, retained drafts, isolated failures and legacy
   await page
     .getByLabel("Nom du projet", { exact: true })
     .fill("Rénovation de la maison du Parc");
-  await page.getByLabel("Client", { exact: true }).fill("Camille Laurent");
+  await page
+    .getByLabel("Nom du client", { exact: true })
+    .fill("Camille Laurent");
   await page.getByLabel("Ville", { exact: true }).fill("Bruxelles");
   await page
     .getByRole("button", { name: "Créer le projet", exact: true })

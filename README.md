@@ -295,3 +295,5 @@ continue to open the appropriate panel.
 ### Camera and voice attachments
 
 Project Documents → Take a photo / Voice note opens device capture. Review, choose Use this file, then Upload. Voice notes are limited to five minutes and 10 MiB, with private audio playback. Camera images are converted to JPEG (up to 2000 px on the longest edge). Device access requires browser permission and HTTPS, except localhost. Closing capture releases the device; switching away from the browser cancels capture. Existing owner upload permissions apply. No transcription is generated.
+
+Project creation shows client details at all times. Select an existing client to autofill them, or enter a new client's details. Create project saves the new client in the directory and links the project. Client creation uses a stable retry ID; if project saving fails, the client may already exist and is reused on retry. Property selection remains optional.

@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router";
 import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/shared";
@@ -20,6 +22,8 @@ export function ClientsPage() {
 function ClientDirectory({ org }: { org: string }) {
   const { locale } = useLocale(),
     c = clientCopy[locale];
+  const returnFocus = useRef<HTMLButtonElement | null>(null);
+  const [kind, setKind] = useState<"" | "individual" | "company">("");
   const [query, setQuery] = useState(""),
     [search, setSearch] = useState(""),
     [reload, setReload] = useState(0),
@@ -34,7 +38,7 @@ function ClientDirectory({ org }: { org: string }) {
     let active = true;
     setLoading(true);
     setFailed(false);
-    void listClients(org, search)
+    void listClients(org, search, 0, kind || undefined)
       .then((data) => {
         if (active) {
           setRows(data);
@@ -50,11 +54,16 @@ function ClientDirectory({ org }: { org: string }) {
     return () => {
       active = false;
     };
-  }, [org, search, reload]);
+  }, [org, search, reload, kind]);
   async function loadMore() {
     setLoading(true);
     try {
-      const data = await listClients(org, search, rows.length);
+      const data = await listClients(
+        org,
+        search,
+        rows.length,
+        kind || undefined,
+      );
       setRows((old) => [
         ...old,
         ...data.filter((r) => !old.some((o) => o.id === r.id)),
@@ -68,95 +77,176 @@ function ClientDirectory({ org }: { org: string }) {
   }
   return (
     <AppShell live>
-      <Link className="back-link" to={`/workspace?company=${org}`}>
-        {c.back}
-      </Link>
-      <PageHeader
-        eyebrow="RenvoDesk"
-        title={c.title}
-        description={c.hint}
-        action={
-          <Button
-            onClick={() => {
-              setEdit("new");
+      <div className="connected-workspace clients-register">
+        <Link className="back-link" to={`/workspace?company=${org}`}>
+          {c.back}
+        </Link>
+        <PageHeader
+          eyebrow={locale === "fr" ? "Carnet d’adresses" : "Address book"}
+          title={c.title}
+          description={c.hint}
+          action={
+            <Button
+              onClick={() => {
+                setEdit("new");
+                setSelected(null);
+              }}
+            >
+              {c.add}
+            </Button>
+          }
+        />
+        {edit && (
+          <DirectoryEditor
+            key={edit === "new" ? "new" : `${edit.id}:${edit.revision}`}
+            org={org}
+            client={edit === "new" ? undefined : edit}
+            done={() => {
+              setEdit(null);
               setSelected(null);
+              setReload((n) => n + 1);
             }}
-          >
-            {c.add}
-          </Button>
-        }
-      />
-      {edit && (
-        <DirectoryEditor
-          key={edit === "new" ? "new" : `${edit.id}:${edit.revision}`}
-          org={org}
-          client={edit === "new" ? undefined : edit}
-          done={() => {
-            setEdit(null);
+            cancel={() => setEdit(null)}
+          />
+        )}
+        <fieldset
+          className="section-tabs"
+          aria-label={locale === "fr" ? "Type de client" : "Client type"}
+        >
+          {(["", "individual", "company"] as const).map((value) => (
+            <button
+              key={value}
+              type="button"
+              className={kind === value ? "selected" : ""}
+              aria-pressed={kind === value}
+              onClick={() => {
+                setKind(value);
+                setSelected(null);
+              }}
+            >
+              {value === ""
+                ? locale === "fr"
+                  ? "Tous les clients"
+                  : "All clients"
+                : value === "company"
+                  ? c.company
+                  : c.individual}
+            </button>
+          ))}
+        </fieldset>
+        <form
+          className="table-toolbar"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (loading) return;
+            setSearch(query);
             setSelected(null);
             setReload((n) => n + 1);
           }}
-          cancel={() => setEdit(null)}
-        />
-      )}
-      <form
-        className="estimate-search"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (loading) return;
-          setSearch(query);
-          setSelected(null);
-          setReload((n) => n + 1);
-        }}
-      >
-        <Input
-          aria-label={c.search}
-          placeholder={c.search}
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          maxLength={120}
-        />
-        <Button variant="outline" disabled={loading}>
-          {c.submit}
-        </Button>
-      </form>
-      {loading && <p role="status">{c.loading}</p>}
-      {failed ? (
-        <div role="alert">
-          <p>{c.error}</p>
-          <Button onClick={() => setReload((n) => n + 1)}>{c.retry}</Button>
-        </div>
-      ) : (
-        <div className="client-directory-grid">
-          <section aria-label={c.title}>
-            {rows.map((row) => (
-              <article className="task-row" key={row.id}>
-                <div className="task-content">
-                  <button
-                    type="button"
-                    className="client-name-button"
-                    aria-pressed={selected?.id === row.id}
-                    onClick={() => setSelected(row)}
-                  >
-                    {row.name}
-                  </button>
-                  <small>
-                    {row.kind === "company" ? c.company : c.individual}
-                  </small>
-                  {row.email && <span>{row.email}</span>}
-                  {row.phone && <small>{row.phone}</small>}
-                </div>
-                <Button
-                  variant="ghost"
-                  onClick={() => {
-                    setEdit(row);
-                    setSelected(null);
-                  }}
-                >
-                  {c.edit}
-                </Button>
-              </article>
-            ))}
+        >
+          <div className="search-field">
+            <Search size={17} />
+            <Input
+              aria-label={c.search}
+              placeholder={c.search}
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              maxLength={120}
+            />
+          </div>
+          <Button variant="outline" disabled={loading}>
+            {c.submit}
+          </Button>
+        </form>
+        {loading && <p role="status">{c.loading}</p>}
+        {failed ? (
+          <div role="alert">
+            <p>{c.error}</p>
+            <Button onClick={() => setReload((n) => n + 1)}>{c.retry}</Button>
+          </div>
+        ) : (
+          <div className="table-scroll">
+            <table className="project-table">
+              <caption className="sr-only">{c.title}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{locale === "fr" ? "Client" : "Client"}</th>
+                  <th scope="col">Type</th>
+                  <th scope="col" className="client-secondary">
+                    Email
+                  </th>
+                  <th scope="col" className="client-secondary">
+                    {locale === "fr" ? "Téléphone" : "Phone"}
+                  </th>
+                  <th scope="col">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row) => (
+                  <tr key={row.id}>
+                    <td>
+                      <button
+                        className="project-link client-open-button"
+                        type="button"
+                        aria-haspopup="dialog"
+                        onClick={(event) => {
+                          returnFocus.current = event.currentTarget;
+                          setSelected(row);
+                        }}
+                      >
+                        <span
+                          className="project-thumbnail sage"
+                          aria-hidden="true"
+                        >
+                          {row.name
+                            .trim()
+                            .split(/\s+/)
+                            .slice(0, 2)
+                            .map((part) => part[0])
+                            .join("")
+                            .toUpperCase()}
+                        </span>
+                        <span>
+                          <strong>{row.name}</strong>
+                        </span>
+                      </button>
+                    </td>
+                    <td>
+                      <span className="status">
+                        {row.kind === "company" ? c.company : c.individual}
+                      </span>
+                    </td>
+                    <td className="client-secondary">
+                      {row.email ? (
+                        <a href={`mailto:${row.email}`}>{row.email}</a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td className="client-secondary">
+                      {row.phone ? (
+                        <a href={`tel:${row.phone}`}>{row.phone}</a>
+                      ) : (
+                        "—"
+                      )}
+                    </td>
+                    <td>
+                      <Button
+                        variant="ghost"
+                        onClick={() => {
+                          setEdit(row);
+                          setSelected(null);
+                        }}
+                      >
+                        {c.edit}
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
             {!loading && !rows.length && (
               <p className="workspace-loading">{c.empty}</p>
             )}
@@ -165,12 +255,66 @@ function ClientDirectory({ org }: { org: string }) {
                 {c.more}
               </Button>
             )}
-          </section>
-          {selected && (
-            <PropertyDirectory key={selected.id} org={org} client={selected} />
-          )}
-        </div>
-      )}
+          </div>
+        )}
+        <Dialog.Root
+          open={!!selected}
+          onOpenChange={(open) => {
+            if (!open) setSelected(null);
+          }}
+        >
+          <Dialog.Portal>
+            <Dialog.Overlay className="dialog-overlay" />
+            <Dialog.Content
+              className="client-drawer"
+              onCloseAutoFocus={(event) => {
+                event.preventDefault();
+                returnFocus.current?.focus();
+              }}
+            >
+              <Dialog.Title className="dialog-title">
+                {selected?.name}
+              </Dialog.Title>
+              <Dialog.Description className="helper-text">
+                {c.hint}
+              </Dialog.Description>
+              <Dialog.Close className="button button-outline client-drawer-close">
+                {locale === "fr" ? "Fermer" : "Close"}
+              </Dialog.Close>
+              {selected && (
+                <>
+                  <div className="client-drawer-contact">
+                    <span className="status">
+                      {selected.kind === "company" ? c.company : c.individual}
+                    </span>
+                    {selected.email && (
+                      <a
+                        className="client-contact"
+                        href={`mailto:${selected.email}`}
+                      >
+                        {selected.email}
+                      </a>
+                    )}
+                    {selected.phone && (
+                      <a
+                        className="client-contact"
+                        href={`tel:${selected.phone}`}
+                      >
+                        {selected.phone}
+                      </a>
+                    )}
+                  </div>
+                  <PropertyDirectory
+                    key={selected.id}
+                    org={org}
+                    client={selected}
+                  />
+                </>
+              )}
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      </div>
     </AppShell>
   );
 }

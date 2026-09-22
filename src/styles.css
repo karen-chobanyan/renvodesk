@@ -3332,3 +3332,131 @@ details[open] > .compact-identity > svg {
 .dialog-content audio {
   max-width: 100%;
 }
+
+/* Clients reuse the Projects register components and table styles. */
+.clients-register .table-toolbar {
+  gap: 16px;
+}
+.clients-register .search-field {
+  flex: 1;
+}
+.client-open-button {
+  background: transparent;
+  text-align: left;
+  padding: 0;
+}
+.client-drawer {
+  position: fixed;
+  inset: 0 0 0 auto;
+  width: min(580px, 100%);
+  padding: 40px 28px;
+  overflow-y: auto;
+  background: var(--canvas);
+  z-index: 51;
+  box-shadow: -20px 0 70px #24372512;
+}
+.client-drawer .dialog-title {
+  padding-right: 90px;
+  overflow-wrap: anywhere;
+}
+.client-drawer-close {
+  position: absolute;
+  top: 28px;
+  right: 24px;
+}
+.client-drawer-contact {
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding-block: 28px;
+}
+.client-contact {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.client-drawer .client-properties {
+  border: 0;
+  padding: 0;
+}
+.client-drawer .section-heading {
+  flex-wrap: wrap;
+  gap: 16px;
+}
+@media (max-width: 760px) {
+  .clients-register .client-secondary {
+    display: none;
+  }
+  .client-drawer {
+    padding: 32px 20px;
+  }
+}
+
+.clients-register .project-table td {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.clients-register .project-thumbnail {
+  width: 34px;
+  height: 34px;
+}
+.project-client-heading {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-block: 8px 16px;
+}
+.project-client-heading .helper-text {
+  flex-basis: 100%;
+}
+.project-client-heading .button {
+  margin-left: auto;
+}
+.project-client-details {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 20px;
+  background: var(--soft);
+  border-radius: var(--radius);
+  min-width: 0;
+}
+.project-client-details legend {
+  padding-block: 12px;
+  font-weight: 600;
+}
+.project-client-details .helper-text,
+.project-client-details [role="alert"] {
+  grid-column: 1 / -1;
+}
+@media (max-width: 760px) {
+  .project-client-details {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 16px;
+  }
+}
+
+.dialog-content.project-create-dialog {
+  width: min(780px, calc(100vw - 32px));
+  max-width: 780px;
+}
+.project-create-dialog .company-form {
+  max-width: none;
+  margin-top: 24px;
+}
+.project-create-dialog .project-directory-picker {
+  grid-column: 1 / -1;
+}
+.project-create-dialog .project-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.project-create-dialog .dialog-actions {
+  grid-column: 1 / -1;
+}
+@media (max-width: 760px) {
+  .project-create-dialog .project-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

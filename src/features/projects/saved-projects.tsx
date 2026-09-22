@@ -1,9 +1,14 @@
 import { ArrowUpRight, Plus, Search } from "lucide-react";
-import { type FormEvent, useEffect, useState } from "react";
+import { type FormEvent, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { PlanMark, StatusBadge } from "@/components/shared";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  type ClientInput,
+  saveClient,
+} from "@/features/clients/client-service";
 import { NewProjectFields } from "@/features/clients/project-client-picker";
 import { useCompanyAccess } from "@/features/team/company-access";
 import { useLocale } from "@/lib/i18n";
@@ -19,6 +24,9 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
   const { locale, t } = useLocale(),
     c = projectCopy[locale];
   const { owner } = useCompanyAccess(organizationId);
+  const newProjectButton = useRef<HTMLButtonElement>(null);
+  const clientRequest = useRef<{ id: string; input: ClientInput } | null>(null);
+  const [clientLocked, setClientLocked] = useState(false);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [projects, setProjects] = useState<SavedProject[]>([]);
@@ -69,6 +77,14 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
       setLoading(false);
     }
   }
+  function closeCreation() {
+    if (busy) return;
+    setCreating(false);
+    clientRequest.current = null;
+    setClientLocked(false);
+    setError(null);
+    requestAnimationFrame(() => newProjectButton.current?.focus());
+  }
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy) return;
@@ -76,7 +92,7 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
     const input = {
       client_id: String(values.get("client_id") ?? "") || null,
       property_id: String(values.get("property_id") ?? "") || null,
-      name: String(values.get("name") ?? "").trim(),
+      name: String(values.get("project_name") ?? "").trim(),
       client_name: String(values.get("client_name") ?? "").trim(),
       city: String(values.get("city") ?? "").trim(),
       address: String(values.get("address") ?? "").trim(),
@@ -89,9 +105,35 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
     setError(null);
     setSaved(false);
     try {
+      if (!input.client_id) {
+        clientRequest.current ??= {
+          id: crypto.randomUUID(),
+          input: {
+            name: input.client_name,
+            kind: String(values.get("new_client_kind") ?? "individual"),
+            email: String(values.get("new_client_email") ?? "").trim(),
+            phone: String(values.get("new_client_phone") ?? "").trim(),
+            billing_address: String(
+              values.get("new_client_billing_address") ?? "",
+            ).trim(),
+          },
+        };
+        setClientLocked(true);
+        const client = await saveClient(
+          organizationId,
+          clientRequest.current.id,
+          clientRequest.current.input,
+        );
+        if (!client) throw new Error("Client save failed");
+        input.client_id = client.id;
+        input.client_name = client.name;
+      }
       await createProject(organizationId, id, input);
+      clientRequest.current = null;
+      setClientLocked(false);
       setId(crypto.randomUUID());
       setCreating(false);
+      requestAnimationFrame(() => newProjectButton.current?.focus());
       setSaved(true);
       setReload((n) => n + 1);
     } catch {
@@ -111,8 +153,9 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
     <section className="saved-projects" aria-labelledby="saved-projects-title">
       <div className="section-heading workspace-heading">
         <h2 id="saved-projects-title">{c.title}</h2>
-        {owner && !creating && (
+        {owner && (
           <Button
+            ref={newProjectButton}
             onClick={() => {
               setCreating(true);
               setSaved(false);
@@ -142,30 +185,47 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
           </div>
         ))}
       </section>
-      {owner && creating && (
-        <form className="company-form" onSubmit={submit}>
-          <fieldset disabled={busy} className="project-fields">
-            <NewProjectFields org={organizationId} />
-            <div className="dialog-actions">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setCreating(false);
-                  setError(null);
-                }}
-              >
-                {c.cancel}
-              </Button>
-              <Button type="submit">{busy ? c.loading : c.create}</Button>
-            </div>
-          </fieldset>
-          {error && (
-            <p role="alert" className="error-message">
-              {c[error]}
-            </p>
-          )}
-        </form>
+      {owner && (
+        <Dialog
+          open={creating}
+          onOpenChange={(open) => {
+            if (!open && !busy) closeCreation();
+          }}
+        >
+          <DialogContent
+            className="project-create-dialog"
+            title={t("newProject")}
+            description={
+              locale === "fr"
+                ? "Renseignez le client et les informations du chantier."
+                : "Enter the client and site details."
+            }
+            closeLabel={c.cancel}
+          >
+            <form className="company-form" onSubmit={submit}>
+              <fieldset disabled={busy} className="project-fields">
+                <NewProjectFields org={organizationId} locked={clientLocked} />
+                <div className="dialog-actions">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      closeCreation();
+                    }}
+                  >
+                    {c.cancel}
+                  </Button>
+                  <Button type="submit">{busy ? c.loading : c.create}</Button>
+                </div>
+              </fieldset>
+              {error && (
+                <p role="alert" className="error-message">
+                  {c[error]}
+                </p>
+              )}
+            </form>
+          </DialogContent>
+        </Dialog>
       )}
       {saved && <p role="status">{c.saved}</p>}
       {loading && <p role="status">{c.loading}</p>}

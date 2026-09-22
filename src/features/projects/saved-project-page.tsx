@@ -182,7 +182,7 @@ function ProjectDetail({
     if (!project || busy) return;
     const values = new FormData(event.currentTarget);
     const input = {
-      name: String(values.get("name") ?? "").trim(),
+      name: String(values.get("project_name") ?? "").trim(),
       client_name: String(values.get("client_name") ?? "").trim(),
       city: String(values.get("city") ?? "").trim(),
       address: String(values.get("address") ?? "").trim(),
