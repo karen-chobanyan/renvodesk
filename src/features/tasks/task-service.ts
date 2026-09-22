@@ -1,5 +1,6 @@
 import { requireSupabase } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
+import { track } from "@/lib/telemetry/runtime";
 import { addDays, type TaskInput, validTask } from "./task-model";
 export type Task = Database["public"]["Tables"]["project_tasks"]["Row"];
 export const TASK_PAGE_SIZE = 50;
@@ -80,6 +81,8 @@ export async function updateTask(task: Task, input: TaskInput) {
     .select("*")
     .maybeSingle();
   if (error) throw error;
+  if (data && task.status !== "done" && data.status === "done")
+    track("task_completed", `${data.id}:${data.revision}`);
   return data;
 }
 export async function deleteTask(task: Task) {

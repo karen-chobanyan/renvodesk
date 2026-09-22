@@ -1,4 +1,5 @@
 import { requireSupabase } from "@/lib/supabase/client";
+import { track } from "@/lib/telemetry/runtime";
 export type Organization = { id: string; name: string; country: string };
 export async function getOrganizations(
   userId: string,
@@ -22,6 +23,7 @@ export async function createOrganization(
     p_request_id: requestId,
   });
   if (error) throw error;
+  if (data) track("company_created", requestId);
   return data;
 }
 

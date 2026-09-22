@@ -1,5 +1,6 @@
 import { requireSupabase } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
+import { track } from "@/lib/telemetry/runtime";
 import type { SaveAttempt } from "./sketch-export";
 import { emptyScene, hashBlob, normalizeScene } from "./sketch-model";
 export type Sketch = Database["public"]["Tables"]["project_sketches"]["Row"];
@@ -149,5 +150,6 @@ export async function persistSketch(sk: Sketch, a: SaveAttempt) {
     p_save: a.id,
   });
   if (error) throw error;
+  if (data) track("sketch_published", a.id);
   return data;
 }

@@ -16,9 +16,8 @@ try {
       rollupOptions: { output: { entryFileNames: "render.mjs" } },
     },
   });
-  const { renderLanding, landingHead, siteOrigin, sitemap } = await import(
-    pathToFileURL(path.join(temporary, "render.mjs")).href
-  );
+  const { renderLanding, renderPrivacy, landingHead, siteOrigin, sitemap } =
+    await import(pathToFileURL(path.join(temporary, "render.mjs")).href);
   const origin = siteOrigin(
     process.env.SITE_URL ??
       loadEnv("production", process.cwd(), "SITE_").SITE_URL,
@@ -58,6 +57,24 @@ try {
     if (!output.includes(`data-prerendered="${locale}"`))
       throw new Error("Prerender root not found");
     const file = locale === "fr" ? "dist/index.html" : "dist/en/index.html";
+    await mkdir(path.dirname(file), { recursive: true });
+    await writeFile(file, output);
+  }
+  for (const locale of ["fr", "en"]) {
+    const title =
+      locale === "fr" ? "Confidentialité — RenvoDesk" : "Privacy — RenvoDesk";
+    const output = template
+      .replace('<html lang="fr">', `<html lang="${locale}">`)
+      .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
+      .replace("</head>", `${cssHead}\n</head>`)
+      .replace(
+        '<div id="root"></div>',
+        `<div id="root" data-prerendered="${locale}">${renderPrivacy(locale)}</div>`,
+      );
+    const file =
+      locale === "fr"
+        ? "dist/privacy/index.html"
+        : "dist/en/privacy/index.html";
     await mkdir(path.dirname(file), { recursive: true });
     await writeFile(file, output);
   }

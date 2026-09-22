@@ -1,5 +1,6 @@
 import { requireSupabase } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
+import { track } from "@/lib/telemetry/runtime";
 export type TeamMember =
   Database["public"]["Functions"]["team_members"]["Returns"][number];
 export type Invitation =
@@ -39,6 +40,7 @@ export async function invitation(id: string, accept = false) {
   });
   if (error) throw error;
   if (!data[0]) throw new Error("unavailable");
+  if (accept) track("invitation_accepted", id);
   return data[0];
 }
 export async function revoke(org: string, id: string) {

@@ -1,5 +1,6 @@
 import { requireSupabase } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
+import { track } from "@/lib/telemetry/runtime";
 export type SavedProject = Database["public"]["Tables"]["projects"]["Row"];
 export type ProjectInput = Pick<
   SavedProject,
@@ -31,7 +32,10 @@ export async function createProject(
     .insert({ ...input, id, organization_id: organizationId })
     .select("*")
     .single();
-  if (!error) return data;
+  if (!error) {
+    track("project_created", id);
+    return data;
+  }
   // A committed insert may have lost its response. Recover the same request without overwriting it.
   if (error.code === "23505") {
     const result = await client
@@ -40,7 +44,10 @@ export async function createProject(
       .eq("organization_id", organizationId)
       .eq("id", id)
       .single();
-    if (!result.error) return result.data;
+    if (!result.error) {
+      track("project_created", id);
+      return result.data;
+    }
   }
   throw error;
 }

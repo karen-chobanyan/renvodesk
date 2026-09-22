@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { ConsentControls } from "../../lib/telemetry/consent-controls";
 import { type LandingLocale, landingCopy } from "./landing-copy";
 import { ProjectModel } from "./project-model";
 
@@ -264,6 +265,9 @@ export function LandingPage({ locale }: { locale: LandingLocale }) {
           <p>{c.footer}</p>
         </div>
         <nav aria-label={locale === "fr" ? "Pied de page" : "Footer"}>
+          <a href={locale === "fr" ? "/privacy" : "/en/privacy"}>
+            {locale === "fr" ? "Confidentialité" : "Privacy"}
+          </a>
           <a href="#product">{c.product}</a>
           <a href="/projects">{c.demo}</a>
           <a href="/login">{c.login}</a>
@@ -283,6 +287,7 @@ export function LandingPage({ locale }: { locale: LandingLocale }) {
           </a>
         </div>
       </footer>
+      <ConsentControls locale={locale} />
     </div>
   );
 }

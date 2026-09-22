@@ -1,7 +1,11 @@
+import { startTelemetry } from "./lib/telemetry/runtime";
+
+startTelemetry();
 // Keep the public page independent of auth, workspace and drawing dependencies.
 if (
   window.location.pathname === "/" ||
-  /^\/en\/?$/.test(window.location.pathname)
+  /^\/en\/?$/.test(window.location.pathname) ||
+  /^\/(en\/)?privacy\/?$/.test(window.location.pathname)
 ) {
   void import("./features/landing/landing-entry");
 } else {

@@ -1,0 +1,47 @@
+www.renvodesk.com {
+	redir * https://renvodesk.com{uri} 308
+}
+
+renvodesk.com {
+	root * /var/www/renvodesk/current
+	encode zstd gzip
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		X-Frame-Options DENY
+		Permissions-Policy "camera=(self), microphone=(self), geolocation=()"
+		Cache-Control "no-cache"
+	}
+	@privateFiles path /.env* /.git* /.vite/* *.map /app.html /index.html /en/index.html /privacy/index.html /en/privacy/index.html
+	handle @privateFiles {
+		respond "Not found" 404
+	}
+	@locale path /en
+	handle @locale {
+		redir * /en/ 308
+	}
+	@privacyBare path /privacy /en/privacy
+	handle @privacyBare {
+		redir * {path}/ 308
+	}
+	@public path / /en/ /privacy/ /en/privacy/
+	handle @public {
+		file_server
+	}
+	@assets path /assets/* /images/* /excalidraw/* /favicon.svg /robots.txt /sitemap.xml
+	handle @assets {
+		@hashed path /assets/*
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+		file_server
+	}
+	# Restrict the SPA fallback to actual routes; unknown URLs return HTTP 404.
+	@app path_regexp app ^/(login|signup|auth/(forgot|reset|callback)|invite/[^/]+|workspace|workspace/[^/]+/(team|clients|estimates|settings|schedule)|workspace/[^/]+/projects/[^/]+(/(sketches|estimates)/[^/]+)?|projects(/[^/]+)?|estimates/[^/]+|design-system)/?$
+	handle @app {
+		header X-Robots-Tag "noindex, nofollow"
+		rewrite * /app.html
+		file_server
+	}
+	handle {
+		respond "Not found" 404
+	}
+}

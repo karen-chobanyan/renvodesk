@@ -1,5 +1,6 @@
 import { requireSupabase } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
+import { track } from "@/lib/telemetry/runtime";
 import { fileMime, validateFile } from "./file-model";
 export type ProjectFile = Database["public"]["Tables"]["project_files"]["Row"];
 const bucket = "project-files";
@@ -72,7 +73,9 @@ async function state(file: ProjectFile, next: string) {
   return data;
 }
 export async function confirmUpload(file: ProjectFile) {
-  return state(file, "ready");
+  const saved = await state(file, "ready");
+  if (saved) track("file_uploaded", file.id);
+  return saved;
 }
 export async function uploadFile(
   file: ProjectFile,

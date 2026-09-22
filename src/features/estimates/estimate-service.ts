@@ -1,5 +1,6 @@
 import { requireSupabase } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
+import { track } from "@/lib/telemetry/runtime";
 import type { StoredLine } from "./draft-model";
 export type SavedEstimate = Database["public"]["Tables"]["estimates"]["Row"];
 const summary = "id,title,total_cents,revision,status,created_at";
@@ -37,10 +38,16 @@ export async function createEstimate(
     .insert({ organization_id: org, project_id: project, id, title })
     .select("*")
     .single();
-  if (!error) return data;
+  if (!error) {
+    track("estimate_created", id);
+    return data;
+  }
   if (error.code === "23505") {
     const existing = await getEstimate(org, project, id);
-    if (existing) return existing;
+    if (existing) {
+      track("estimate_created", id);
+      return existing;
+    }
   }
   throw error;
 }
@@ -59,6 +66,7 @@ export async function saveEstimate(
     .select("*")
     .maybeSingle();
   if (error) throw error;
+  if (data) track("estimate_saved", `${data.id}:${data.revision}`);
   return data;
 }
 

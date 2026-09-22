@@ -317,3 +317,15 @@ Refresh or revisit the journal to see other users' changes. Task/file/cost forms
 retain their in-page drafts while visiting Activity. No email digest, manual journal
 notes, unread tracking or realtime updates are implemented. See
 [decision 015](docs/decisions/015-project-activity-journal.md).
+
+## Launch telemetry and Ubuntu hosting
+
+GA4 and Sentry integration is prepared with separate opt-in consent in French and
+English. Production collection requires the configured origin and explicit build
+activation. Development stays silent. See [telemetry setup](docs/TELEMETRY.md)
+for event definitions, privacy filtering, required dashboard settings and limits.
+
+The chosen deployment target is an Ubuntu VPS with Caddy, without Docker. Public
+configuration and routing are in `deploy/`; follow [VPS deployment](docs/VPS-DEPLOYMENT.md).
+No remote deployment or live provider ingestion has been verified. Operator/contact
+details and the full privacy notice still need completion before public launch.

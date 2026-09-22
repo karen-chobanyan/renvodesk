@@ -1,10 +1,12 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Link, Route, Routes } from "react-router";
+import { BrowserRouter, Link, Route, Routes, useLocation } from "react-router";
 import { SketchPage } from "./features/sketches/sketch-page";
 import { OwnerRoute } from "./features/team/company-access";
 import { InvitationPage } from "./features/team/invitation-page";
 import { TeamPage } from "./features/team/team-page";
+import { ConsentControls } from "./lib/telemetry/consent-controls";
+import { reportError, trackPage } from "./lib/telemetry/runtime";
 import "@fontsource-variable/inter";
 import "./styles.css";
 import { AppShell } from "./components/app-shell";
@@ -47,12 +49,22 @@ class ErrorBoundary extends React.Component<
   static getDerivedStateFromError() {
     return { failed: true };
   }
+  componentDidCatch(error: Error) {
+    reportError(error);
+  }
   render() {
     return this.state.failed ? this.props.fallback : this.props.children;
   }
 }
+function RouteTelemetry() {
+  const location = useLocation();
+  React.useEffect(() => {
+    trackPage(location.pathname);
+  }, [location.pathname]);
+  return null;
+}
 function Application() {
-  const { t } = useLocale();
+  const { t, locale } = useLocale();
   return (
     <ErrorBoundary
       fallback={
@@ -70,6 +82,8 @@ function Application() {
       <AuthProvider>
         <DemoProvider>
           <BrowserRouter>
+            <RouteTelemetry />
+            <ConsentControls locale={locale} />
             <Routes>
               <Route
                 path="login"

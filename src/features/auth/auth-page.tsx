@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocale } from "@/lib/i18n";
 import { requireSupabase, supabase } from "@/lib/supabase/client";
+import { track } from "@/lib/telemetry/runtime";
 import { useAuth } from "./auth-provider";
 import { authReturn } from "./auth-return";
 import { type AuthKey, authErrorKey, useAuthCopy } from "./copy";
@@ -91,6 +92,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
           password,
         });
         if (error) throw error;
+        track("login");
         navigate(destination, { replace: true });
       } else if (mode === "signup") {
         const { data, error } = await client.auth.signUp({
@@ -101,6 +103,7 @@ export function AuthPage({ mode }: { mode: Mode }) {
           },
         });
         if (error) throw error;
+        track("signup_request_succeeded");
         if (data.session) navigate(destination, { replace: true });
         else setMessage("confirmation");
       } else if (mode === "request") {

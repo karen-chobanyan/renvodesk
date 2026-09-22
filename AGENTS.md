@@ -54,9 +54,9 @@ Agreed direction:
   direct customer acceptance remain future milestones.
 
 Still to decide before dependent implementation:
-- Frontend deployment provider and production hosting configuration.
+- Ubuntu VPS with Caddy and no Docker is selected; actual server provisioning and production rollout remain pending.
 - Invoicing/accounting provider and country rollout details.
-- Background processing, SMTP/email delivery and monitoring providers.
+- Background processing and SMTP/email delivery providers. GA4 and Sentry integration is prepared; live dashboard ingestion remains unverified.
 - Expanded team permissions and billing/subscription model. Owner and member roles are implemented; broader roles remain proposals.
 
 Do not describe planned features, integrations or tests as implemented. Real email
@@ -501,3 +501,23 @@ Live navigation sidebar is limited to brand/company, primary business routes and
 account controls. Explore demo is inside the account disclosure; Components stays
 in the existing app footer. Do not reintroduce repeated connected-workspace notices
 or Resources headings to the live sidebar. Demo routes retain explicit demo labels.
+
+## Production telemetry and VPS
+
+Ubuntu/Caddy without Docker is the selected hosting target. `deploy/Caddyfile`
+serves public prerendered pages before restricted noindex app fallback; unknown
+paths return 404. `deploy/production.env.example` holds provided public GA4/Sentry
+configuration. No remote deployment or provider dashboard changes have been made.
+
+`src/lib/telemetry` requires a production build, exact origin and separate opt-in
+for analytics/diagnostics. Do not add autocapture, replay, advertising, raw URLs,
+record IDs, names, amounts or documents. Track only confirmed persisted actions;
+request deduplication keys remain in memory and are never sent. Signup API success
+is not verified signup. The database journal remains the business history source.
+GA Enhanced measurement must be disabled in the dashboard before production use.
+Sentry reports strip raw messages and context; source maps are not uploaded.
+
+Privacy explanation pages are available in FR/EN but operator details/contact and
+the complete service privacy notice remain required before public launch. See
+`docs/TELEMETRY.md`, `docs/VPS-DEPLOYMENT.md` and decision 017. Browser telemetry
+checks mock all providers; they do not establish real account ingestion.

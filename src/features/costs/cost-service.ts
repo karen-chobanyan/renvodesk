@@ -1,5 +1,6 @@
 import { requireSupabase } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
+import { track } from "@/lib/telemetry/runtime";
 import { type CostInput, validCost } from "./cost-model";
 export type Cost = Database["public"]["Tables"]["project_costs"]["Row"];
 export type Summary = {
@@ -97,7 +98,10 @@ export async function saveCost(
     .insert({ ...input, id, organization_id: org, project_id: project })
     .select("*")
     .single();
-  if (!error) return data;
+  if (!error) {
+    track("expense_recorded", id);
+    return data;
+  }
   if (error.code === "23505") {
     const r = await client
       .from("project_costs")
@@ -106,7 +110,10 @@ export async function saveCost(
       .eq("project_id", project)
       .eq("id", id)
       .single();
-    if (!r.error) return r.data;
+    if (!r.error) {
+      track("expense_recorded", id);
+      return r.data;
+    }
   }
   throw error;
 }

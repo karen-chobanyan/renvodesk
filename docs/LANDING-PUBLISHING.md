@@ -2,7 +2,8 @@
 
 `pnpm dev` serves French at `/` and English at `/en/`. `pnpm build` emits their
 complete HTML to `dist/index.html` and `dist/en/index.html`, plus a separate
-`dist/app.html` application shell. No hosting provider has been selected or deployed.
+`dist/app.html` application shell. An Ubuntu VPS with Caddy (no Docker) has been selected; it has not been deployed.
+See [VPS deployment](VPS-DEPLOYMENT.md).
 
 ## Production configuration
 
@@ -39,7 +40,8 @@ Verify signup/auth redirects and the fictional demo. Measure real mobile Core We
 Vitals once hosting is known; local tests do not establish production performance.
 Verify the domain in Google Search Console, submit `/sitemap.xml`, and inspect both
 public URLs. This enables discovery; it does not guarantee indexing or rankings.
-No conversion analytics, cookie banner or tracking service has been added.
+Optional GA4/Sentry integration and consent controls are prepared; see
+[telemetry setup](TELEMETRY.md) before enabling them.
 
 The interior photo is an AI-generated architectural illustration, not a customer
 project. Its source asset is `public/images/renovation-interior.jpg`.
