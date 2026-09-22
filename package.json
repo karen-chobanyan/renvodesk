@@ -9,7 +9,7 @@
   },
   "scripts": {
     "dev": "node scripts/copy-excalidraw-fonts.mjs && vite --host 127.0.0.1",
-    "build": "node scripts/copy-excalidraw-fonts.mjs && tsc --noEmit && vite build",
+    "build": "node scripts/copy-excalidraw-fonts.mjs && tsc --noEmit && vite build && node scripts/prerender-landing.mjs",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",

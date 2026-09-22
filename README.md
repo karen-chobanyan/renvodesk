@@ -11,6 +11,11 @@ not selected as the codebase.
 
 ## Current state
 
+The public homepage at `/` (French) and `/en/` (English) presents the application,
+with signup and fictional-demo entry points, application screenshots, a CAD-style illustration and static
+HTML for discovery. Production indexing requires a verified build-time `SITE_URL`
+and host routing; see [publishing instructions](docs/LANDING-PUBLISHING.md).
+
 | Area | Implemented | Boundary |
 | --- | --- | --- |
 | Authentication | Email/password signup, login, logout, confirmation callback and password recovery UI | Real email delivery still needs dashboard/SMTP configuration and verification |

@@ -1,5 +1,15 @@
 # RenvoDesk — Agent Guidelines
 
+## Public landing page
+
+`/` is the French public landing page and `/en/` its English version. The separate
+landing entry is prerendered during build; `src/app-entry.tsx` owns application
+routes. Keep the landing independent of auth/editor bundles and preserve reduced
+motion, FR/EN copy and truthful feature boundaries. `SITE_URL` controls production
+canonical/hreflang/sitemap metadata; unset builds are noindex previews. Deploy the
+public HTML before the noindex `app.html` fallback. See docs/LANDING-PUBLISHING.md
+and decision 016. Hosting and domain ownership remain unverified.
+
 ## Product
 
 RenvoDesk is a minimal, professional SaaS for renovation companies in Belgium,

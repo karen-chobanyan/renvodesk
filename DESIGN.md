@@ -4,6 +4,12 @@
 Warm architectural workspace with quiet surfaces, precise typography, and useful
 information density. The interface is an operating tool, not a marketing page.
 
+The public landing page extends this foundation with larger editorial typography,
+generous spacing, actual application screenshots, a CAD-style vector drawing and a generated architectural photograph.
+Its isolated tokens and responsive styles live in `src/features/landing/landing.css`.
+Keep reduced-motion alternatives, explicit fictional-preview labels and clear
+signup/demo links. The application continues to use the denser workspace tokens.
+
 ## Tokens
 Source of truth: `src/styles.css`.
 - Canvas `#f8f9f6`, white surfaces, charcoal `#232d2b`.

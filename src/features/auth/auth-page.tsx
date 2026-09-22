@@ -14,12 +14,12 @@ export function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="auth-layout">
       <header>
-        <Link className="brand" to="/login">
+        <a className="brand" href={locale === "fr" ? "/" : "/en/"}>
           <span className="brand-mark">
             r<span>.</span>
           </span>
           RenvoDesk
-        </Link>
+        </a>
         <label className="language-picker">
           <span className="sr-only">{t("language")}</span>
           <select
