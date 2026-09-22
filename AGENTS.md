@@ -462,3 +462,32 @@ counts into aggregate claims. Project editing uses the shared dialog, revision
 checks, and an unsaved-close warning. See the project-view-layout plan.
 
 - Project files support camera JPEG capture and MediaRecorder voice notes (WebM, MP4/M4A, Ogg). Review before upload; existing owner-only writes and member reads apply. Capture must release tracks on close/unmount; recording is capped at five minutes / 10 MiB. Audio MIME allowlists are in the project_voice_notes migration; do not broaden them to arbitrary video.
+
+## Project activity journal
+
+`src/features/activity` owns the saved project sidebar journal and `?tab=activity`.
+`project_activity` is a read-only, append-only projection populated by private
+transactional source triggers. Never append events from the browser. Capture only
+meaningful successful changes; preserve source revision/retry semantics. A failed
+journal insert must roll back the source write. Estimate decisions come only from
+`estimate_events`, and sketches only from creation or committed saves.
+
+RLS hides all estimate/cost activity from members, including labels and payloads.
+All queries scope company/project, use timestamp/UUID keysets and filter before
+limits. Keep actor identity server-derived and payloads allowlisted; no full notes,
+addresses, estimate lines, email snapshots or signed URLs. Preserve the private
+trigger's fixed-source allowlist, empty search_path and actor/membership checks.
+Meaningful null-auth maintenance writes fail until a specific internal path exists.
+
+`project_files.activity_was_ready` has no browser write grants and distinguishes
+real document deletion from cancellation of a pending upload. Keep that provenance
+when updating file lifecycle logic. Tracking starts at the server-owned
+`project_activity_tracking` marker; do not fabricate pre-rollout history. Activity
+remounts on entry and refreshes on project revision changes; other visited working
+panels retain their forms. No Realtime, manual notes, autosave grouping or email
+digests. See decision 015 and `supabase/tests/project_activity.sql`.
+
+Live navigation sidebar is limited to brand/company, primary business routes and
+account controls. Explore demo is inside the account disclosure; Components stays
+in the existing app footer. Do not reintroduce repeated connected-workspace notices
+or Resources headings to the live sidebar. Demo routes retain explicit demo labels.

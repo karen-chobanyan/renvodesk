@@ -118,3 +118,28 @@ desktop / 16px mobile horizontal padding. Mobile metrics become label/value rows
 to keep currency amounts intact. Horizontal tab scrolling is local to navigation.
 Project editing is a guarded dialog; creation fields open on demand. Keep skeletons
 and errors local so one failed request does not remove project context or navigation.
+
+## Project journal
+
+The live project overview uses its right-hand column for the journal. Client/site
+details, status and editing stay in the header; the sidebar does not repeat them.
+Five recent entries use small domain icons, an action label,
+optional record label/status/amount and author/time metadata, grouped by local day.
+The Activity tab uses the same rows at a readable maximum width with a labeled
+category select, explicit Refresh and Load older activity. Financial filters and
+rows are owner-only. Use existing semantic tokens and exact tabular cent formatting.
+
+On narrow screens the context/journal stacks below overview content; the Activity
+tab provides direct access without a second sidebar. Links and controls have 44px
+minimum touch height on mobile. Keep loading/error/empty states local to the journal;
+a failed feed must not remove site identity. Historical deleted rows omit links.
+
+## Navigation sidebar refinement
+
+Live navigation shows the brand, a single company disclosure, primary business
+routes and the account disclosure. Omit redundant workspace/resource headings,
+Components navigation and repeated connection notices from this sidebar. Explore
+demo lives inside the account menu alongside sign-out; the existing footer keeps
+the design-system link. Demo routes retain their explicit fictional-data notice.
+Company selection, settings/team access, keyboard dismissal and the mobile drawer
+keep their existing behavior.

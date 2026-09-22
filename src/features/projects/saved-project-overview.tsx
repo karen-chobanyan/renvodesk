@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
+import { ProjectJournal } from "@/features/activity/project-journal";
 import { CostSummary } from "@/features/costs/cost-summary";
 import { listEstimates } from "@/features/estimates/estimate-service";
 import {
@@ -77,13 +78,11 @@ function Preview({
 export function SavedProjectOverview({
   project,
   owner,
-  edit,
 }: {
   project: SavedProject;
   owner: boolean;
-  edit: () => void;
 }) {
-  const { locale, t } = useLocale(),
+  const { locale } = useLocale(),
     c = layoutCopy[locale],
     org = project.organization_id,
     id = project.id,
@@ -217,31 +216,13 @@ export function SavedProjectOverview({
           />
         </div>
         <aside className="project-context">
-          <h2>{c.context}</h2>
-          <dl>
-            <dt>{t("client")}</dt>
-            <dd>{project.client_name}</dd>
-            {project.address && (
-              <>
-                <dt>{t("address")}</dt>
-                <dd>{project.address}</dd>
-              </>
-            )}
-            <dt>{t("city")}</dt>
-            <dd>{project.city}</dd>
-            <dt>{t("status")}</dt>
-            <dd>{t(project.status as "planning" | "active" | "completed")}</dd>
-          </dl>
-          {owner && (
-            <Button variant="outline" onClick={edit}>
-              {c.edit}
-            </Button>
-          )}
-          {owner && project.client_id && (
-            <Link className="account-link" to={`/workspace/${org}/clients`}>
-              {locale === "fr" ? "Répertoire clients" : "Client directory"}
-            </Link>
-          )}
+          <ProjectJournal
+            org={org}
+            project={id}
+            owner={owner}
+            compact
+            revision={project.revision}
+          />
         </aside>
       </div>
     </>

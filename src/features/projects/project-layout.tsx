@@ -10,11 +10,13 @@ export const projectTabs = [
   "budget",
   "estimates",
   "documents",
+  "activity",
 ] as const;
 export type ProjectTab = (typeof projectTabs)[number];
 export const layoutCopy = {
   fr: {
     overview: "Vue d’ensemble",
+    activity: "Journal",
     tasks: "Tâches",
     budget: "Budget et coûts",
     estimates: "Devis",
@@ -40,10 +42,10 @@ export const layoutCopy = {
     close: "Fermer",
     leave: "Des modifications ne sont pas enregistrées. Les abandonner ?",
     schedule: "Ouvrir le planning de l’entreprise",
-    context: "Le chantier",
   },
   en: {
     overview: "Overview",
+    activity: "Activity",
     tasks: "Tasks",
     budget: "Budget and costs",
     estimates: "Estimates",
@@ -67,7 +69,6 @@ export const layoutCopy = {
     close: "Close",
     leave: "You have unsaved changes. Discard them?",
     schedule: "Open company schedule",
-    context: "The site",
   },
 };
 export function ProjectHeader({

@@ -88,18 +88,14 @@ export function AppShell({
         <CompanyNavigation id={activeOrg} close={() => setMobileOpen(false)} />
       ) : (
         <div className="workspace-switch">
-          <span className="company-avatar">
-            {live ? company?.slice(0, 2).toUpperCase() || "R." : "AH"}
-          </span>
+          <span className="company-avatar">AH</span>
           <div>
-            <strong>
-              {live ? company || authText("workspace") : t("company")}
-            </strong>
-            <small>{live ? authText("realData") : t("companyDetail")}</small>
+            <strong>{t("company")}</strong>
+            <small>{t("companyDetail")}</small>
           </div>
         </div>
       )}
-      <p className="nav-label">{t("workspace")}</p>
+      {!live && <p className="nav-label">{t("workspace")}</p>}
       <nav aria-label={t("workspace")}>
         <NavLink
           to={home}
@@ -120,7 +116,7 @@ export function AppShell({
             onClick={() => setMobileOpen(false)}
           >
             <Users size={18} />
-            {locale === "fr" ? "Clients" : "Clients"}
+            Clients
           </NavLink>
         )}
         {live && activeOrg && (
@@ -148,35 +144,29 @@ export function AppShell({
           </NavLink>
         )}
       </nav>
-      <p className="nav-label resource-label">{t("resources")}</p>
-      <nav aria-label={t("resources")}>
-        <NavLink to="/design-system" onClick={() => setMobileOpen(false)}>
-          <PanelsTopLeft size={18} />
-          {t("design")}
-        </NavLink>
-      </nav>
-      {live && (
-        <NavLink
-          className="sidebar-demo-link"
-          to="/projects"
-          onClick={() => setMobileOpen(false)}
-        >
-          {authText("demo")}
-        </NavLink>
+      {!live && (
+        <>
+          <p className="nav-label resource-label">{t("resources")}</p>
+          <nav aria-label={t("resources")}>
+            <NavLink to="/design-system" onClick={() => setMobileOpen(false)}>
+              <PanelsTopLeft size={18} />
+              {t("design")}
+            </NavLink>
+          </nav>
+        </>
       )}
       <div className="sidebar-bottom">
-        <div className="demo-label">
-          <span className="live-dot" />
-          {live ? authText("realData") : t("demo")}
-        </div>
-        <p>
-          {live
-            ? locale === "fr"
-              ? "Projets enregistrés. Les aperçus de démonstration sont signalés."
-              : "Saved projects. Demonstration previews are labeled."
-            : t("demoNotice")}
-        </p>
-        {live && <AccountControls />}
+        {live ? (
+          <AccountControls close={() => setMobileOpen(false)} />
+        ) : (
+          <>
+            <div className="demo-label">
+              <span className="live-dot" />
+              {t("demo")}
+            </div>
+            <p className="sidebar-demo-notice">{t("demoNotice")}</p>
+          </>
+        )}
         {!live && (
           <div className="profile">
             <span className="profile-avatar">AM</span>

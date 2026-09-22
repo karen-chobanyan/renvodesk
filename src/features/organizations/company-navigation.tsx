@@ -65,7 +65,6 @@ export function CompanyNavigation({
         </span>
         <span className="identity-copy">
           <strong>{name}</strong>
-          <small>{t("realData")}</small>
         </span>
         <ChevronDown size={14} />
       </summary>
@@ -121,7 +120,8 @@ export function CompanyNavigation({
     </details>
   );
 }
-export function AccountControls() {
+export function AccountControls({ close }: { close: () => void }) {
+  const menu = useRef<HTMLDetailsElement>(null);
   const { session } = useAuth(),
     t = useAuthCopy();
   const [busy, setBusy] = useState(false),
@@ -141,6 +141,7 @@ export function AccountControls() {
   return (
     <details
       className="account-menu"
+      ref={menu}
       onKeyDown={(e) => {
         if (e.key === "Escape" && e.currentTarget.open) {
           e.stopPropagation();
@@ -160,6 +161,16 @@ export function AccountControls() {
         <ChevronDown size={14} />
       </summary>
       <div className="sidebar-account">
+        <Link
+          className="account-demo-link"
+          to="/projects"
+          onClick={() => {
+            if (menu.current) menu.current.open = false;
+            close();
+          }}
+        >
+          {t("demo")}
+        </Link>
         <Button variant="ghost" disabled={busy} onClick={logout}>
           {t("logout")}
         </Button>

@@ -9,6 +9,7 @@ import {
 import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { ProjectJournal } from "@/features/activity/project-journal";
 import { useAuth } from "@/features/auth/auth-provider";
 import { ProjectCosts } from "@/features/costs/project-costs";
 import { ProjectEstimates } from "@/features/estimates/project-estimates";
@@ -250,12 +251,19 @@ function ProjectDetail({
               tabIndex={-1}
               aria-label={l[active]}
             >
+              {active === "activity" && (
+                <ProjectJournal
+                  org={organizationId}
+                  project={id}
+                  owner={owner}
+                  revision={project.revision}
+                />
+              )}
               {active === "overview" && (
                 <SavedProjectOverview
                   key={project.revision}
                   project={project}
                   owner={owner}
-                  edit={() => setEditing(true)}
                 />
               )}
               {(visited.has("tasks") || active === "tasks") && (

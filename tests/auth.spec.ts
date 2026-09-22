@@ -2126,7 +2126,7 @@ test("project overview navigation, retained drafts, isolated failures and legacy
   await expect(page.getByRole("alert")).toContainText(
     "Impossible de charger les coûts",
   );
-  await expect(page.locator(".project-context")).toContainText(
+  await expect(page.locator(".project-header")).toContainText(
     "Camille Laurent",
   );
   await expect(nav).toBeVisible();

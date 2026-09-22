@@ -230,6 +230,77 @@ export type Database = {
         };
         Relationships: [];
       };
+      project_activity: {
+        Row: {
+          actor_user_id: string;
+          category: string;
+          entity_id: string;
+          entity_type: string;
+          event_type: string;
+          id: string;
+          occurred_at: string;
+          organization_id: string;
+          payload: Json;
+          payload_version: number;
+          project_id: string;
+          source_key: string;
+          visibility: string;
+        };
+        Insert: {
+          actor_user_id: string;
+          category: string;
+          entity_id: string;
+          entity_type: string;
+          event_type: string;
+          id?: string;
+          occurred_at?: string;
+          organization_id: string;
+          payload: Json;
+          payload_version?: number;
+          project_id: string;
+          source_key: string;
+          visibility: string;
+        };
+        Update: {
+          actor_user_id?: string;
+          category?: string;
+          entity_id?: string;
+          entity_type?: string;
+          event_type?: string;
+          id?: string;
+          occurred_at?: string;
+          organization_id?: string;
+          payload?: Json;
+          payload_version?: number;
+          project_id?: string;
+          source_key?: string;
+          visibility?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "project_activity_organization_id_project_id_fkey";
+            columns: ["organization_id", "project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["organization_id", "id"];
+          },
+        ];
+      };
+      project_activity_tracking: {
+        Row: {
+          singleton: boolean;
+          started_at: string;
+        };
+        Insert: {
+          singleton?: boolean;
+          started_at?: string;
+        };
+        Update: {
+          singleton?: boolean;
+          started_at?: string;
+        };
+        Relationships: [];
+      };
       project_budgets: {
         Row: {
           budget_cents: number;
@@ -311,6 +382,7 @@ export type Database = {
       };
       project_files: {
         Row: {
+          activity_was_ready: boolean;
           created_at: string;
           id: string;
           mime_type: string;
@@ -324,6 +396,7 @@ export type Database = {
           version: number;
         };
         Insert: {
+          activity_was_ready?: boolean;
           created_at?: string;
           id?: string;
           mime_type: string;
@@ -337,6 +410,7 @@ export type Database = {
           version?: number;
         };
         Update: {
+          activity_was_ready?: boolean;
           created_at?: string;
           id?: string;
           mime_type?: string;

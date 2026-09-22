@@ -297,3 +297,18 @@ continue to open the appropriate panel.
 Project Documents → Take a photo / Voice note opens device capture. Review, choose Use this file, then Upload. Voice notes are limited to five minutes and 10 MiB, with private audio playback. Camera images are converted to JPEG (up to 2000 px on the longest edge). Device access requires browser permission and HTTPS, except localhost. Closing capture releases the device; switching away from the browser cancels capture. Existing owner upload permissions apply. No transcription is generated.
 
 Project creation shows client details at all times. Select an existing client to autofill them, or enter a new client's details. Create project saves the new client in the directory and links the project. Client creation uses a stable retry ID; if project saving fails, the client may already exist and is reused on retry. Property selection remains optional.
+
+## Project activity journal
+
+Saved project Overview shows the five latest journal entries in the right-hand
+sidebar. Site details and editing stay in the header. Open **Activity / Journal** for the full history, category filters and
+older entries. Successful project/task changes, estimates, budgets/expenses,
+completed file uploads/deletions and published sketch revisions are recorded in
+Postgres. Owners see financial events; members see operational activity only.
+Entries include author, local date/time and links to the related tab or record.
+
+History starts at the server-recorded rollout date; earlier activity is not invented.
+Refresh or revisit the journal to see other users' changes. Task/file/cost forms
+retain their in-page drafts while visiting Activity. No email digest, manual journal
+notes, unread tracking or realtime updates are implemented. See
+[decision 015](docs/decisions/015-project-activity-journal.md).
