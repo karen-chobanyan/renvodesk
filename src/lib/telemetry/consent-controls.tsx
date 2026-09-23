@@ -1,6 +1,5 @@
 import { SlidersHorizontal } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { telemetryAvailable } from "./config";
 import { getConsent, saveConsent, subscribeConsent } from "./runtime";
 import "./consent.css";
 
@@ -51,7 +50,6 @@ export function ConsentControls({
   const [diagnostics, setDiagnostics] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
-    if (!telemetryAvailable()) return;
     setReady(true);
     const update = () => {
       const consent = getConsent();

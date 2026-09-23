@@ -24,3 +24,11 @@
 - Production-enabled dist is built locally. No upload or server changes made.
   Rebuild with deploy/production.env.example settings and upload the complete
   dist tree to deploy this behaviour; then repeat live consent checks.
+
+## Consent control availability
+
+- Render consent controls after hydration independently of telemetry configuration.
+- Show the panel when no valid saved choice exists, including local/private browsing.
+- Keep production/origin checks in the telemetry runtime; displaying controls must
+  not enable provider requests in development or on an unconfigured origin.
+- Verify fresh browsing, refusal persistence, reopening and repeated trigger clicks.
