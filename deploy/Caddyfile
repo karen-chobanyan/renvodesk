@@ -28,7 +28,13 @@ renvodesk.com {
 	handle @public {
 		file_server
 	}
-	@assets path /assets/* /images/* /excalidraw/* /favicon.svg /robots.txt /sitemap.xml
+	handle /cad-canvas.html {
+		header X-Frame-Options SAMEORIGIN
+		header Content-Security-Policy "frame-ancestors 'self'"
+		header X-Robots-Tag "noindex, nofollow"
+		file_server
+	}
+	@assets path /assets/* /fonts/* /images/* /excalidraw/* /favicon.svg /robots.txt /sitemap.xml
 	handle @assets {
 		@hashed path /assets/*
 		header @hashed Cache-Control "public, max-age=31536000, immutable"

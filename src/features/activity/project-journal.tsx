@@ -30,12 +30,14 @@ export function ProjectJournal({
   owner,
   compact = false,
   revision,
+  onOpenSketch,
 }: {
   org: string;
   project: string;
   owner: boolean;
   compact?: boolean;
   revision: number;
+  onOpenSketch?: (id: string) => void;
 }) {
   const { session } = useAuth();
   // Scope every pending request and cached row to the current user/project/role.
@@ -47,6 +49,7 @@ export function ProjectJournal({
       owner={owner}
       compact={compact}
       revision={revision}
+      onOpenSketch={onOpenSketch}
     />
   );
 }
@@ -56,12 +59,14 @@ function Journal({
   owner,
   compact,
   revision,
+  onOpenSketch,
 }: {
   org: string;
   project: string;
   owner: boolean;
   compact: boolean;
   revision: number;
+  onOpenSketch?: (id: string) => void;
 }) {
   const { locale } = useLocale(),
     c = activityCopy[locale];
@@ -262,14 +267,15 @@ function Journal({
                       </time>
                     </p>
                     {target &&
-                      (row.entity_type === "sketch" ? (
-                        <a
+                      (row.entity_type === "sketch" && onOpenSketch ? (
+                        <button
+                          type="button"
                           className="account-link"
-                          href={target}
+                          onClick={() => onOpenSketch(row.entity_id)}
                           aria-label={`${c.open}: ${content.label || content.title}`}
                         >
                           {c.open}
-                        </a>
+                        </button>
                       ) : (
                         <Link
                           className="account-link"

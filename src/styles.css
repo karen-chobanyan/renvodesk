@@ -2449,6 +2449,8 @@ details[open] > .compact-identity > svg {
 
 .sketch-list-row {
   display: flex;
+  width: 100%;
+  text-align: left;
   align-items: center;
   gap: 24px;
   padding: 20px 0;
@@ -2580,6 +2582,10 @@ details[open] > .compact-identity > svg {
   justify-content: space-between;
   padding: 16px 0;
   border-bottom: 1px solid var(--border);
+}
+.project-sketch-preview-open {
+  width: 100%;
+  text-align: left;
 }
 .project-preview-row strong {
   font-size: 14px;
@@ -3606,4 +3612,13 @@ details[open] > .compact-identity > svg {
   .account-demo-link {
     min-height: 44px;
   }
+}
+
+.app-footer .privacy-controls {
+  font: inherit;
+  color: inherit;
+}
+.app-footer .privacy-trigger {
+  color: inherit;
+  font: inherit;
 }

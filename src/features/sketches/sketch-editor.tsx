@@ -1,3 +1,4 @@
+import { Download, Upload } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +22,7 @@ export function SketchEditor({
   onSaved,
   reload,
   back,
+  registerCloseGuard,
 }: {
   initial: Scene;
   title: string;
@@ -32,6 +34,7 @@ export function SketchEditor({
   onSaved: (version: number) => void;
   reload: () => void;
   back: string;
+  registerCloseGuard?: (guard: (() => boolean) | null) => void;
 }) {
   const c = sketchCopy[locale];
   const [title, setTitle] = useState(originalTitle),
@@ -43,6 +46,7 @@ export function SketchEditor({
       "idle" | "saving" | "failed" | "conflict" | "invalid"
     >("idle");
   const lastCanvasSignature = useRef("");
+  const importInput = useRef<HTMLInputElement>(null);
   const forceSave = useRef(restored || revision === 0);
   const current = useRef({ scene: initial, title: originalTitle }),
     base = useRef(revision),
@@ -109,6 +113,13 @@ export function SketchEditor({
     window.addEventListener("beforeunload", before);
     return () => window.removeEventListener("beforeunload", before);
   }, []);
+  useEffect(() => {
+    registerCloseGuard?.(
+      () =>
+        !running.current && (!hasUnsaved.current || window.confirm(c.leave)),
+    );
+    return () => registerCloseGuard?.(null);
+  }, [registerCloseGuard, c.leave]);
   const saveRef = useRef<() => void>(() => {});
   async function save() {
     if (
@@ -189,7 +200,7 @@ export function SketchEditor({
           {c.back}
         </a>
         <label className="field" htmlFor="sketch-title">
-          {c.name}
+          <span className="sketch-title-label">{c.name}</span>
           <Input
             id="sketch-title"
             value={title}
@@ -231,11 +242,42 @@ export function SketchEditor({
           )}
           <Button
             variant="outline"
+            size="icon"
+            title={c.download}
+            aria-label={c.download}
             onClick={() => downloadScene(current.current.scene, title)}
           >
-            {c.download}
+            <Download size={18} aria-hidden="true" />
           </Button>
+          {!readOnly && (
+            <Button
+              variant="outline"
+              size="icon"
+              title={c.import}
+              aria-label={c.import}
+              disabled={status === "saving" || !!pending.current}
+              onClick={() => importInput.current?.click()}
+            >
+              <Upload size={18} aria-hidden="true" />
+            </Button>
+          )}
         </div>
+        {!readOnly && (
+          <span className="sketch-import">
+            <input
+              ref={importInput}
+              type="file"
+              aria-label={c.import}
+              accept=".excalidraw,application/json"
+              disabled={status === "saving" || !!pending.current}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void importFile(file);
+                e.target.value = "";
+              }}
+            />
+          </span>
+        )}
       </header>
       <p className="helper-text">{readOnly ? c.hint : c.autosave}</p>
       {restored && <p>{c.restoring}</p>}
@@ -246,21 +288,6 @@ export function SketchEditor({
             {c.reload}
           </Button>
         </div>
-      )}
-      {!readOnly && (
-        <label className="sketch-import">
-          {c.import}
-          <input
-            type="file"
-            accept=".excalidraw,application/json"
-            disabled={status === "saving" || !!pending.current}
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file) void importFile(file);
-              e.target.value = "";
-            }}
-          />
-        </label>
       )}
       <SketchCanvas
         key={canvasKey}

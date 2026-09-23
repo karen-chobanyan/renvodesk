@@ -317,7 +317,7 @@ Read README.md and the latest milestone plans for current implementation status.
 - Upload policy locks the pending reservation FOR SHARE until the Storage transaction
   commits, so deletion cannot race it. No object UPDATE policy: never upsert/overwrite.
 - Owners upload/delete; members read. Every metadata query filters organization and
-  project. Sign preview URLs for 60 seconds; do not persist or log signed URLs/tokens.
+  project. Sign preview URLs for one hour; do not persist or log signed URLs/tokens.
 - Delete via Storage API, then finalize metadata. Never delete storage.objects rows
   directly. Failed transfers/deletions remain recoverable; do not hide pending work.
 - Back up object bytes as well as Postgres metadata. Do not claim database backups
@@ -431,9 +431,13 @@ verification runs in the client; server publication validates metadata, not hash
 or semantic drawing content. Never claim malware scanning.
 
 Keep editor code lazy-loaded and fonts self-hosted via the build/dev copy script.
-Editor navigation uses full document links so beforeunload can warn about pending
-edits. Preserve locale across reloads. Database tests are rollback-only fixtures;
-browser tests mock APIs and do not establish real Storage network delivery.
+Project sketch lists, previews and activity open the modal in place without changing
+the route or reloading the application. Revision selection and restore stay in modal
+state. Guard closing or switching revisions while edits are pending; beforeunload
+still protects actual page exits. Old sketch URLs remain direct-link fallbacks.
+Preserve locale across reloads. Database tests are rollback-only fixtures; browser
+tests mock APIs and do not establish real Storage network delivery. Desktop history
+is a side panel; mobile history docks below the canvas.
 See `docs/decisions/013-project-sketches.md`.
 
 ## Estimate decision workflow
@@ -498,8 +502,8 @@ panels retain their forms. No Realtime, manual notes, autosave grouping or email
 digests. See decision 015 and `supabase/tests/project_activity.sql`.
 
 Live navigation sidebar is limited to brand/company, primary business routes and
-account controls. Explore demo is inside the account disclosure; Components stays
-in the existing app footer. Do not reintroduce repeated connected-workspace notices
+account controls. Explore demo is inside the account disclosure. Cookie settings
+are an inline app-footer control; the Components footer link is removed. Do not reintroduce repeated connected-workspace notices
 or Resources headings to the live sidebar. Demo routes retain explicit demo labels.
 
 ## Production telemetry and VPS
@@ -525,3 +529,20 @@ checks mock all providers; they do not establish real account ingestion.
 Hosting preference updated: Ubuntu with Nginx, without Docker. Use deploy/nginx.conf
 and docs/NGINX-DEPLOYMENT.md; Caddy files remain an alternative. Do not run both
 on the same HTTP/HTTPS ports. No VPS deployment has been performed.
+
+## Project DXF previews
+
+Project Documents accepts DXF attachments up to 10 MiB with canonical
+`application/dxf`; existing owner uploads/deletion, member reads, private storage,
+immutable keys and lifecycle policies apply. `src/features/cad` owns the shared
+read-only canvas and lazy preview. Signed URLs stay in the parent; downloads are
+bounded and abort on close. Loaded DXF previews remain open until closed; signed
+URL expiry only limits subsequent downloads. Reopening requests a fresh URL.
+No DWG, CAD editing, export, takeoff or layout tabs are implemented.
+
+`cad-canvas.html` is included in the normal build and needs its exact same-origin
+frame exception in the hosting configuration. Keep runtime helpers out of the CAD
+chunk so the landing never imports it. `cad-prototype.html` remains excluded from
+the application build; `pnpm dev:cad`, `pnpm build:cad`, `pnpm test:cad` retain the
+local evaluation and rendering regressions. No GPL DWG parser is installed.
+See decisions 018/019 for fidelity, main-thread resource limits and verification.

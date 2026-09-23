@@ -15,6 +15,7 @@ import { ProjectCosts } from "@/features/costs/project-costs";
 import { ProjectEstimates } from "@/features/estimates/project-estimates";
 import { ProjectFiles } from "@/features/files/project-files";
 import { ProjectSketches } from "@/features/sketches/project-sketches";
+import { SketchModal } from "@/features/sketches/sketch-modal";
 import { TaskPanel } from "@/features/tasks/task-panel";
 import { useCompanyAccess } from "@/features/team/company-access";
 import { useLocale } from "@/lib/i18n";
@@ -144,6 +145,8 @@ function ProjectDetail({
       : "overview";
   const [visited, setVisited] = useState<Set<ProjectTab>>(() => new Set()),
     [editing, setEditing] = useState(false);
+  const [sketchId, setSketchId] = useState<string | null>(null);
+  const [sketchRefresh, setSketchRefresh] = useState(0);
   const editDirty = useRef(false),
     panel = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -253,17 +256,20 @@ function ProjectDetail({
             >
               {active === "activity" && (
                 <ProjectJournal
+                  key={sketchRefresh}
                   org={organizationId}
                   project={id}
                   owner={owner}
                   revision={project.revision}
+                  onOpenSketch={setSketchId}
                 />
               )}
               {active === "overview" && (
                 <SavedProjectOverview
-                  key={project.revision}
+                  key={`${project.revision}:${sketchRefresh}`}
                   project={project}
                   owner={owner}
+                  onOpenSketch={setSketchId}
                 />
               )}
               {(visited.has("tasks") || active === "tasks") && (
@@ -305,6 +311,8 @@ function ProjectDetail({
                     org={organizationId}
                     project={id}
                     owner={owner}
+                    onOpenSketch={setSketchId}
+                    refreshKey={sketchRefresh}
                   />
                 </div>
               )}
@@ -371,6 +379,18 @@ function ProjectDetail({
           </>
         )}
       </section>
+      {sketchId && (
+        <SketchModal
+          key={sketchId}
+          org={organizationId}
+          project={id}
+          id={sketchId}
+          onClose={() => {
+            setSketchId(null);
+            setSketchRefresh((value) => value + 1);
+          }}
+        />
+      )}
     </AppShell>
   );
 }

@@ -78,9 +78,11 @@ function Preview({
 export function SavedProjectOverview({
   project,
   owner,
+  onOpenSketch,
 }: {
   project: SavedProject;
   owner: boolean;
+  onOpenSketch: (id: string) => void;
 }) {
   const { locale } = useLocale(),
     c = layoutCopy[locale],
@@ -178,10 +180,11 @@ export function SavedProjectOverview({
             load={async () => {
               const rows = await listSketches(org, id);
               return rows.slice(0, 2).map((sk) => (
-                <a
-                  className="project-preview-row"
+                <button
+                  className="project-preview-row project-sketch-preview-open"
                   key={sk.id}
-                  href={`${base}/sketches/${sk.id}`}
+                  type="button"
+                  onClick={() => onOpenSketch(sk.id)}
                 >
                   <SketchPreview sk={sk} />
                   <span>
@@ -190,7 +193,7 @@ export function SavedProjectOverview({
                       {locale === "fr" ? "Ouvrir le croquis" : "Open sketch"}
                     </small>
                   </span>
-                </a>
+                </button>
               ));
             }}
           />
@@ -222,6 +225,7 @@ export function SavedProjectOverview({
             owner={owner}
             compact
             revision={project.revision}
+            onOpenSketch={onOpenSketch}
           />
         </aside>
       </div>

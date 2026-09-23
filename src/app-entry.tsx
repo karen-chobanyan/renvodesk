@@ -1,6 +1,13 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter, Link, Route, Routes, useLocation } from "react-router";
+import {
+  BrowserRouter,
+  Link,
+  Outlet,
+  Route,
+  Routes,
+  useLocation,
+} from "react-router";
 import { SketchPage } from "./features/sketches/sketch-page";
 import { OwnerRoute } from "./features/team/company-access";
 import { InvitationPage } from "./features/team/invitation-page";
@@ -63,8 +70,19 @@ function RouteTelemetry() {
   }, [location.pathname]);
   return null;
 }
+function StandaloneConsentLayout() {
+  const { locale } = useLocale();
+  return (
+    <>
+      <Outlet />
+      <footer className="app-footer">
+        <ConsentControls locale={locale} placement="footer" />
+      </footer>
+    </>
+  );
+}
 function Application() {
-  const { t, locale } = useLocale();
+  const { t } = useLocale();
   return (
     <ErrorBoundary
       fallback={
@@ -83,26 +101,27 @@ function Application() {
         <DemoProvider>
           <BrowserRouter>
             <RouteTelemetry />
-            <ConsentControls locale={locale} />
             <Routes>
-              <Route
-                path="login"
-                element={<AuthPage key="login" mode="login" />}
-              />
-              <Route
-                path="signup"
-                element={<AuthPage key="signup" mode="signup" />}
-              />
-              <Route
-                path="auth/forgot"
-                element={<AuthPage key="request" mode="request" />}
-              />
-              <Route
-                path="auth/reset"
-                element={<AuthPage key="update" mode="update" />}
-              />
-              <Route path="auth/callback" element={<AuthCallback />} />
-              <Route path="invite/:id" element={<InvitationPage />} />
+              <Route element={<StandaloneConsentLayout />}>
+                <Route
+                  path="login"
+                  element={<AuthPage key="login" mode="login" />}
+                />
+                <Route
+                  path="signup"
+                  element={<AuthPage key="signup" mode="signup" />}
+                />
+                <Route
+                  path="auth/forgot"
+                  element={<AuthPage key="request" mode="request" />}
+                />
+                <Route
+                  path="auth/reset"
+                  element={<AuthPage key="update" mode="update" />}
+                />
+                <Route path="auth/callback" element={<AuthCallback />} />
+                <Route path="invite/:id" element={<InvitationPage />} />
+              </Route>
               <Route element={<RequireAuth />}>
                 <Route path="workspace" element={<WorkspacePage />} />
                 <Route

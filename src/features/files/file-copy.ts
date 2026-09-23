@@ -1,7 +1,7 @@
 export const fileCopy = {
   fr: {
     title: "Fichiers du projet",
-    hint: "PDF, JPG, PNG, WebP, TXT, DOCX, XLSX, WEBM, M4A, OGG · 10 Mio maximum par fichier.",
+    hint: "DXF, PDF, JPG, PNG, WebP, TXT, DOCX, XLSX, WEBM, M4A, OGG · 10 Mio maximum par fichier.",
     choose: "Choisir un fichier",
     drag: "Glissez un fichier ici, ou choisissez-le ci-dessous.",
     drop: "Déposez le fichier ici.",
@@ -21,6 +21,7 @@ export const fileCopy = {
     verify: "Vérifier l’import",
     download: "Télécharger",
     preview: "Aperçu",
+    openPlan: "Ouvrir le plan",
     remove: "Supprimer",
     cancel: "Annuler",
     deleteTitle: "Supprimer ce fichier ?",
@@ -37,7 +38,7 @@ export const fileCopy = {
   },
   en: {
     title: "Project files",
-    hint: "PDF, JPG, PNG, WebP, TXT, DOCX, XLSX, WEBM, M4A, OGG · up to 10 MiB per file.",
+    hint: "DXF, PDF, JPG, PNG, WebP, TXT, DOCX, XLSX, WEBM, M4A, OGG · up to 10 MiB per file.",
     choose: "Choose a file",
     drag: "Drag a file here, or choose one below.",
     drop: "Drop your file here.",
@@ -56,6 +57,7 @@ export const fileCopy = {
     verify: "Verify upload",
     download: "Download",
     preview: "Preview",
+    openPlan: "Open plan",
     remove: "Delete",
     cancel: "Cancel",
     deleteTitle: "Delete this file?",

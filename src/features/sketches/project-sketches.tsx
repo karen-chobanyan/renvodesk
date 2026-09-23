@@ -37,10 +37,14 @@ export function ProjectSketches({
   org,
   project,
   owner,
+  onOpenSketch,
+  refreshKey,
 }: {
   org: string;
   project: string;
   owner: boolean;
+  onOpenSketch: (id: string) => void;
+  refreshKey: number;
 }) {
   const { locale } = useLocale(),
     c = sketchCopy[locale];
@@ -65,10 +69,10 @@ export function ProjectSketches({
       setBusy(false);
     }
   }
-  // biome-ignore lint/correctness/useExhaustiveDependencies: project identity owns the list
+  // biome-ignore lint/correctness/useExhaustiveDependencies: project identity and modal close refresh the list
   useEffect(() => {
     void load();
-  }, [org, project]);
+  }, [org, project, refreshKey]);
   async function create() {
     setBusy(true);
     setFailed(false);
@@ -80,9 +84,10 @@ export function ProjectSketches({
         request.current.id,
         request.current.title,
       );
-      window.location.assign(
-        `/workspace/${org}/projects/${project}/sketches/${sk.id}`,
-      );
+      request.current = null;
+      setTitle("");
+      setBusy(false);
+      onOpenSketch(sk.id);
     } catch {
       setFailed(true);
       setBusy(false);
@@ -136,10 +141,11 @@ export function ProjectSketches({
       {loaded && !items.length && <p className="document-empty">{c.empty}</p>}
       <div className="document-sketch-gallery">
         {items.map((sk) => (
-          <a
+          <button
             className="sketch-list-row"
             key={sk.id}
-            href={`/workspace/${org}/projects/${project}/sketches/${sk.id}`}
+            type="button"
+            onClick={() => onOpenSketch(sk.id)}
           >
             <div className="document-sketch-canvas">
               <svg
@@ -165,7 +171,7 @@ export function ProjectSketches({
               {c.open}
               <span aria-hidden="true">↗</span>
             </span>
-          </a>
+          </button>
         ))}
       </div>
       {more && (

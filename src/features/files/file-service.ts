@@ -1,7 +1,7 @@
 import { requireSupabase } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
 import { track } from "@/lib/telemetry/runtime";
-import { fileMime, validateFile } from "./file-model";
+import { fileMime, PREVIEW_URL_SECONDS, validateFile } from "./file-model";
 export type ProjectFile = Database["public"]["Tables"]["project_files"]["Row"];
 const bucket = "project-files";
 function objectKey(file: ProjectFile) {
@@ -138,7 +138,7 @@ export async function deleteFile(file: ProjectFile) {
 export async function previewUrl(file: ProjectFile) {
   const { data, error } = await requireSupabase()
     .storage.from(bucket)
-    .createSignedUrl(objectKey(file), 60);
+    .createSignedUrl(objectKey(file), PREVIEW_URL_SECONDS);
   if (error) throw error;
   return data.signedUrl;
 }

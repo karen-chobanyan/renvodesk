@@ -1,9 +1,11 @@
+export const PREVIEW_URL_SECONDS = 60 * 60;
 export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 export const fileTypes: Record<string, string> = {
   webm: "audio/webm",
   m4a: "audio/mp4",
   ogg: "audio/ogg",
   pdf: "application/pdf",
+  dxf: "application/dxf",
   jpg: "image/jpeg",
   jpeg: "image/jpeg",
   png: "image/png",
@@ -23,7 +25,18 @@ export function validateFile(
     !file.size ||
     file.size > MAX_FILE_BYTES ||
     file.name.length > 255 ||
-    (file.type && file.type !== fileTypes[ext])
+    (file.type &&
+      file.type !== fileTypes[ext] &&
+      !(
+        ext === "dxf" &&
+        [
+          "application/x-dxf",
+          "image/vnd.dxf",
+          "image/x-dxf",
+          "application/octet-stream",
+          "text/plain",
+        ].includes(file.type)
+      ))
   )
     return "invalid";
   return null;
@@ -40,5 +53,6 @@ export function canPreview(mime: string) {
     "image/png",
     "image/webp",
     "application/pdf",
+    "application/dxf",
   ].includes(mime);
 }
