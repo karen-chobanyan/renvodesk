@@ -96,39 +96,38 @@ export function ProjectSketches({
   return (
     <section id="project-sketches" className="company-form">
       <header className="document-section-heading">
-        <span className="document-eyebrow">
-          {locale === "fr" ? "Atelier" : "Sketchbook"}
-        </span>
-        <h2>{c.title}</h2>
-        <p className="helper-text">{c.hint}</p>
+        <div>
+          <h2>{c.title}</h2>
+          <p className="helper-text">{c.hint}</p>
+        </div>
+        {owner && (
+          <details className="project-create">
+            <summary className="button button-primary">{c.new}</summary>
+            <form
+              className="sketch-toolbar"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void create();
+              }}
+            >
+              <label className="field" htmlFor="new-sketch">
+                {c.name}
+                <Input
+                  id="new-sketch"
+                  required
+                  maxLength={120}
+                  value={title}
+                  disabled={busy || !!request.current}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+              </label>
+              <Button disabled={busy || !title.trim()}>
+                {request.current ? c.retry : c.create}
+              </Button>
+            </form>
+          </details>
+        )}
       </header>
-      {owner && (
-        <details className="project-create">
-          <summary className="button button-primary">{c.new}</summary>
-          <form
-            className="sketch-toolbar"
-            onSubmit={(e) => {
-              e.preventDefault();
-              void create();
-            }}
-          >
-            <label className="field" htmlFor="new-sketch">
-              {c.name}
-              <Input
-                id="new-sketch"
-                required
-                maxLength={120}
-                value={title}
-                disabled={busy || !!request.current}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-            </label>
-            <Button disabled={busy || !title.trim()}>
-              {request.current ? c.retry : c.create}
-            </Button>
-          </form>
-        </details>
-      )}
       {failed && (
         <p role="alert">
           {c.error}{" "}
