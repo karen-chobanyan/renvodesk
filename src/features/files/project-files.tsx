@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useLocale } from "@/lib/i18n";
 import { fileCopy } from "./file-copy";
-import { canPreview, validateFile } from "./file-model";
+import { canPreview, PREVIEW_URL_SECONDS, validateFile } from "./file-model";
 import {
   confirmUpload,
   deleteFile,
@@ -17,6 +17,7 @@ import {
 
 import { MediaCapture } from "./media-capture";
 
+const DxfPreview = lazy(() => import("../cad/dxf-preview"));
 const PdfPreview = lazy(() => import("./pdf-preview"));
 export function ProjectFiles({
   organizationId,
@@ -55,8 +56,12 @@ export function ProjectFiles({
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => {
     setExpired(false);
-    if (!preview) return;
-    const timer = setTimeout(() => setExpired(true), 55000);
+    // DXF is downloaded into memory; signed URL expiry does not expire the drawing.
+    if (!preview || preview.file.mime_type === "application/dxf") return;
+    const timer = setTimeout(
+      () => setExpired(true),
+      (PREVIEW_URL_SECONDS - 5) * 1000,
+    );
     return () => clearTimeout(timer);
   }, [preview]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: reload refreshes metadata after upload or deletion
@@ -208,7 +213,7 @@ export function ProjectFiles({
                 ref={input}
                 id="project-file-input"
                 type="file"
-                accept=".pdf,.jpg,.jpeg,.png,.webp,.txt,.docx,.xlsx,.webm,.m4a,.ogg"
+                accept=".dxf,.pdf,.jpg,.jpeg,.png,.webp,.txt,.docx,.xlsx,.webm,.m4a,.ogg"
                 disabled={busy}
                 onChange={(e) => selectFile(e.target.files?.[0] ?? null)}
               />
@@ -300,7 +305,9 @@ export function ProjectFiles({
                           })
                         }
                       >
-                        {c.preview}
+                        {file.mime_type === "application/dxf"
+                          ? c.openPlan
+                          : c.preview}
                       </Button>
                     )}
                   </>
@@ -400,12 +407,25 @@ export function ProjectFiles({
         }}
       >
         <DialogContent
+          className={
+            preview?.file.mime_type === "application/dxf" ? "dxf-dialog" : ""
+          }
           title={preview?.file.original_name ?? c.preview}
-          description={c.previewHint}
+          description={
+            preview?.file.mime_type === "application/dxf"
+              ? locale === "fr"
+                ? "Plan DXF en lecture seule"
+                : "Read-only DXF plan"
+              : c.previewHint
+          }
           closeLabel={c.close}
         >
           {expired ? (
             <p role="status">{c.expired}</p>
+          ) : preview?.file.mime_type === "application/dxf" ? (
+            <Suspense fallback={<p role="status">{c.loading}</p>}>
+              <DxfPreview key={preview.url} url={preview.url} />
+            </Suspense>
           ) : preview?.file.mime_type === "application/pdf" ? (
             <Suspense fallback={<p role="status">{c.loading}</p>}>
               <PdfPreview

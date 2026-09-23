@@ -122,3 +122,10 @@ Sources: [Google](https://support.google.com/analytics/answer/7667196?hl=en),
 
 These periods are separate from the application's 180-day consent and cookie
 periods. Infrastructure logs, backups and processing agreements remain unresolved.
+
+
+Application cookie preferences are reopened from an inline footer control, not a
+floating button. AppShell owns this control on workspace/demo pages; standalone
+auth, invitation and sketch routes use a footer layout. The Components link is
+removed from the application footer. Consent behavior and the public landing's
+controls are unchanged.

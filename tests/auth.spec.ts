@@ -360,8 +360,12 @@ async function mockApi(page: Page) {
   );
   return () => requests;
 }
-async function login(page: Page) {
+async function login(page: Page, dismissConsent = false) {
   await page.goto("/login");
+  if (dismissConsent)
+    await page
+      .getByRole("button", { name: "Tout refuser", exact: true })
+      .click();
   await page
     .getByRole("textbox", { name: "Adresse e-mail" })
     .fill("test@example.test");
@@ -380,7 +384,7 @@ test("protected workspace redirects without a session", async ({ page }) => {
 });
 test("sign in, create company, reload and sign out", async ({ page }) => {
   const requests = await mockApi(page);
-  await login(page);
+  await login(page, true);
   await expect(
     page.getByRole("heading", { name: "Créons votre entreprise." }),
   ).toBeVisible();
@@ -833,6 +837,17 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     page.getByRole("link", { name: "Other estimate edit", exact: true }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Back to projects" }).click();
+  const footer = page.locator(".app-footer");
+  const cookieSettings = footer.getByRole("button", {
+    name: "Cookie Settings",
+    exact: true,
+  });
+  await expect(cookieSettings).toHaveCSS("position", "static");
+  await expect(footer.locator('a[href="/design-system"]')).toHaveCount(0);
+  await expect(page.locator(".privacy-controls-floating")).toHaveCount(0);
+  await cookieSettings.click();
+  await expect(page.locator("#privacy-panel")).toBeVisible();
+  await page.getByRole("button", { name: "Reject all", exact: true }).click();
   if (test.info().project.name === "mobile")
     await page.getByRole("button", { name: "Navigation" }).click();
   await page.locator(".account-menu > summary").click();

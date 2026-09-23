@@ -28,6 +28,9 @@
   padding-inline: 0;
 }
 .privacy-panel {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #232d2b;
   position: fixed;
   z-index: 71;
   bottom: 24px;

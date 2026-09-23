@@ -160,7 +160,8 @@ Uploads show transfer progress. If a response is lost, retry or use Verify uploa
 pending entries can also be removed. Interrupted deletions remain available to
 retry. This is not resumable/offline upload support. Files use unique immutable
 keys; replacement/version history and malware scanning are not implemented.
-Preview URLs expire after 60 seconds; the UI closes their content after 55 seconds.
+Preview URLs expire after one hour; non-DXF preview content closes five seconds before expiry.
+Loaded DXF drawings remain available in memory until the preview is closed.
 PDF.js renders pages inside the app with previous/next controls; download remains
 the fallback for unsupported or damaged documents. The viewer loads only when needed.
 
@@ -334,3 +335,22 @@ see [legal page publication](docs/LEGAL-PAGES.md).
 
 For Ubuntu with **Nginx**, use [the Nginx deployment guide](docs/NGINX-DEPLOYMENT.md)
 and `deploy/nginx.conf`. Nginx is the current preferred deployment option.
+
+## Project DXF previews
+
+In a saved project, open **Documents**, upload a `.dxf` file (up to 10 MiB), then
+choose **Open plan / Ouvrir le plan**. Owners upload/delete; members view/download.
+Text DXF previews offer pan, zoom, fit and layer visibility with French/English
+controls. The original is preserved in private project storage. Loaded plans stay
+open until closed; reopening obtains fresh access. Unsupported drawings remain downloadable.
+
+This is read-only model-space viewing: no DWG, editing, CAD export or takeoff.
+Fonts and entities may differ from the source CAD application. See
+[implementation and verification](docs/decisions/019-project-dxf-previews.md).
+The development migration is applied; production deployment is still pending.
+
+`pnpm dev:cad --port 5176` retains the standalone local evaluation at
+`http://127.0.0.1:5176/cad-prototype.html` with a fictional sample. Its files stay
+in the browser. `pnpm build:cad` and `pnpm test:cad` build/test that separate entry.
+Normal builds include only the shared canvas entry, with the CAD engine loaded
+on demand and excluded from landing-page imports.

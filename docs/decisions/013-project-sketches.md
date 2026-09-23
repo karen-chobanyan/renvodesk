@@ -21,6 +21,14 @@ bytes for retry. Conflicts pause saving and offer export/reload. Old revisions o
 read-only; restoring creates a new revision. Local drafts are memory-only, with
 beforeunload protection. History errors must not unmount or discard an editor.
 
+Project sketch lists, overview previews and activity open a large modal in place;
+the project page and its working forms stay mounted. Revision selection and restore
+load into that modal without changing the URL. Closing or switching revisions
+requires confirmation when edits are pending, while beforeunload still protects
+real page exits. Existing sketch URLs remain usable as direct links. Desktop
+history sits beside the canvas, while phone history docks below it. Excalidraw
+keeps its drawing tools, and save/import/export controls stay in the modal header.
+
 Limits: 2,000 elements, 8 MiB JSON including PNG/JPEG/WebP assets, 1 MiB preview.
 No external embeds/links, realtime collaboration, offline sync, measured CAD,
 PDF-page background rendering or deletion. Abandoned pending uploads have no

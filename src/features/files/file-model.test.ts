@@ -1,7 +1,38 @@
 import { describe, expect, it } from "vitest";
-import { canPreview, MAX_FILE_BYTES, validateFile } from "./file-model";
+import {
+  canPreview,
+  fileMime,
+  MAX_FILE_BYTES,
+  validateFile,
+} from "./file-model";
 
 describe("file validation", () => {
+  it("normalizes DXF OS MIME variants without accepting DWG or active types", () => {
+    for (const type of [
+      "",
+      "application/dxf",
+      "application/x-dxf",
+      "image/vnd.dxf",
+      "image/x-dxf",
+      "application/octet-stream",
+      "text/plain",
+    ]) {
+      expect(
+        validateFile({ name: "Plan.DXF", size: MAX_FILE_BYTES, type }),
+      ).toBeNull();
+    }
+    expect(fileMime("Plan.DXF")).toBe("application/dxf");
+    expect(canPreview("application/dxf")).toBe(true);
+    expect(validateFile({ name: "plan.dwg", size: 100, type: "" })).toBe(
+      "invalid",
+    );
+    expect(
+      validateFile({ name: "plan.dxf", size: 100, type: "text/html" }),
+    ).toBe("invalid");
+    expect(
+      validateFile({ name: "plan.dxf", size: MAX_FILE_BYTES + 1, type: "" }),
+    ).toBe("invalid");
+  });
   it("accepts supported case-insensitive extensions and enforces size boundaries", () => {
     expect(
       validateFile({

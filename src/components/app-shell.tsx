@@ -1,6 +1,5 @@
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import {
-  ArrowUpRight,
   CalendarDays,
   FileText,
   FolderKanban,
@@ -19,6 +18,7 @@ import {
 import { useCompanyAccess } from "@/features/team/company-access";
 import { useDemo } from "@/lib/demo-store";
 import { useLocale } from "@/lib/i18n";
+import { ConsentControls } from "@/lib/telemetry/consent-controls";
 import { Button } from "./ui/button";
 
 function subscribeMobile(callback: () => void) {
@@ -246,10 +246,7 @@ export function AppShell({
               RenvoDesk <span className="footer-divider">/</span>{" "}
               {live ? authText("realData") : t("sample")}
             </span>
-            <NavLink to="/design-system">
-              {t("design")}
-              <ArrowUpRight size={13} />
-            </NavLink>
+            <ConsentControls locale={locale} placement="footer" />
           </footer>
         </div>
       </div>

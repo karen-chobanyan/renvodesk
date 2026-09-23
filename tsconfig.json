@@ -20,7 +20,9 @@
   "include": [
     "src",
     "vite.config.ts",
+    "vite.cad-prototype.config.ts",
     "playwright.config.ts",
+    "playwright.cad.config.ts",
     "playwright.telemetry.config.ts",
     "tests",
     "checks"

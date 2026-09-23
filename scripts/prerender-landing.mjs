@@ -42,6 +42,8 @@ try {
     visited.add(key);
     const chunk = manifest[key];
     if (!chunk) throw new Error(`Missing manifest entry: ${key}`);
+    if (chunk.name === "cad-engine")
+      throw new Error("Landing page must not import the CAD engine");
     for (const css of chunk.css ?? []) styles.add(css);
     for (const dependency of chunk.imports ?? []) collect(dependency);
   }

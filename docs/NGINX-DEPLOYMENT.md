@@ -147,3 +147,14 @@ exist but return 404, use `namei -l` on the failing absolute file path and verif
 Nginx worker user can traverse every parent directory and read the file. Do not use
 chmod 777. Upload a complete release using step 3, validate Nginx and reload only
 if configuration changes. Preserve Certbot's TLS directives.
+
+
+## DXF preview entry
+
+Publish `cad-canvas.html` with the rest of the same build, including `/fonts/` and
+all hashed assets. The exact `/cad-canvas.html` location in `deploy/nginx.conf`
+allows same-origin framing and sets noindex. Keep `X-Frame-Options: DENY` for the
+rest of the site. Missing this exception causes a blank project DXF preview.
+This updated configuration has not been deployed or validated with `nginx -t` on
+the VPS. CAD parsing is currently on the main thread; representative drawing and
+resource-limit evaluation remains a public-production gate (decision 019).
