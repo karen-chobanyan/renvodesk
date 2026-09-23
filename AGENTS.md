@@ -521,3 +521,7 @@ Privacy explanation pages are available in FR/EN but operator details/contact an
 the complete service privacy notice remain required before public launch. See
 `docs/TELEMETRY.md`, `docs/VPS-DEPLOYMENT.md` and decision 017. Browser telemetry
 checks mock all providers; they do not establish real account ingestion.
+
+Hosting preference updated: Ubuntu with Nginx, without Docker. Use deploy/nginx.conf
+and docs/NGINX-DEPLOYMENT.md; Caddy files remain an alternative. Do not run both
+on the same HTTP/HTTPS ports. No VPS deployment has been performed.

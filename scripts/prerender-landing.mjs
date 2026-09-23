@@ -16,8 +16,15 @@ try {
       rollupOptions: { output: { entryFileNames: "render.mjs" } },
     },
   });
-  const { renderLanding, renderPrivacy, landingHead, siteOrigin, sitemap } =
-    await import(pathToFileURL(path.join(temporary, "render.mjs")).href);
+  const {
+    renderLanding,
+    renderLegal,
+    legalCopy,
+    escapeHtml,
+    landingHead,
+    siteOrigin,
+    sitemap,
+  } = await import(pathToFileURL(path.join(temporary, "render.mjs")).href);
   const origin = siteOrigin(
     process.env.SITE_URL ??
       loadEnv("production", process.cwd(), "SITE_").SITE_URL,
@@ -61,22 +68,27 @@ try {
     await writeFile(file, output);
   }
   for (const locale of ["fr", "en"]) {
-    const title =
-      locale === "fr" ? "Confidentialité — RenvoDesk" : "Privacy — RenvoDesk";
-    const output = template
-      .replace('<html lang="fr">', `<html lang="${locale}">`)
-      .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
-      .replace("</head>", `${cssHead}\n</head>`)
-      .replace(
-        '<div id="root"></div>',
-        `<div id="root" data-prerendered="${locale}">${renderPrivacy(locale)}</div>`,
-      );
-    const file =
-      locale === "fr"
-        ? "dist/privacy/index.html"
-        : "dist/en/privacy/index.html";
-    await mkdir(path.dirname(file), { recursive: true });
-    await writeFile(file, output);
+    for (const kind of ["privacy", "terms"]) {
+      const document = legalCopy[locale][kind];
+      const output = template
+        .replace('<html lang="fr">', `<html lang="${locale}">`)
+        .replace(
+          /<title>[^<]*<\/title>/,
+          `<title>${escapeHtml(document.title)} — RenvoDesk</title>`,
+        )
+        .replace(/<meta name="description"[^>]*\/>/g, "")
+        .replace(
+          "</head>",
+          `<meta name="description" content="${escapeHtml(document.intro)}" />\n${cssHead}\n</head>`,
+        )
+        .replace(
+          '<div id="root"></div>',
+          `<div id="root" data-prerendered="${locale}">${renderLegal(locale, kind)}</div>`,
+        );
+      const file = `dist/${locale === "en" ? "en/" : ""}${kind}/index.html`;
+      await mkdir(path.dirname(file), { recursive: true });
+      await writeFile(file, output);
+    }
   }
   await writeFile(
     "dist/robots.txt",

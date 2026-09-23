@@ -32,6 +32,7 @@ export function pageName(path: string): string {
   if (pathname === "/") return "landing_fr";
   if (pathname === "/en") return "landing_en";
   if (/^\/(en\/)?privacy$/.test(pathname)) return "privacy";
+  if (/^\/(en\/)?terms$/.test(pathname)) return "terms";
   if (pathname === "/signup") return "signup";
   if (pathname === "/login") return "login";
   if (/^\/auth\//.test(pathname)) return "authentication";

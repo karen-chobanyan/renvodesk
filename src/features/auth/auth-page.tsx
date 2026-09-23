@@ -45,6 +45,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
 }
 type Mode = "login" | "signup" | "request" | "update";
 export function AuthPage({ mode }: { mode: Mode }) {
+  const { locale } = useLocale();
   const t = useAuthCopy();
   const { session, loading } = useAuth();
   const navigate = useNavigate();
@@ -84,6 +85,11 @@ export function AuthPage({ mode }: { mode: Mode }) {
     const form = new FormData(event.currentTarget);
     const email = String(form.get("email") ?? "").trim();
     const password = String(form.get("password") ?? "");
+    if (mode === "signup" && form.get("terms") !== "accepted") {
+      setError("termsRequired");
+      setBusy(false);
+      return;
+    }
     try {
       const client = requireSupabase();
       if (mode === "login") {
@@ -193,6 +199,46 @@ export function AuthPage({ mode }: { mode: Mode }) {
                   </small>
                 )}
               </>
+            )}
+            {mode === "signup" && (
+              <div className="auth-legal">
+                <div className="auth-terms-row">
+                  <input
+                    id="auth-terms"
+                    name="terms"
+                    type="checkbox"
+                    value="accepted"
+                    required
+                    disabled={busy}
+                  />
+                  <div className="auth-legal-inline">
+                    <label htmlFor="auth-terms">
+                      {t("termsPrefix")}{" "}
+                      <a
+                        href={locale === "fr" ? "/terms/" : "/en/terms/"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-describedby="legal-new-tab"
+                      >
+                        {t("termsLink")}
+                      </a>
+                      {t("privacyAcknowledge")}{" "}
+                      <a
+                        href={locale === "fr" ? "/privacy/" : "/en/privacy/"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-describedby="legal-new-tab"
+                      >
+                        {t("privacyLink")}
+                      </a>
+                      .
+                    </label>
+                  </div>
+                </div>
+                <span id="legal-new-tab" className="sr-only">
+                  {t("legalNewTab")}
+                </span>
+              </div>
             )}
             {error && (
               <p className="error-message" role="alert">

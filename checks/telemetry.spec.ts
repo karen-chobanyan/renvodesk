@@ -25,7 +25,7 @@ async function serve(page: Page) {
     let file = url.pathname;
     if (file === "/") file = "/index.html";
     else if (file === "/en/") file = "/en/index.html";
-    else if (/^\/(en\/)?privacy\/?$/.test(file))
+    else if (/^\/(en\/)?(privacy|terms)\/?$/.test(file))
       file = `${file.replace(/\/$/, "")}/index.html`;
     else if (!path.extname(file)) file = "/app.html";
     const resolved = path.resolve("dist", `.${file}`);
@@ -198,7 +198,7 @@ test("French controls and expired consent do not silently enable tracking", asyn
     .getByRole("link", { name: "Informations de confidentialité" })
     .click();
   await expect(page.getByRole("heading", { level: 1 })).toHaveText(
-    "Confidentialité et suivi optionnel",
+    "Politique de confidentialité",
   );
   expect(external).toEqual([]);
 });

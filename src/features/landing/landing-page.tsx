@@ -265,8 +265,13 @@ export function LandingPage({ locale }: { locale: LandingLocale }) {
           <p>{c.footer}</p>
         </div>
         <nav aria-label={locale === "fr" ? "Pied de page" : "Footer"}>
-          <a href={locale === "fr" ? "/privacy" : "/en/privacy"}>
-            {locale === "fr" ? "Confidentialité" : "Privacy"}
+          <a href={locale === "fr" ? "/privacy/" : "/en/privacy/"}>
+            {locale === "fr"
+              ? "Politique de confidentialité"
+              : "Privacy Policy"}
+          </a>
+          <a href={locale === "fr" ? "/terms/" : "/en/terms/"}>
+            {locale === "fr" ? "Conditions d’utilisation" : "Terms of Use"}
           </a>
           <a href="#product">{c.product}</a>
           <a href="/projects">{c.demo}</a>

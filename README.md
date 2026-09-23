@@ -328,4 +328,9 @@ for event definitions, privacy filtering, required dashboard settings and limits
 The chosen deployment target is an Ubuntu VPS with Caddy, without Docker. Public
 configuration and routing are in `deploy/`; follow [VPS deployment](docs/VPS-DEPLOYMENT.md).
 No remote deployment or live provider ingestion has been verified. Operator/contact
-details and the full privacy notice still need completion before public launch.
+details and provider arrangements still need verification before public launch.
+Full FR/EN Terms of Use and Privacy Policy drafts are linked in the landing footer;
+see [legal page publication](docs/LEGAL-PAGES.md).
+
+For Ubuntu with **Nginx**, use [the Nginx deployment guide](docs/NGINX-DEPLOYMENT.md)
+and `deploy/nginx.conf`. Nginx is the current preferred deployment option.

@@ -12,7 +12,7 @@ renvodesk.com {
 		Permissions-Policy "camera=(self), microphone=(self), geolocation=()"
 		Cache-Control "no-cache"
 	}
-	@privateFiles path /.env* /.git* /.vite/* *.map /app.html /index.html /en/index.html /privacy/index.html /en/privacy/index.html
+	@privateFiles path /.env* /.git* /.vite/* *.map /app.html /index.html /en/index.html /privacy/index.html /en/privacy/index.html /terms/index.html /en/terms/index.html
 	handle @privateFiles {
 		respond "Not found" 404
 	}
@@ -20,11 +20,11 @@ renvodesk.com {
 	handle @locale {
 		redir * /en/ 308
 	}
-	@privacyBare path /privacy /en/privacy
+	@privacyBare path /privacy /en/privacy /terms /en/terms
 	handle @privacyBare {
 		redir * {path}/ 308
 	}
-	@public path / /en/ /privacy/ /en/privacy/
+	@public path / /en/ /privacy/ /en/privacy/ /terms/ /en/terms/
 	handle @public {
 		file_server
 	}

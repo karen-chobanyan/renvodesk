@@ -1,5 +1,8 @@
 # Ubuntu VPS deployment — renvodesk.com
 
+For the requested Nginx setup, use [the Nginx guide](NGINX-DEPLOYMENT.md) and
+`deploy/nginx.conf`. The Caddy instructions below remain an alternative.
+
 Target: Ubuntu with Caddy as a systemd service, no Docker. Only compiled static
 files are served; no Node production server is required. Supabase remains the
 backend. No VPS connection, DNS change or production deployment has been performed.

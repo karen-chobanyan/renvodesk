@@ -41,12 +41,25 @@ try {
     }
   }
   assert.ok(ready, error);
-  for (const route of ["/", "/en/", "/privacy/", "/en/privacy/"]) {
+  for (const route of [
+    "/",
+    "/en/",
+    "/privacy/",
+    "/en/privacy/",
+    "/terms/",
+    "/en/terms/",
+  ]) {
     const response = await fetch(`http://127.0.0.1:4187${route}`);
     assert.equal(response.status, 200, route);
     assert.match(await response.text(), /<h1/);
   }
-  for (const route of ["/en", "/privacy", "/en/privacy"]) {
+  for (const route of [
+    "/en",
+    "/privacy",
+    "/en/privacy",
+    "/terms",
+    "/en/terms",
+  ]) {
     const response = await fetch(`http://127.0.0.1:4187${route}`, {
       redirect: "manual",
     });

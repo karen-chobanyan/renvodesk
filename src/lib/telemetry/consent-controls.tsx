@@ -107,7 +107,7 @@ export function ConsentControls({ locale }: { locale: "fr" | "en" }) {
           </div>
           <p>
             {c.detail}{" "}
-            <a href={locale === "fr" ? "/privacy" : "/en/privacy"}>
+            <a href={locale === "fr" ? "/privacy/" : "/en/privacy/"}>
               {c.policy}
             </a>
           </p>

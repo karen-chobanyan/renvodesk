@@ -81,11 +81,10 @@ Sentry:
 
 ## Privacy notice and launch prerequisites
 
-`/privacy/` and `/en/privacy/` contain a factual tracking explanation. They are
-prerendered and noindex. Set `VITE_PRIVACY_OPERATOR` and `VITE_PRIVACY_EMAIL` and
-complete the service-wide notice before launch (operator details, purposes/legal
-bases, processors, transfers, retention and rights). The explanatory page explicitly
-states when those details are missing; it is not a completed legal policy.
+`/privacy/` and `/en/privacy/` contain the service-wide privacy policy draft,
+including optional tracking. Terms are at `/terms/` and `/en/terms/`. All four
+pages are prerendered and noindex. See [legal page publication](LEGAL-PAGES.md)
+for operator configuration and the outstanding operational details to verify.
 
 ## Verification
 
@@ -108,3 +107,18 @@ Sources: [Google basic consent mode](https://developers.google.com/tag-platform/
 [Google consent implementation](https://developers.google.com/tag-platform/security/guides/consent),
 [Enhanced measurement](https://support.google.com/analytics/answer/9216061),
 [Sentry options](https://docs.sentry.io/platforms/javascript/configuration/options/).
+
+## Retention confirmed on 23 September 2026
+
+The user confirmed GA4 retention of two months with activity reset disabled,
+and Sentry Developer with no custom retention. These are user-reported account
+settings, not independently inspected dashboard settings. GA4 standard aggregated
+reports are outside that retention control; expired detailed data is deleted on
+Google’s monthly cycle. Sentry’s current support article specifies 30 days for
+free-plan error events (90 days is for Team/Business), correcting earlier advice.
+
+Sources: [Google](https://support.google.com/analytics/answer/7667196?hl=en),
+[Sentry](https://sentry.zendesk.com/hc/en-us/articles/27118913621019-How-Long-Are-Errors-Events-Stored-in-Sentry).
+
+These periods are separate from the application's 180-day consent and cookie
+periods. Infrastructure logs, backups and processing agreements remain unresolved.

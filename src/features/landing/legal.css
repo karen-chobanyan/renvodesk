@@ -1,0 +1,215 @@
+.legal-header,
+.legal-main,
+.legal-footer {
+  width: min(1100px, calc(100% - 64px));
+  margin-inline: auto;
+}
+.legal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 32px;
+  padding-block: 28px;
+  border-bottom: 1px solid var(--lp-line);
+}
+.legal-header nav {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+.legal-header nav [aria-current] {
+  color: var(--lp-text);
+  text-decoration: underline;
+  text-underline-offset: 6px;
+}
+.legal-main {
+  padding-block: 64px 80px;
+}
+.legal-intro {
+  max-width: 780px;
+  margin-left: 290px;
+}
+.legal-intro h1 {
+  font-size: clamp(36px, 4vw, 54px);
+  line-height: 1.1;
+  letter-spacing: -0.045em;
+  font-weight: 500;
+}
+.legal-intro > p:not(.landing-eyebrow) {
+  margin-top: 24px;
+  line-height: 1.75;
+  color: var(--lp-muted);
+}
+.legal-intro .legal-date {
+  font-size: 12px;
+}
+.legal-draft {
+  margin-top: 28px;
+  border-left: 3px solid #aa9465;
+  background: #eeece3;
+  padding: 18px 22px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+.legal-draft p {
+  margin-top: 8px;
+}
+.legal-layout {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 60px;
+  margin-top: 48px;
+}
+.legal-contents {
+  align-self: start;
+  position: sticky;
+  top: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.legal-contents p {
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  margin-bottom: 14px;
+}
+.legal-contents a {
+  display: block;
+  padding: 8px 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--lp-muted);
+}
+.legal-contents a:hover {
+  color: var(--lp-text);
+  text-decoration: underline;
+}
+.legal-body section {
+  scroll-margin-top: 28px;
+  padding-bottom: 32px;
+  margin-bottom: 32px;
+  border-bottom: 1px solid var(--lp-line);
+}
+.legal-page .legal-body h2 {
+  font-size: 22px;
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: -0.025em;
+}
+.legal-body p,
+.legal-body li {
+  font-size: 15px;
+  line-height: 1.85;
+  margin-top: 16px;
+  overflow-wrap: anywhere;
+}
+.legal-body a,
+.legal-footer a {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.legal-operator {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 12px;
+  font-size: 14px;
+  line-height: 1.7;
+  margin-top: 24px;
+}
+.legal-operator dt {
+  color: var(--lp-muted);
+}
+.legal-operator dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+.legal-footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 24px;
+  padding-block: 24px 80px;
+  font-size: 13px;
+  border-top: 1px solid var(--lp-line);
+}
+.legal-page :focus-visible {
+  outline: 2px solid var(--lp-text);
+  outline-offset: 4px;
+}
+@media (max-width: 900px) {
+  .legal-intro {
+    margin-left: 0;
+  }
+  .legal-layout {
+    gap: 35px;
+    grid-template-columns: 190px minmax(0, 1fr);
+  }
+}
+@media (max-width: 640px) {
+  .legal-header,
+  .legal-main,
+  .legal-footer {
+    width: calc(100% - 40px);
+  }
+  .legal-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 22px;
+  }
+  .legal-header nav {
+    gap: 18px;
+    font-size: 12px;
+  }
+  .legal-main {
+    padding-block: 40px;
+  }
+  .legal-layout {
+    grid-template-columns: 1fr;
+    gap: 36px;
+    margin-top: 30px;
+  }
+  .legal-contents {
+    position: static;
+    border-bottom: 1px solid var(--lp-line);
+    padding-bottom: 24px;
+  }
+  .legal-contents a {
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+  }
+  .legal-body p {
+    font-size: 14px;
+  }
+  .legal-operator {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .legal-operator dd {
+    margin-bottom: 12px;
+  }
+}
+@media print {
+  .legal-header nav,
+  .legal-contents,
+  .legal-footer,
+  .privacy-controls {
+    display: none;
+  }
+  .legal-main {
+    width: 100%;
+    padding: 0;
+  }
+  .legal-intro {
+    margin: 0;
+  }
+  .legal-layout {
+    display: block;
+  }
+  .legal-page .legal-body h2 {
+    break-after: avoid;
+  }
+}

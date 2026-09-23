@@ -1,6 +1,7 @@
 import React from "react";
 import { createRoot, hydrateRoot } from "react-dom/client";
-import { PrivacyPage } from "./privacy-page";
+import { legalCopy } from "./legal-copy";
+import { LegalPage } from "./legal-page";
 import "@fontsource-variable/inter";
 import "./landing.css";
 import { landingCopy } from "./landing-copy";
@@ -8,15 +9,22 @@ import { LandingPage } from "./landing-page";
 
 const locale = window.location.pathname.startsWith("/en") ? "en" : "fr";
 document.documentElement.lang = locale;
-const privacy = window.location.pathname.includes("privacy");
-document.title = privacy
-  ? locale === "fr"
-    ? "Confidentialité — RenvoDesk"
-    : "Privacy — RenvoDesk"
+const legalKind = /\/privacy\/?$/.test(window.location.pathname)
+  ? "privacy"
+  : /\/terms\/?$/.test(window.location.pathname)
+    ? "terms"
+    : null;
+document.title = legalKind
+  ? `${legalCopy[locale][legalKind].title} — RenvoDesk`
   : landingCopy[locale].title;
 document
   .querySelector('meta[name="description"]')
-  ?.setAttribute("content", landingCopy[locale].description);
+  ?.setAttribute(
+    "content",
+    legalKind
+      ? legalCopy[locale][legalKind].intro
+      : landingCopy[locale].description,
+  );
 try {
   localStorage.setItem("renvodesk-locale", locale);
 } catch {
@@ -26,8 +34,8 @@ const root = document.getElementById("root");
 if (!root) throw new Error("Application root is missing");
 const page = (
   <React.StrictMode>
-    {privacy ? (
-      <PrivacyPage locale={locale} />
+    {legalKind ? (
+      <LegalPage locale={locale} kind={legalKind} />
     ) : (
       <LandingPage locale={locale} />
     )}

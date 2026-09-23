@@ -76,6 +76,33 @@ try {
     assert.deepEqual(errors, []);
     await hydrated.close();
   }
+  for (const locale of ["fr", "en"]) {
+    for (const kind of ["terms", "privacy"]) {
+      const context = await browser.newContext({ javaScriptEnabled: false });
+      const page = await context.newPage();
+      const route = `${locale === "en" ? "/en" : ""}/${kind}/`;
+      const response = await page.goto(base + route);
+      assert.equal(response.status(), 200);
+      assert.equal(await page.locator("h1").count(), 1);
+      assert.ok((await page.locator(".legal-body section").count()) >= 13);
+      assert.equal(await page.locator("html").getAttribute("lang"), locale);
+      assert.ok(
+        (await page.locator('meta[name="description"]').getAttribute("content"))
+          .length > 50,
+      );
+      await context.close();
+      const hydrated = await browser.newPage();
+      const errors = [];
+      hydrated.on("pageerror", (error) => errors.push(error.message));
+      hydrated.on("console", (message) => {
+        if (message.type() === "error") errors.push(message.text());
+      });
+      await hydrated.goto(base + route);
+      await hydrated.locator('.legal-contents a[href="#operator"]').click();
+      assert.deepEqual(errors, []);
+      await hydrated.close();
+    }
+  }
   const shell = await readFile("dist/app.html", "utf8");
   assert.match(shell, /noindex, nofollow/);
   assert.ok(!shell.includes("<h1"));

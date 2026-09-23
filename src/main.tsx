@@ -5,7 +5,7 @@ startTelemetry();
 if (
   window.location.pathname === "/" ||
   /^\/en\/?$/.test(window.location.pathname) ||
-  /^\/(en\/)?privacy\/?$/.test(window.location.pathname)
+  /^\/(en\/)?(privacy|terms)\/?$/.test(window.location.pathname)
 ) {
   void import("./features/landing/landing-entry");
 } else {

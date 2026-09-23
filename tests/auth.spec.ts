@@ -870,6 +870,23 @@ test("signup and recovery explain the email step without sending mail", async ({
   await page
     .getByLabel("Mot de passe", { exact: true })
     .fill("long-test-password");
+  const terms = page.getByRole("checkbox", {
+    name: /J’accepte les Conditions d’utilisation/,
+  });
+  await expect(terms).not.toBeChecked();
+  await page.getByRole("button", { name: "Créer mon compte" }).click();
+  await expect(terms).toBeFocused();
+  await expect(page.getByRole("status")).toHaveCount(0);
+  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  await expect(
+    page.getByRole("link", { name: "Terms of Service", exact: true }),
+  ).toHaveAttribute("href", "/en/terms/");
+  await expect(
+    page.getByRole("link", { name: "Privacy Policy", exact: true }),
+  ).toHaveAttribute("target", "_blank");
+  await page.getByRole("checkbox").focus();
+  await page.keyboard.press("Space");
+  await page.getByRole("combobox", { name: "Language" }).selectOption("fr");
   await page.getByRole("button", { name: "Créer mon compte" }).click();
   await expect(page.getByRole("status")).toContainText(
     "Consultez votre boîte mail",
