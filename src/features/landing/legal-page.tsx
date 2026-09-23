@@ -1,4 +1,5 @@
-import { ConsentControls } from "../../lib/telemetry/consent-controls";
+import { LandingFooter } from "./landing-footer";
+import { LandingHeader } from "./landing-header";
 import { type LegalKind, legalCopy } from "./legal-copy";
 import "./legal.css";
 
@@ -11,7 +12,6 @@ export function LegalPage({
 }) {
   const en = locale === "en";
   const document = legalCopy[locale][kind];
-  const prefix = en ? "/en" : "";
   const operator =
     import.meta.env.VITE_PRIVACY_OPERATOR?.trim() || "Chobanyan Solutions";
   const email =
@@ -24,35 +24,14 @@ export function LegalPage({
   const registration = import.meta.env.VITE_LEGAL_REGISTRATION?.trim();
   const complete = !!(operator && email && address && country);
   return (
-    <div className="landing legal-page">
+    <div className="landing legal-page" id="top">
       <a className="landing-skip" href="#legal-content">
         {en ? "Skip to content" : "Aller au contenu"}
       </a>
-      <header className="legal-header">
-        <a className="landing-brand" href={en ? "/en/" : "/"}>
-          <span className="landing-brand-mark">
-            r<span>.</span>
-          </span>
-          RenvoDesk
-        </a>
-        <nav aria-label={en ? "Legal pages" : "Pages juridiques"}>
-          <a
-            href={`${prefix}/terms/`}
-            aria-current={kind === "terms" ? "page" : undefined}
-          >
-            {legalCopy[locale].terms.title}
-          </a>
-          <a
-            href={`${prefix}/privacy/`}
-            aria-current={kind === "privacy" ? "page" : undefined}
-          >
-            {legalCopy[locale].privacy.title}
-          </a>
-          <a href={`${en ? "" : "/en"}/${kind}/`} hrefLang={en ? "fr" : "en"}>
-            {en ? "Français" : "English"}
-          </a>
-        </nav>
-      </header>
+      <LandingHeader
+        locale={locale}
+        alternateHref={`${en ? "" : "/en"}/${kind}/`}
+      />
       <main id="legal-content" className="legal-main">
         <div className="legal-intro">
           <p className="landing-eyebrow">
@@ -201,15 +180,10 @@ export function LegalPage({
           </article>
         </div>
       </main>
-      <footer className="legal-footer">
-        <a href={en ? "/en/" : "/"}>
-          ← {en ? "Back to RenvoDesk" : "Retour à RenvoDesk"}
-        </a>
-        <a href={`${prefix}/${kind === "terms" ? "privacy" : "terms"}/`}>
-          {legalCopy[locale][kind === "terms" ? "privacy" : "terms"].title}
-        </a>
-      </footer>
-      <ConsentControls locale={locale} />
+      <LandingFooter
+        locale={locale}
+        alternateHref={`${en ? "" : "/en"}/${kind}/`}
+      />
     </div>
   );
 }

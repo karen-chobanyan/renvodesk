@@ -36,8 +36,11 @@ for (const locale of ["fr", "en"] as const) {
     await expect(page).toHaveURL(/#ending$/);
     await expect(page.locator("#ending h2")).toBeInViewport();
     await page
-      .locator(".legal-header")
-      .getByRole("link", { name: en ? "Français" : "English", exact: true })
+      .locator(".landing-header")
+      .getByRole("link", {
+        name: en ? "Lire en français" : "Read in English",
+        exact: true,
+      })
       .click();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(
       en ? "Conditions d’utilisation" : "Terms of Use",

@@ -889,6 +889,22 @@ body:has(.landing) {
   gap: 25px;
   font-size: 12px;
 }
+.landing-footer nav .privacy-controls-footer {
+  font: inherit;
+  color: inherit;
+}
+.landing-footer nav .privacy-trigger {
+  font: inherit;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+  text-decoration: none;
+  min-height: 44px;
+}
+.landing-footer nav .privacy-trigger {
+  display: inline-flex;
+  align-items: center;
+}
 .landing-footer nav a {
   display: inline-flex;
   align-items: center;

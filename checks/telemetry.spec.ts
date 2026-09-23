@@ -66,16 +66,18 @@ test("basic consent: no providers before opt-in, persistence, withdrawal and no 
     page.getByRole("heading", { name: "Your privacy preferences" }),
   ).toBeVisible();
   expect(external).toEqual([]);
+  await expect(page.getByRole("checkbox")).toHaveCount(0);
   await page.getByRole("button", { name: "Reject all", exact: true }).click();
   await page.reload();
   await expect(
-    page.getByRole("button", { name: "Privacy settings", exact: true }),
+    page.getByRole("button", { name: "Cookie Settings", exact: true }),
   ).toBeVisible();
   await expect(page.locator("#privacy-panel")).toHaveCount(0);
   expect(external).toEqual([]);
   await page
-    .getByRole("button", { name: "Privacy settings", exact: true })
+    .getByRole("button", { name: "Cookie Settings", exact: true })
     .click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByLabel("Usage statistics", { exact: true }).check();
   await page.getByRole("button", { name: "Save my choices" }).click();
   await expect
@@ -93,7 +95,7 @@ test("basic consent: no providers before opt-in, persistence, withdrawal and no 
     ga.filter((c) => c[0] === "event" && c[1] === "page_view"),
   ).toHaveLength(1);
   await page
-    .getByRole("button", { name: "Privacy settings", exact: true })
+    .getByRole("button", { name: "Cookie Settings", exact: true })
     .click();
   await page.screenshot({ path: info.outputPath("consent.png") });
   await page.getByRole("button", { name: "Reject all", exact: true }).click();
@@ -132,6 +134,7 @@ test("diagnostics only: sanitized error envelope and withdrawal stops future rep
 }) => {
   const external = await serve(page);
   await page.goto(`${origin}/en/`);
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByLabel("Technical error reports", { exact: true }).check();
   await page.getByRole("button", { name: "Save my choices" }).click();
   // Wait for the lazy SDK to initialize before generating a controlled test error.
@@ -151,7 +154,7 @@ test("diagnostics only: sanitized error envelope and withdrawal stops future rep
   expect(report).not.toMatch(/PRIVATE|customer@example|access_token|secret/);
   expect(external.some((r) => r.url.includes("google"))).toBe(false);
   await page
-    .getByRole("button", { name: "Privacy settings", exact: true })
+    .getByRole("button", { name: "Cookie Settings", exact: true })
     .click();
   await page.getByRole("button", { name: "Reject all", exact: true }).click();
   await page.evaluate(() => {
@@ -184,13 +187,14 @@ test("French controls and expired consent do not silently enable tracking", asyn
   await expect(
     page.getByRole("heading", { name: "Vos préférences de confidentialité" }),
   ).toBeVisible();
+  await page.getByRole("button", { name: "Paramètres", exact: true }).click();
   await expect(
     page.getByLabel("Statistiques d’utilisation", { exact: true }),
   ).not.toBeChecked();
   expect(external).toEqual([]);
   await page.getByRole("button", { name: "Tout refuser", exact: true }).click();
   await page
-    .getByRole("button", { name: "Confidentialité", exact: true })
+    .getByRole("button", { name: "Paramètres des cookies", exact: true })
     .focus();
   await page.keyboard.press("Enter");
   await expect(page.locator("#privacy-panel")).toBeVisible();
@@ -226,6 +230,7 @@ test("another tab can withdraw consent without discarding the current page", asy
 }) => {
   const external = await serve(page);
   await page.goto(`${origin}/en/`);
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await page.getByLabel("Usage statistics", { exact: true }).check();
   await page.getByRole("button", { name: "Save my choices" }).click();
   await expect
@@ -237,7 +242,7 @@ test("another tab can withdraw consent without discarding the current page", asy
   await serve(other);
   await other.goto(`${origin}/en/`);
   await other
-    .getByRole("button", { name: "Privacy settings", exact: true })
+    .getByRole("button", { name: "Cookie Settings", exact: true })
     .click();
   await other.getByRole("button", { name: "Reject all", exact: true }).click();
   await expect
@@ -251,8 +256,9 @@ test("another tab can withdraw consent without discarding the current page", asy
     )
     .toBe(true);
   await page
-    .getByRole("button", { name: "Privacy settings", exact: true })
+    .getByRole("button", { name: "Cookie Settings", exact: true })
     .click();
+  await page.getByRole("button", { name: "Settings", exact: true }).click();
   await expect(
     page.getByLabel("Usage statistics", { exact: true }),
   ).not.toBeChecked();

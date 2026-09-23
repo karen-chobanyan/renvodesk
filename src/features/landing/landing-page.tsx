@@ -4,112 +4,20 @@ import {
   ArrowUpRight,
   ChevronDown,
   FileText,
-  Menu,
-  X,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { ConsentControls } from "../../lib/telemetry/consent-controls";
 import { type LandingLocale, landingCopy } from "./landing-copy";
+import { LandingFooter } from "./landing-footer";
+import { LandingHeader } from "./landing-header";
 import { ProjectModel } from "./project-model";
 
-function Brand({ footer = false }: { footer?: boolean }) {
-  return (
-    <span className={`landing-brand${footer ? " landing-brand-footer" : ""}`}>
-      <span className="landing-brand-mark">
-        r<span>.</span>
-      </span>
-      RenvoDesk
-    </span>
-  );
-}
 export function LandingPage({ locale }: { locale: LandingLocale }) {
-  const c = landingCopy[locale],
-    [menuOpen, setMenuOpen] = useState(false);
-  const home = locale === "fr" ? "/" : "/en/";
-  useEffect(() => {
-    if (!menuOpen) return;
-    const dismiss = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMenuOpen(false);
-        document
-          .querySelector<HTMLButtonElement>(".landing-menu-toggle")
-          ?.focus();
-      }
-    };
-    window.addEventListener("keydown", dismiss);
-    return () => window.removeEventListener("keydown", dismiss);
-  }, [menuOpen]);
+  const c = landingCopy[locale];
   return (
     <div className="landing" id="top">
       <a className="landing-skip" href="#landing-main">
         {c.skip}
       </a>
-      <header className="landing-header">
-        <a href={home} aria-label="RenvoDesk">
-          <Brand />
-        </a>
-        <nav className="landing-desktop-nav" aria-label={c.menu}>
-          <a href="#product">{c.product}</a>
-          <a href="#workflow">{c.workflow}</a>
-          <a href="#questions">{c.questions}</a>
-        </nav>
-        <div className="landing-header-actions">
-          <a
-            className="landing-language"
-            href={locale === "fr" ? "/en/" : "/"}
-            hrefLang={locale === "fr" ? "en" : "fr"}
-            aria-label={c.language}
-          >
-            {locale === "fr" ? "EN" : "FR"}
-          </a>
-          <a className="landing-login" href="/login">
-            {c.login}
-          </a>
-          <a className="landing-button landing-button-small" href="/signup">
-            {c.start}
-            <ArrowUpRight size={15} />
-          </a>
-          <button
-            type="button"
-            className="landing-menu-toggle"
-            aria-label={menuOpen ? c.close : c.menu}
-            aria-expanded={menuOpen}
-            aria-controls="landing-mobile-nav"
-            onClick={() => setMenuOpen(!menuOpen)}
-          >
-            {menuOpen ? <X size={20} /> : <Menu size={20} />}
-          </button>
-        </div>
-        {menuOpen && (
-          <nav
-            className="landing-mobile-nav"
-            id="landing-mobile-nav"
-            aria-label={c.menu}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") {
-                setMenuOpen(false);
-                document
-                  .querySelector<HTMLButtonElement>(".landing-menu-toggle")
-                  ?.focus();
-              }
-            }}
-          >
-            {/* biome-ignore lint/a11y/useValidAnchor: native fragment navigation also dismisses the mobile menu */}
-            <a href="#product" onClick={() => setMenuOpen(false)}>
-              {c.product}
-            </a>
-            {/* biome-ignore lint/a11y/useValidAnchor: native fragment navigation also dismisses the mobile menu */}
-            <a href="#workflow" onClick={() => setMenuOpen(false)}>
-              {c.workflow}
-            </a>
-            {/* biome-ignore lint/a11y/useValidAnchor: native fragment navigation also dismisses the mobile menu */}
-            <a href="#questions" onClick={() => setMenuOpen(false)}>
-              {c.questions}
-            </a>
-            <a href="/login">{c.login}</a>
-          </nav>
-        )}
-      </header>
+      <LandingHeader locale={locale} />
       <main id="landing-main">
         <section className="landing-hero" aria-labelledby="hero-title">
           <div className="landing-hero-inner">
@@ -257,42 +165,7 @@ export function LandingPage({ locale }: { locale: LandingLocale }) {
           </span>
         </section>
       </main>
-      <footer className="landing-footer">
-        <div>
-          <a href={home} aria-label="RenvoDesk">
-            <Brand footer />
-          </a>
-          <p>{c.footer}</p>
-        </div>
-        <nav aria-label={locale === "fr" ? "Pied de page" : "Footer"}>
-          <a href={locale === "fr" ? "/privacy/" : "/en/privacy/"}>
-            {locale === "fr"
-              ? "Politique de confidentialité"
-              : "Privacy Policy"}
-          </a>
-          <a href={locale === "fr" ? "/terms/" : "/en/terms/"}>
-            {locale === "fr" ? "Conditions d’utilisation" : "Terms of Use"}
-          </a>
-          <a href="#product">{c.product}</a>
-          <a href="/projects">{c.demo}</a>
-          <a href="/login">{c.login}</a>
-          <a
-            href={locale === "fr" ? "/en/" : "/"}
-            hrefLang={locale === "fr" ? "en" : "fr"}
-          >
-            {locale === "fr" ? "English" : "Français"}
-          </a>
-        </nav>
-        <div className="landing-footer-bottom">
-          <span>© 2026 RenvoDesk</span>
-          <span>{c.footerNote}</span>
-          <a href="#top">
-            {c.top}
-            <ArrowUpRight size={13} />
-          </a>
-        </div>
-      </footer>
-      <ConsentControls locale={locale} />
+      <LandingFooter locale={locale} />
     </div>
   );
 }
