@@ -21,7 +21,7 @@ export default defineConfig({
   build: {
     manifest: true,
     rollupOptions: {
-      input: ["index.html", "cad-canvas.html"],
+      input: ["index.html"],
       output: {
         manualChunks(id) {
           // Shared runtime helpers must not make React/landing import the CAD engine.

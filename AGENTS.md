@@ -540,9 +540,10 @@ bounded and abort on close. Loaded DXF previews remain open until closed; signed
 URL expiry only limits subsequent downloads. Reopening requests a fresh URL.
 No DWG, CAD editing, export, takeoff or layout tabs are implemented.
 
-`cad-canvas.html` is included in the normal build and needs its exact same-origin
-frame exception in the hosting configuration. Keep runtime helpers out of the CAD
-chunk so the landing never imports it. `cad-prototype.html` remains excluded from
-the application build; `pnpm dev:cad`, `pnpm build:cad`, `pnpm test:cad` retain the
-local evaluation and rendering regressions. No GPL DWG parser is installed.
-See decisions 018/019 for fidelity, main-thread resource limits and verification.
+The CAD manager is instantiated by a lazy React canvas component and destroyed
+on unmount. Its singleton lifecycle must be serialized across close/reopen and
+React effect replay. Keep the CAD engine out of the landing bundle;
+the standalone CAD prototype has been retired. Renderer checks use the fictional
+`tests/fixtures/cad-sample.dxf` through the real project preview. No GPL DWG
+parser is installed. See decisions 018–021 for fidelity, main-thread resource
+limits and verification.

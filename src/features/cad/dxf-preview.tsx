@@ -9,17 +9,17 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/lib/i18n";
+import { CadCanvas, type CadCanvasControls } from "./cad-canvas";
 import { copy } from "./copy";
 import {
   type Layer,
   MAX_DXF_BYTES,
   type ViewerCommand,
-  type ViewerEvent,
   validDxfText,
 } from "./model";
 import "./preview.css";
 
-// Do not pass signed URLs into the canvas frame or persist fetched drawing data.
+// Do not pass signed URLs to the renderer or persist fetched drawing data.
 async function readDrawing(url: string, signal: AbortSignal) {
   const response = await fetch(url, {
     signal,
@@ -56,7 +56,8 @@ async function readDrawing(url: string, signal: AbortSignal) {
 export default function DxfPreview({ url }: { url: string }) {
   const { locale } = useLocale();
   const c = copy[locale];
-  const frame = useRef<HTMLIFrameElement>(null);
+  const controls = useRef<CadCanvasControls>(null);
+  const timeout = useRef<number | null>(null);
   const [content, setContent] = useState<string | null>(null);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(
     "loading",
@@ -67,12 +68,19 @@ export default function DxfPreview({ url }: { url: string }) {
   const [showInfo, setShowInfo] = useState(false);
   const [layers, setLayers] = useState<Layer[]>([]);
   const send = useCallback((command: ViewerCommand) => {
-    frame.current?.contentWindow?.postMessage(command, location.origin);
+    try {
+      if (command.type === "fit") controls.current?.fit();
+      if (command.type === "zoom") controls.current?.zoom(command.factor);
+      if (command.type === "layer")
+        controls.current?.setLayerVisible(command.name, command.visible);
+    } catch {
+      setStatus("error");
+      setContent(null);
+    }
   }, []);
   useEffect(() => {
     const controller = new AbortController();
     let active = true;
-    let drawing: string | null = null;
     setStatus("loading");
     setContent(null);
     setLayers([]);
@@ -80,47 +88,23 @@ export default function DxfPreview({ url }: { url: string }) {
       if (!active) return;
       active = false;
       controller.abort();
+      if (timeout.current !== null) clearTimeout(timeout.current);
       setStatus("error");
       setContent(null);
     }
-    const timer = window.setTimeout(fail, 30000);
-    const receive = (event: MessageEvent<ViewerEvent>) => {
-      if (
-        !active ||
-        event.origin !== location.origin ||
-        event.source !== frame.current?.contentWindow
-      )
-        return;
-      if (event.data?.type === "ready" && drawing)
-        send({ type: "open", content: drawing });
-      if (event.data?.type === "loaded") {
-        clearTimeout(timer);
-        setLayers(event.data.layers);
-        setStatus("loaded");
-      }
-      if (event.data?.type === "error") {
-        clearTimeout(timer);
-        fail();
-      }
-    };
-    window.addEventListener("message", receive);
+    timeout.current = window.setTimeout(fail, 30000);
     void readDrawing(url, controller.signal)
       .then((text) => {
         if (!active || controller.signal.aborted) return;
-        drawing = text;
         setContent(text);
       })
-      .catch(() => {
-        clearTimeout(timer);
-        fail();
-      });
+      .catch(fail);
     return () => {
       active = false;
       controller.abort();
-      clearTimeout(timer);
-      window.removeEventListener("message", receive);
+      if (timeout.current !== null) clearTimeout(timeout.current);
     };
-  }, [url, send]);
+  }, [url]);
   return (
     <div className={`dxf-preview${showLayers ? " has-layers" : ""}`}>
       <p
@@ -135,11 +119,20 @@ export default function DxfPreview({ url }: { url: string }) {
       </p>
       <div className="dxf-stage">
         {content && (
-          <iframe
-            ref={frame}
-            title={c.canvas}
-            src="/cad-canvas.html"
-            referrerPolicy="no-referrer"
+          <CadCanvas
+            content={content}
+            label={c.canvas}
+            controlsRef={controls}
+            onLoaded={(nextLayers) => {
+              if (timeout.current !== null) clearTimeout(timeout.current);
+              setLayers(nextLayers);
+              setStatus("loaded");
+            }}
+            onError={() => {
+              if (timeout.current !== null) clearTimeout(timeout.current);
+              setContent(null);
+              setStatus("error");
+            }}
           />
         )}
       </div>

@@ -15,10 +15,7 @@
     "lint": "biome check .",
     "format": "biome check --write .",
     "test": "vitest run",
-    "test:e2e": "playwright test",
-    "dev:cad": "vite --config vite.cad-prototype.config.ts --host 127.0.0.1",
-    "build:cad": "tsc --noEmit && vite build --config vite.cad-prototype.config.ts",
-    "test:cad": "playwright test --config playwright.cad.config.ts"
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@excalidraw/excalidraw": "0.18.1",
