@@ -162,3 +162,9 @@ The narrower sketch column has a fine vertical divider, an aligned creation
 control and private previews in thin bordered interactive tiles. It stacks below
 files on narrower screens. Keep placeholders distinct from actual saved previews,
 FR/EN copy complete, and hover/drag feedback compatible with reduced motion.
+
+The full Activity journal spans the project content width. Its 24px heading aligns
+with the category filter and labeled Refresh action. Day headings have fine rules;
+desktop rows align time, domain icon, event detail, actor and Open action. Narrow
+layouts stack metadata while retaining an adjacent action and 44px mobile targets.
+The overview retains its compact feed. Reduced-motion disables row transitions.

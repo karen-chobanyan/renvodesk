@@ -22,6 +22,15 @@ async function fixture(page: Page, owner = true, locale = "en") {
     ({ user, token, locale }) => {
       localStorage.setItem("renvodesk-locale", locale);
       localStorage.setItem(
+        "renvodesk-privacy-v1",
+        JSON.stringify({
+          version: 1,
+          analytics: false,
+          diagnostics: false,
+          savedAt: Date.now(),
+        }),
+      );
+      localStorage.setItem(
         "sb-oripsywzngftarbprlgk-auth-token",
         JSON.stringify({
           access_token: token,
@@ -266,6 +275,10 @@ test("journal sidebar, full history, filters, retry, pagination and keyboard", a
   const filter = page.getByLabel("Activity type");
   await filter.focus();
   await expect(filter).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
+    journal.getByRole("button", { name: "Refresh", exact: true }),
+  ).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(journal.getByRole("link").first()).toBeFocused();
   await page.screenshot({

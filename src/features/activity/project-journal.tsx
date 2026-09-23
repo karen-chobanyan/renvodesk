@@ -152,35 +152,42 @@ function Journal({
           <h2 id={headingId}>{c.title}</h2>
           {!compact && <p>{c.description}</p>}
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={c.refresh}
-          disabled={busy}
-          onClick={() => setReload((n) => n + 1)}
-        >
-          <RefreshCw size={16} />
-        </Button>
-      </div>
-      {!compact && (
-        <div className="journal-filter">
-          <label htmlFor={filterId}>{c.filter}</label>
-          <select
-            id={filterId}
-            className="input"
-            value={category}
-            onChange={(e) => setCategory(e.target.value as ActivityCategory)}
+        <div className="journal-toolbar">
+          {!compact && (
+            <div className="journal-filter">
+              <label htmlFor={filterId}>{c.filter}</label>
+              <select
+                id={filterId}
+                className="input"
+                value={category}
+                onChange={(e) =>
+                  setCategory(e.target.value as ActivityCategory)
+                }
+              >
+                {activityCategories
+                  .filter(
+                    (key) => owner || !["costs", "estimates"].includes(key),
+                  )
+                  .map((key) => (
+                    <option key={key} value={key}>
+                      {c[key]}
+                    </option>
+                  ))}
+              </select>
+            </div>
+          )}
+          <Button
+            variant={compact ? "ghost" : "outline"}
+            size={compact ? "icon" : "default"}
+            aria-label={c.refresh}
+            disabled={busy}
+            onClick={() => setReload((n) => n + 1)}
           >
-            {activityCategories
-              .filter((key) => owner || !["costs", "estimates"].includes(key))
-              .map((key) => (
-                <option key={key} value={key}>
-                  {c[key]}
-                </option>
-              ))}
-          </select>
+            <RefreshCw size={16} aria-hidden="true" />
+            {!compact && c.refresh}
+          </Button>
         </div>
-      )}
+      </div>
       {started && (
         <p className="journal-since">
           {c.since} {activityDay(started, locale)}.
@@ -234,6 +241,19 @@ function Journal({
                       ?.email ?? c.member);
               return (
                 <li key={row.id}>
+                  {!compact && (
+                    <time
+                      dateTime={row.occurred_at}
+                      title={new Date(row.occurred_at).toLocaleString(
+                        locale === "fr" ? "fr-BE" : "en-IE",
+                      )}
+                    >
+                      {new Date(row.occurred_at).toLocaleTimeString(
+                        locale === "fr" ? "fr-BE" : "en-IE",
+                        { hour: "2-digit", minute: "2-digit" },
+                      )}
+                    </time>
+                  )}
                   <span className="journal-icon">
                     <Icon size={16} aria-hidden="true" />
                   </span>
@@ -251,41 +271,44 @@ function Journal({
                     {!compact && content.changes && (
                       <p className="journal-detail">{content.changes}</p>
                     )}
-                    <p className="journal-meta">
-                      <span>{actor}</span>
-                      <span aria-hidden="true"> · </span>
-                      <time
-                        dateTime={row.occurred_at}
-                        title={new Date(row.occurred_at).toLocaleString(
-                          locale === "fr" ? "fr-BE" : "en-IE",
-                        )}
-                      >
-                        {new Date(row.occurred_at).toLocaleTimeString(
-                          locale === "fr" ? "fr-BE" : "en-IE",
-                          { hour: "2-digit", minute: "2-digit" },
-                        )}
-                      </time>
-                    </p>
-                    {target &&
-                      (row.entity_type === "sketch" && onOpenSketch ? (
-                        <button
-                          type="button"
-                          className="account-link"
-                          onClick={() => onOpenSketch(row.entity_id)}
-                          aria-label={`${c.open}: ${content.label || content.title}`}
+                    {compact && (
+                      <p className="journal-meta">
+                        <span>{actor}</span>
+                        <span aria-hidden="true"> · </span>
+                        <time
+                          dateTime={row.occurred_at}
+                          title={new Date(row.occurred_at).toLocaleString(
+                            locale === "fr" ? "fr-BE" : "en-IE",
+                          )}
                         >
-                          {c.open}
-                        </button>
-                      ) : (
-                        <Link
-                          className="account-link"
-                          to={target}
-                          aria-label={`${c.open}: ${content.label || content.title}`}
-                        >
-                          {c.open}
-                        </Link>
-                      ))}
+                          {new Date(row.occurred_at).toLocaleTimeString(
+                            locale === "fr" ? "fr-BE" : "en-IE",
+                            { hour: "2-digit", minute: "2-digit" },
+                          )}
+                        </time>
+                      </p>
+                    )}
                   </div>
+                  {!compact && <span className="journal-actor">{actor}</span>}
+                  {target &&
+                    (row.entity_type === "sketch" && onOpenSketch ? (
+                      <button
+                        type="button"
+                        className="account-link journal-open"
+                        onClick={() => onOpenSketch(row.entity_id)}
+                        aria-label={`${c.open}: ${content.label || content.title}`}
+                      >
+                        {c.open}
+                      </button>
+                    ) : (
+                      <Link
+                        className="account-link journal-open"
+                        to={target}
+                        aria-label={`${c.open}: ${content.label || content.title}`}
+                      >
+                        {c.open}
+                      </Link>
+                    ))}
                 </li>
               );
             })}
