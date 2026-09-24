@@ -1,8 +1,10 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { AuthLayout } from "@/features/auth/auth-page";
 import { useAuth } from "@/features/auth/auth-provider";
+import { workspaceKeys } from "@/features/organizations/workspace-context";
 import { useLocale } from "@/lib/i18n";
 import { requireSupabase } from "@/lib/supabase/client";
 import { teamCopy } from "./team-copy";
@@ -17,6 +19,7 @@ function InvitationScreen({ id }: { id: string }) {
     { locale } = useLocale(),
     c = teamCopy[locale],
     navigate = useNavigate();
+  const client = useQueryClient();
   const [company, setCompany] = useState(""),
     [failed, setFailed] = useState(false),
     [loading, setLoading] = useState(true),
@@ -49,6 +52,9 @@ function InvitationScreen({ id }: { id: string }) {
     setSaveFailed(false);
     try {
       const row = await invitation(id, true);
+      client.removeQueries({
+        queryKey: workspaceKeys.organizations(session?.user.id ?? ""),
+      });
       navigate(`/workspace?company=${row.organization_id}`, { replace: true });
     } catch {
       setSaveFailed(true);

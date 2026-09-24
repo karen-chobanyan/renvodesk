@@ -1,10 +1,14 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { type FormEvent, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/features/auth/auth-provider";
 import { useLocale } from "@/lib/i18n";
+import { useOrganizationRecord } from "./organization-query";
 import {
-  getOrganization,
+  type Organization,
   saveWorkspacePreferences,
 } from "./organization-service";
+import { workspaceKeys } from "./workspace-context";
 
 const copy = {
   fr: {
@@ -66,43 +70,23 @@ const copy = {
 export function WorkspacePreferences({ id }: { id: string }) {
   const { locale, saveWorkspaceLanguage } = useLocale();
   const c = copy[locale];
-  const [record, setRecord] =
-    useState<Awaited<ReturnType<typeof getOrganization>>>(null);
-  const [loading, setLoading] = useState(true);
-  const [failed, setFailed] = useState(false);
+  const { session } = useAuth();
+  const userId = session?.user.id ?? "";
+  const client = useQueryClient();
+  const query = useOrganizationRecord(id);
+  const record = query.data ?? null;
+  const loading = query.isPending && query.isFetching;
+  const failed = query.isError && !record;
   const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<"failed" | "conflict" | null>(null);
   const [saved, setSaved] = useState(false);
 
   function refresh() {
-    setLoading(true);
     setReload((n) => n + 1);
+    setError(null);
+    void query.refetch();
   }
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: explicit retry refreshes the settings revision
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setFailed(false);
-    void getOrganization(id)
-      .then((data) => {
-        if (active) {
-          setRecord(data);
-          setError(null);
-          setSaved(false);
-        }
-      })
-      .catch(() => {
-        if (active) setFailed(true);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [id, reload]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -130,7 +114,31 @@ export function WorkspacePreferences({ id }: { id: string }) {
         },
       );
       if (next) {
-        setRecord(next);
+        client.setQueryData(
+          workspaceKeys.organization(userId, id),
+          (old: typeof next | null | undefined) =>
+            old
+              ? {
+                  ...old,
+                  country: next.country,
+                  default_language: next.default_language,
+                  settings_revision: next.settings_revision,
+                }
+              : next,
+        );
+        client.setQueryData(
+          workspaceKeys.organizations(userId),
+          (old: Organization[] | undefined) =>
+            old?.map((row) =>
+              row.id === id
+                ? {
+                    ...row,
+                    country: next.country,
+                    default_language: next.default_language,
+                  }
+                : row,
+            ),
+        );
         saveWorkspaceLanguage(id, next.default_language === "en" ? "en" : "fr");
         setSaved(true);
       } else setError("conflict");
@@ -216,6 +224,11 @@ export function WorkspacePreferences({ id }: { id: string }) {
           )}
           {saved && <p role="status">{c.saved}</p>}
         </form>
+      )}
+      {query.isError && record && (
+        <p role="alert" className="error-message">
+          {c.error}
+        </p>
       )}
     </section>
   );

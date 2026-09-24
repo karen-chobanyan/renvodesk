@@ -1,15 +1,21 @@
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { ArrowUpRight, Plus, Search } from "lucide-react";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 import { Link } from "react-router";
 import { PlanMark, StatusBadge } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/features/auth/auth-provider";
 import {
   type ClientInput,
   saveClient,
 } from "@/features/clients/client-service";
 import { NewProjectFields } from "@/features/clients/project-client-picker";
+import {
+  useWorkspaceRouteState,
+  workspaceKeys,
+} from "@/features/organizations/workspace-context";
 import { useCompanyAccess } from "@/features/team/company-access";
 import { useLocale } from "@/lib/i18n";
 import { projectCopy } from "./project-copy";
@@ -24,58 +30,40 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
   const { locale, t } = useLocale(),
     c = projectCopy[locale];
   const { owner } = useCompanyAccess(organizationId);
+  const { session } = useAuth();
+  const userId = session?.user.id ?? "";
   const newProjectButton = useRef<HTMLButtonElement>(null);
   const clientRequest = useRef<{ id: string; input: ClientInput } | null>(null);
   const [clientLocked, setClientLocked] = useState(false);
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("all");
-  const [projects, setProjects] = useState<SavedProject[]>([]);
-  const [loading, setLoading] = useState(true),
-    [failed, setFailed] = useState(false);
-  const [reload, setReload] = useState(0),
-    [hasMore, setHasMore] = useState(false);
+  const [query, setQuery] = useWorkspaceRouteState(
+    `projects:${organizationId}:query`,
+    "",
+  );
+  const [status, setStatus] = useWorkspaceRouteState(
+    `projects:${organizationId}:status`,
+    "all",
+  );
+  const projectQuery = useInfiniteQuery({
+    queryKey: workspaceKeys.projects(userId, organizationId),
+    queryFn: ({ pageParam }) => listProjects(organizationId, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, pages) =>
+      lastPage.length === PROJECT_PAGE_SIZE
+        ? pages.length * PROJECT_PAGE_SIZE
+        : undefined,
+    enabled: !!userId && !!organizationId,
+  });
+  const projects: SavedProject[] = projectQuery.data?.pages.flat() ?? [];
+  const loading = projectQuery.isPending && projectQuery.isFetching;
+  const failed = projectQuery.isError && !projectQuery.data;
+  const hasMore = projectQuery.hasNextPage;
   const [creating, setCreating] = useState(false),
     [busy, setBusy] = useState(false);
   const [error, setError] = useState<"invalid" | "saveError" | null>(null),
     [saved, setSaved] = useState(false);
   const [id, setId] = useState(() => crypto.randomUUID());
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reload refreshes after a save or failed query
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setFailed(false);
-    void listProjects(organizationId)
-      .then((data) => {
-        if (active) {
-          setProjects(data);
-          setHasMore(data.length === PROJECT_PAGE_SIZE);
-        }
-      })
-      .catch(() => {
-        if (active) setFailed(true);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [organizationId, reload]);
-  async function more() {
-    setLoading(true);
-    setFailed(false);
-    try {
-      const data = await listProjects(organizationId, projects.length);
-      setProjects((current) => [
-        ...current,
-        ...data.filter((row) => !current.some((p) => p.id === row.id)),
-      ]);
-      setHasMore(data.length === PROJECT_PAGE_SIZE);
-    } catch {
-      setFailed(true);
-    } finally {
-      setLoading(false);
-    }
+  function more() {
+    void projectQuery.fetchNextPage();
   }
   function closeCreation() {
     if (busy) return;
@@ -135,7 +123,7 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
       setCreating(false);
       requestAnimationFrame(() => newProjectButton.current?.focus());
       setSaved(true);
-      setReload((n) => n + 1);
+      void projectQuery.refetch();
     } catch {
       setError("saveError");
     } finally {
@@ -229,10 +217,15 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
       )}
       {saved && <p role="status">{c.saved}</p>}
       {loading && <p role="status">{c.loading}</p>}
+      {projectQuery.isError && projectQuery.data && (
+        <p role="alert" className="error-message">
+          {c.error}
+        </p>
+      )}
       {failed ? (
         <div>
           <p role="alert">{c.error}</p>
-          <Button variant="outline" onClick={() => setReload((n) => n + 1)}>
+          <Button variant="outline" onClick={() => void projectQuery.refetch()}>
             {c.retry}
           </Button>
         </div>
@@ -366,7 +359,11 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
         </aside>
       </div>
       {hasMore && !failed && (
-        <Button disabled={loading} variant="outline" onClick={more}>
+        <Button
+          disabled={projectQuery.isFetchingNextPage}
+          variant="outline"
+          onClick={more}
+        >
           {c.more}
         </Button>
       )}

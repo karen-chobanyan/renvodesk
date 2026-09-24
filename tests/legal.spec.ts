@@ -8,6 +8,12 @@ for (const locale of ["fr", "en"] as const) {
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
     await page.goto(en ? "/en/" : "/");
+    await page
+      .getByRole("button", {
+        name: en ? "Reject all" : "Tout refuser",
+        exact: true,
+      })
+      .click();
     const footer = page.locator(".landing-footer");
     await expect(
       footer.getByRole("link", {

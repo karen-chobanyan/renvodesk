@@ -123,9 +123,15 @@ export function ProjectNavigation({
     c = layoutCopy[locale];
   const nav = useRef<HTMLElement>(null);
   useEffect(() => {
-    nav.current
-      ?.querySelector(`[href$="?tab=${active}"]`)
-      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+    const container = nav.current;
+    const selected = container?.querySelector(`[href$="?tab=${active}"]`);
+    if (!container || !selected) return;
+    const viewport = container.getBoundingClientRect();
+    const item = selected.getBoundingClientRect();
+    if (item.left < viewport.left)
+      container.scrollLeft += item.left - viewport.left;
+    else if (item.right > viewport.right)
+      container.scrollLeft += item.right - viewport.right;
   }, [active]);
   return (
     <nav

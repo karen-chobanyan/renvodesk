@@ -75,6 +75,8 @@ already-saved record without overwriting it.
 ## Technical and product decisions
 
 - React + TypeScript, Vite and React Router declarative routing; pnpm for packages.
+- Live workspace routes share a persistent shell and session-scoped TanStack Query
+  cache so returning to known pages keeps their content during background refresh.
 - Tailwind v4, semantic CSS tokens, locally owned shadcn-style Radix primitives,
   Lucide icons and self-hosted Inter. See [DESIGN.md](DESIGN.md).
 - Supabase Auth and Postgres are connected. Private Supabase Storage is connected

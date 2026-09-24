@@ -1,10 +1,12 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { type FormEvent, useState } from "react";
 import { Link, useParams } from "react-router";
-import { AppShell } from "@/components/app-shell";
 import { PageHeader } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/features/auth/auth-provider";
+import { workspaceKeys } from "@/features/organizations/workspace-context";
 import { useLocale } from "@/lib/i18n";
 import { teamCopy } from "./team-copy";
 import {
@@ -25,46 +27,57 @@ export function TeamPage() {
 function TeamDirectory({ org }: { org: string }) {
   const { locale } = useLocale(),
     c = teamCopy[locale];
-  const [members, setMembers] = useState<TeamMember[]>([]),
-    [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [loading, setLoading] = useState(true),
-    [failed, setFailed] = useState(false),
-    [reload, setReload] = useState(0),
-    [busy, setBusy] = useState(false),
+  const { session } = useAuth();
+  const userId = session?.user.id ?? "";
+  const queryClient = useQueryClient();
+  const memberQuery = useInfiniteQuery({
+    queryKey: [...workspaceKeys.team(userId, org), "members"],
+    queryFn: ({ pageParam }) => listTeam(org, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, pages) =>
+      lastPage.length === 50 ? pages.length * 50 : undefined,
+    enabled: !!userId && !!org,
+  });
+  const invitationQuery = useInfiniteQuery({
+    queryKey: [...workspaceKeys.team(userId, org), "invitations"],
+    queryFn: ({ pageParam }) => listInvitations(org, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, pages) =>
+      lastPage.length === 20 ? pages.length * 20 : undefined,
+    enabled: !!userId && !!org,
+  });
+  const members: TeamMember[] = Array.from(
+    new Map(
+      memberQuery.data?.pages.flat().map((row) => [row.user_id, row]) ?? [],
+    ).values(),
+  );
+  const invitations: Invitation[] = Array.from(
+    new Map(
+      invitationQuery.data?.pages.flat().map((row) => [row.id, row]) ?? [],
+    ).values(),
+  );
+  const loading =
+    (memberQuery.isPending && memberQuery.isFetching) ||
+    (invitationQuery.isPending && invitationQuery.isFetching);
+  const failed =
+    (memberQuery.isError && !memberQuery.data) ||
+    (invitationQuery.isError && !invitationQuery.data);
+  const moreMembers = memberQuery.hasNextPage;
+  const moreInvites = invitationQuery.hasNextPage;
+  const [busy, setBusy] = useState(false),
     [error, setError] = useState(false);
-  const [moreMembers, setMoreMembers] = useState(false),
-    [moreInvites, setMoreInvites] = useState(false),
-    [removing, setRemoving] = useState<TeamMember | null>(null);
+  const [removing, setRemoving] = useState<TeamMember | null>(null);
   const [email, setEmail] = useState(""),
     [request, setRequest] = useState(() => crypto.randomUUID()),
     [attempted, setAttempted] = useState(false),
     [created, setCreated] = useState(false),
     [link, setLink] = useState(""),
     [copied, setCopied] = useState(false);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: explicit reload refreshes saved team state
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setFailed(false);
-    void Promise.all([listTeam(org), listInvitations(org)])
-      .then(([m, i]) => {
-        if (active) {
-          setMembers(m);
-          setInvitations(i);
-          setMoreMembers(m.length === 50);
-          setMoreInvites(i.length === 20);
-        }
-      })
-      .catch(() => {
-        if (active) setFailed(true);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [org, reload]);
+  function refresh() {
+    void queryClient.invalidateQueries({
+      queryKey: workspaceKeys.team(userId, org),
+    });
+  }
   async function action(run: () => Promise<void>) {
     if (busy) return;
     setBusy(true);
@@ -85,30 +98,22 @@ function TeamDirectory({ org }: { org: string }) {
       setCreated(true);
       setLink(`${window.location.origin}${invitePath(id)}`);
       setCopied(false);
-      setReload((n) => n + 1);
+      refresh();
     });
   }
   async function more(kind: "members" | "invitations") {
     await action(async () => {
       if (kind === "members") {
-        const rows = await listTeam(org, members.length);
-        setMembers((old) => [
-          ...old,
-          ...rows.filter((r) => !old.some((o) => o.user_id === r.user_id)),
-        ]);
-        setMoreMembers(rows.length === 50);
+        const result = await memberQuery.fetchNextPage();
+        if (result.isError) throw result.error;
       } else {
-        const rows = await listInvitations(org, invitations.length);
-        setInvitations((old) => [
-          ...old,
-          ...rows.filter((r) => !old.some((o) => o.id === r.id)),
-        ]);
-        setMoreInvites(rows.length === 20);
+        const result = await invitationQuery.fetchNextPage();
+        if (result.isError) throw result.error;
       }
     });
   }
   return (
-    <AppShell live>
+    <>
       <Link className="back-link" to={`/workspace?company=${org}`}>
         {c.back}
       </Link>
@@ -120,7 +125,7 @@ function TeamDirectory({ org }: { org: string }) {
           <Button
             variant="outline"
             disabled={busy || loading}
-            onClick={() => setReload((n) => n + 1)}
+            onClick={refresh}
           >
             {c.refresh}
           </Button>
@@ -195,10 +200,14 @@ function TeamDirectory({ org }: { org: string }) {
       </form>
       {error && <p role="alert">{c.failed}</p>}
       {loading && <p role="status">{c.loading}</p>}
+      {(memberQuery.isError && memberQuery.data) ||
+      (invitationQuery.isError && invitationQuery.data) ? (
+        <p role="alert">{c.error}</p>
+      ) : null}
       {failed ? (
         <div role="alert">
           {c.error}
-          <Button onClick={() => setReload((n) => n + 1)}>{c.retry}</Button>
+          <Button onClick={refresh}>{c.retry}</Button>
         </div>
       ) : (
         <>
@@ -269,7 +278,7 @@ function TeamDirectory({ org }: { org: string }) {
                         onClick={() =>
                           action(async () => {
                             await revoke(org, i.id);
-                            setReload((n) => n + 1);
+                            refresh();
                             if (link.endsWith(invitePath(i.id))) setLink("");
                           })
                         }
@@ -322,7 +331,7 @@ function TeamDirectory({ org }: { org: string }) {
                     setLink("");
                     setCopied(false);
                     setRemoving(null);
-                    setReload((n) => n + 1);
+                    refresh();
                   }
                 })
               }
@@ -332,6 +341,6 @@ function TeamDirectory({ org }: { org: string }) {
           </div>
         </DialogContent>
       </Dialog>
-    </AppShell>
+    </>
   );
 }

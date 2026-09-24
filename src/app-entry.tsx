@@ -26,6 +26,10 @@ import { DesignPage } from "./features/design/design-page";
 import { CompanyEstimatesPage } from "./features/estimates/company-estimates-page";
 import { EstimatePage } from "./features/estimates/estimate-page";
 import { SavedEstimatePage } from "./features/estimates/saved-estimate-page";
+import {
+  SessionQueryProvider,
+  WorkspaceDataRoute,
+} from "./features/organizations/workspace-data";
 import { WorkspacePage } from "./features/organizations/workspace-page";
 import { ProjectPage } from "./features/projects/project-page";
 import { ProjectsPage } from "./features/projects/projects-page";
@@ -98,80 +102,84 @@ function Application() {
       }
     >
       <AuthProvider>
-        <DemoProvider>
-          <BrowserRouter>
-            <RouteTelemetry />
-            <Routes>
-              <Route element={<StandaloneConsentLayout />}>
-                <Route
-                  path="login"
-                  element={<AuthPage key="login" mode="login" />}
-                />
-                <Route
-                  path="signup"
-                  element={<AuthPage key="signup" mode="signup" />}
-                />
-                <Route
-                  path="auth/forgot"
-                  element={<AuthPage key="request" mode="request" />}
-                />
-                <Route
-                  path="auth/reset"
-                  element={<AuthPage key="update" mode="update" />}
-                />
-                <Route path="auth/callback" element={<AuthCallback />} />
-                <Route path="invite/:id" element={<InvitationPage />} />
-              </Route>
-              <Route element={<RequireAuth />}>
-                <Route path="workspace" element={<WorkspacePage />} />
-                <Route
-                  path="workspace/:organizationId/projects/:id/sketches/:sketchId"
-                  element={<SketchPage />}
-                />
-                <Route element={<OwnerRoute />}>
+        <SessionQueryProvider>
+          <DemoProvider>
+            <BrowserRouter>
+              <RouteTelemetry />
+              <Routes>
+                <Route element={<StandaloneConsentLayout />}>
                   <Route
-                    path="workspace/:organizationId/team"
-                    element={<TeamPage />}
+                    path="login"
+                    element={<AuthPage key="login" mode="login" />}
                   />
                   <Route
-                    path="workspace/:organizationId/clients"
-                    element={<ClientsPage />}
+                    path="signup"
+                    element={<AuthPage key="signup" mode="signup" />}
                   />
                   <Route
-                    path="workspace/:organizationId/estimates"
-                    element={<CompanyEstimatesPage />}
+                    path="auth/forgot"
+                    element={<AuthPage key="request" mode="request" />}
                   />
                   <Route
-                    path="workspace/:organizationId/settings"
-                    element={<WorkspacePage settings />}
+                    path="auth/reset"
+                    element={<AuthPage key="update" mode="update" />}
                   />
+                  <Route path="auth/callback" element={<AuthCallback />} />
+                  <Route path="invite/:id" element={<InvitationPage />} />
                 </Route>
-                <Route
-                  path="workspace/:organizationId/schedule"
-                  element={<SchedulePage />}
-                />
-                <Route element={<OwnerRoute />}>
-                  <Route
-                    path="workspace/:organizationId/projects/:id/estimates/:estimateId"
-                    element={<SavedEstimatePage />}
-                  />
+                <Route element={<RequireAuth />}>
+                  <Route path="workspace" element={<WorkspaceDataRoute />}>
+                    <Route index element={<WorkspacePage />} />
+                    <Route
+                      path=":organizationId/projects/:id/sketches/:sketchId"
+                      element={<SketchPage />}
+                    />
+                    <Route element={<OwnerRoute />}>
+                      <Route
+                        path=":organizationId/team"
+                        element={<TeamPage />}
+                      />
+                      <Route
+                        path=":organizationId/clients"
+                        element={<ClientsPage />}
+                      />
+                      <Route
+                        path=":organizationId/estimates"
+                        element={<CompanyEstimatesPage />}
+                      />
+                      <Route
+                        path=":organizationId/settings"
+                        element={<WorkspacePage settings />}
+                      />
+                    </Route>
+                    <Route
+                      path=":organizationId/schedule"
+                      element={<SchedulePage />}
+                    />
+                    <Route element={<OwnerRoute />}>
+                      <Route
+                        path=":organizationId/projects/:id/estimates/:estimateId"
+                        element={<SavedEstimatePage />}
+                      />
+                    </Route>
+                    <Route
+                      path=":organizationId/projects/:id"
+                      element={<SavedProjectPage />}
+                    />
+                  </Route>
                 </Route>
-                <Route
-                  path="workspace/:organizationId/projects/:id"
-                  element={<SavedProjectPage />}
-                />
-              </Route>
 
-              <Route element={<AppShell />}>
-                <Route path="projects" element={<ProjectsPage />} />
-                <Route path="projects/:id" element={<ProjectPage />} />
-                <Route path="estimates/:id" element={<EstimatePage />} />
-                <Route path="design-system" element={<DesignPage />} />
-                <Route path="*" element={<NotFound />} />
-              </Route>
-            </Routes>
-          </BrowserRouter>
-        </DemoProvider>
+                <Route element={<AppShell />}>
+                  <Route path="projects" element={<ProjectsPage />} />
+                  <Route path="projects/:id" element={<ProjectPage />} />
+                  <Route path="estimates/:id" element={<EstimatePage />} />
+                  <Route path="design-system" element={<DesignPage />} />
+                  <Route path="*" element={<NotFound />} />
+                </Route>
+              </Routes>
+            </BrowserRouter>
+          </DemoProvider>
+        </SessionQueryProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

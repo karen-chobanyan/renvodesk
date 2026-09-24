@@ -371,6 +371,13 @@ Saved project overview now mirrors the demo detail composition: real project hea
 
 ## Company and account navigation
 
+All live `/workspace` routes share one persistent `AppShell` and selected-company
+context. Session-scoped TanStack Query caches company identity, roles and high-use
+page reads; query keys include user and company IDs, and the client is discarded
+when the signed-in user changes. Keep RLS as the authorization boundary and update
+or invalidate affected cache entries after writes. Short-lived register and schedule
+view choices survive route changes only in memory. See decision 025.
+
 The live sidebar owns company selection, Add a company, Settings, demo
 access and account sign-out. Projects no longer embeds company administration.
 `/workspace?company=<id>` selects the project register; project, schedule and settings

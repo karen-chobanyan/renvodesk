@@ -1716,6 +1716,25 @@ main {
   gap: 15px;
   justify-items: start;
 }
+.topbar-company-placeholder,
+.company-name-placeholder,
+.workspace-title-placeholder,
+.workspace-description-placeholder {
+  display: inline-block;
+  height: 0.8em;
+  border-radius: 4px;
+  background: var(--border);
+}
+.topbar-company-placeholder,
+.company-name-placeholder {
+  width: 105px;
+}
+.workspace-title-placeholder {
+  width: min(280px, 70vw);
+}
+.workspace-description-placeholder {
+  width: min(360px, 75vw);
+}
 .workspace-heading {
   margin-top: 40px;
 }

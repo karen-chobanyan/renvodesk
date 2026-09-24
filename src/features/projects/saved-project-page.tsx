@@ -1,3 +1,8 @@
+import {
+  type InfiniteData,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 import {
   Link,
@@ -6,7 +11,6 @@ import {
   useParams,
   useSearchParams,
 } from "react-router";
-import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ProjectJournal } from "@/features/activity/project-journal";
@@ -14,6 +18,7 @@ import { useAuth } from "@/features/auth/auth-provider";
 import { ProjectCosts } from "@/features/costs/project-costs";
 import { ProjectEstimates } from "@/features/estimates/project-estimates";
 import { ProjectFiles } from "@/features/files/project-files";
+import { workspaceKeys } from "@/features/organizations/workspace-context";
 import { ProjectSketches } from "@/features/sketches/project-sketches";
 import { SketchModal } from "@/features/sketches/sketch-modal";
 import { TaskPanel } from "@/features/tasks/task-panel";
@@ -96,36 +101,37 @@ function ProjectDetail({
     role,
     loading: accessLoading,
   } = useCompanyAccess(organizationId);
-  const [project, setProject] = useState<SavedProject | null>(null);
-  const [loading, setLoading] = useState(true),
-    [failed, setFailed] = useState(false),
-    [reload, setReload] = useState(0);
+  const { session } = useAuth();
+  const userId = session?.user.id ?? "";
+  const client = useQueryClient();
+  const projectQuery = useQuery({
+    queryKey: workspaceKeys.project(userId, organizationId, id),
+    queryFn: () => getProject(organizationId, id),
+    enabled: !!userId && !!organizationId && !!id,
+    initialData: () =>
+      client
+        .getQueryData<InfiniteData<SavedProject[], number>>(
+          workspaceKeys.projects(userId, organizationId),
+        )
+        ?.pages.flat()
+        .find((row) => row.id === id),
+    initialDataUpdatedAt: () =>
+      client.getQueryState(workspaceKeys.projects(userId, organizationId))
+        ?.dataUpdatedAt,
+  });
+  const project = projectQuery.data ?? null;
+  const loading = projectQuery.isPending && projectQuery.isFetching;
+  const failed = projectQuery.isError && !project;
+  const [reload, setReload] = useState(0);
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<"failed" | "conflict" | null>(null),
     [saved, setSaved] = useState(false);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: explicit reload retries the project query
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setFailed(false);
-    void getProject(organizationId, id)
-      .then((data) => {
-        if (active) {
-          setProject(data);
-          setError(null);
-          setSaved(false);
-        }
-      })
-      .catch(() => {
-        if (active) setFailed(true);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [organizationId, id, reload]);
+  function refreshProject() {
+    setReload((n) => n + 1);
+    setError(null);
+    setSaved(false);
+    void projectQuery.refetch();
+  }
   const location = useLocation(),
     navigate = useNavigate(),
     [search] = useSearchParams(),
@@ -198,7 +204,20 @@ function ProjectDetail({
     try {
       const updated = await updateProject(project, input);
       if (updated) {
-        setProject(updated);
+        client.setQueryData(
+          workspaceKeys.project(userId, organizationId, id),
+          updated,
+        );
+        client.setQueryData<InfiniteData<SavedProject[], number>>(
+          workspaceKeys.projects(userId, organizationId),
+          (old) =>
+            old && {
+              ...old,
+              pages: old.pages.map((page) =>
+                page.map((row) => (row.id === id ? updated : row)),
+              ),
+            },
+        );
         editDirty.current = false;
         setSaved(true);
       } else setError("conflict");
@@ -209,7 +228,7 @@ function ProjectDetail({
     }
   }
   return (
-    <AppShell live>
+    <>
       <section className="connected-workspace project-detail-workspace">
         {project ? (
           <ProjectHeader
@@ -231,10 +250,15 @@ function ProjectDetail({
         {project && !accessLoading && role && (
           <ProjectNavigation active={active} owner={owner} />
         )}
+        {projectQuery.isError && project && (
+          <p role="alert" className="error-message">
+            {c.error}
+          </p>
+        )}
         {failed ? (
           <div role="alert">
             <p>{c.error}</p>
-            <Button onClick={() => setReload((n) => n + 1)}>{c.retry}</Button>
+            <Button onClick={refreshProject}>{c.retry}</Button>
           </div>
         ) : !project ? (
           loading ? (
@@ -264,13 +288,15 @@ function ProjectDetail({
                   onOpenSketch={setSketchId}
                 />
               )}
-              {active === "overview" && (
-                <SavedProjectOverview
-                  key={`${project.revision}:${sketchRefresh}`}
-                  project={project}
-                  owner={owner}
-                  onOpenSketch={setSketchId}
-                />
+              {(visited.has("overview") || active === "overview") && (
+                <div hidden={active !== "overview"}>
+                  <SavedProjectOverview
+                    key={`${project.revision}:${sketchRefresh}`}
+                    project={project}
+                    owner={owner}
+                    onOpenSketch={setSketchId}
+                  />
+                </div>
               )}
               {(visited.has("tasks") || active === "tasks") && (
                 <div hidden={active !== "tasks"}>
@@ -365,7 +391,7 @@ function ProjectDetail({
                           type="button"
                           variant="outline"
                           disabled={busy}
-                          onClick={() => setReload((n) => n + 1)}
+                          onClick={refreshProject}
                         >
                           {c.reload}
                         </Button>
@@ -391,6 +417,6 @@ function ProjectDetail({
           }}
         />
       )}
-    </AppShell>
+    </>
   );
 }

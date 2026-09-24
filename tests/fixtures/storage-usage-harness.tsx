@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import { createRoot } from "react-dom/client";
 import { StorageUsage } from "../../src/features/storage-usage/storage-usage";
@@ -29,7 +30,9 @@ function Harness() {
 const root = document.getElementById("root");
 if (root)
   createRoot(root).render(
-    <LocaleProvider>
-      <Harness />
-    </LocaleProvider>,
+    <QueryClientProvider client={new QueryClient()}>
+      <LocaleProvider>
+        <Harness />
+      </LocaleProvider>
+    </QueryClientProvider>,
   );

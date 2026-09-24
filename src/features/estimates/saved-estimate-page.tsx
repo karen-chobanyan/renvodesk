@@ -1,9 +1,10 @@
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router";
-import { AppShell } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/features/auth/auth-provider";
+import { workspaceKeys } from "@/features/organizations/workspace-context";
 import { formatMoney, useLocale } from "@/lib/i18n";
 import { draftCopy } from "./draft-copy";
 import { editorLines, type StoredLine, serializeLines } from "./draft-model";
@@ -42,64 +43,63 @@ function Draft({
 }) {
   const { locale } = useLocale(),
     c = draftCopy[locale];
-  const [record, setRecord] = useState<SavedEstimate | null>(null),
-    [loading, setLoading] = useState(true),
-    [failed, setFailed] = useState(false),
-    [reload, setReload] = useState(0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: explicit reload discards draft and fetches latest
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setFailed(false);
-    void getEstimate(org, project, id)
-      .then((data) => {
-        if (active) setRecord(data);
-      })
-      .catch(() => {
-        if (active) setFailed(true);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [org, project, id, reload]);
+  const { session } = useAuth();
+  const userId = session?.user.id ?? "";
+  const client = useQueryClient();
+  const estimateQuery = useQuery({
+    queryKey: workspaceKeys.estimate(userId, org, id),
+    queryFn: () => getEstimate(org, project, id),
+    enabled: !!userId && !!org && !!project && !!id,
+  });
+  const record = estimateQuery.data ?? null;
+  const loading = estimateQuery.isPending && estimateQuery.isFetching;
+  const failed = estimateQuery.isError && !record;
+  const [reload, setReload] = useState(0);
+  function refresh() {
+    void estimateQuery.refetch().then((result) => {
+      if (!result.error) setReload((n) => n + 1);
+    });
+  }
   return (
-    <AppShell live>
-      <section className="connected-workspace live-estimate">
-        <Link
-          className="back-link"
-          to={`/workspace/${org}/projects/${project}`}
-        >
-          {c.back}
-        </Link>
-        {loading ? (
-          <p role="status">{c.loading}</p>
-        ) : failed ? (
-          <>
-            <p role="alert">{c.error}</p>
-            <Button onClick={() => setReload((n) => n + 1)}>{c.retry}</Button>
-          </>
-        ) : record ? (
-          <Editor
-            key={reload}
-            record={record}
-            reload={() => setReload((n) => n + 1)}
-          />
-        ) : (
-          <p role="alert">{c.missing}</p>
-        )}
-      </section>
-    </AppShell>
+    <section className="connected-workspace live-estimate">
+      <Link className="back-link" to={`/workspace/${org}/projects/${project}`}>
+        {c.back}
+      </Link>
+      {estimateQuery.isError && record && (
+        <p role="alert" className="error-message">
+          {c.error}
+        </p>
+      )}
+      {loading ? (
+        <p role="status">{c.loading}</p>
+      ) : failed ? (
+        <>
+          <p role="alert">{c.error}</p>
+          <Button onClick={refresh}>{c.retry}</Button>
+        </>
+      ) : record ? (
+        <Editor
+          key={reload}
+          record={record}
+          reload={refresh}
+          onPersist={(next) =>
+            client.setQueryData(workspaceKeys.estimate(userId, org, id), next)
+          }
+        />
+      ) : (
+        <p role="alert">{c.missing}</p>
+      )}
+    </section>
   );
 }
 function Editor({
   record,
   reload,
+  onPersist,
 }: {
   record: SavedEstimate;
   reload: () => void;
+  onPersist: (next: SavedEstimate) => void;
 }) {
   const { locale, t } = useLocale(),
     c = draftCopy[locale];
@@ -149,6 +149,7 @@ function Editor({
       const next = await saveEstimate(current, title.trim(), serialized);
       if (next) {
         setCurrent(next);
+        onPersist(next);
         setLines(editorLines(next.lines as unknown as StoredLine[]));
         setTitle(next.title);
         setDirty(false);
@@ -264,6 +265,7 @@ function Editor({
         transition={(request) => recordDecision(current, request)}
         changed={(next) => {
           setCurrent(next);
+          onPersist(next);
           setSaved(false);
         }}
         lock={setTransitionLocked}

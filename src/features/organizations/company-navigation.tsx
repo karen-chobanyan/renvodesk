@@ -1,6 +1,6 @@
 import { ChevronDown } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/auth-provider";
 import { authErrorKey, useAuthCopy } from "@/features/auth/copy";
@@ -8,7 +8,7 @@ import { AccountStorageSummary } from "@/features/storage-usage/storage-usage";
 import { useCompanyAccess } from "@/features/team/company-access";
 import { useLocale } from "@/lib/i18n";
 import { requireSupabase } from "@/lib/supabase/client";
-import { getOrganizations, type Organization } from "./organization-service";
+import { useWorkspace } from "./workspace-context";
 export function CompanyNavigation({
   id,
   close,
@@ -16,46 +16,28 @@ export function CompanyNavigation({
   id?: string;
   close: () => void;
 }) {
-  const { session } = useAuth(),
-    t = useAuthCopy(),
-    { locale, applyWorkspaceLanguage } = useLocale(),
+  const t = useAuthCopy(),
+    { locale } = useLocale(),
     navigate = useNavigate();
+  const location = useLocation();
+  const {
+    organizations: rows,
+    organization: active,
+    loading,
+    failed,
+    refresh,
+  } = useWorkspace();
   const { owner } = useCompanyAccess(id);
   const menu = useRef<HTMLDetailsElement>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: navigation closes the persistent disclosure
+  useEffect(() => {
+    if (menu.current) menu.current.open = false;
+  }, [location.key]);
   function dismiss() {
     if (menu.current) menu.current.open = false;
     close();
   }
-  const [rows, setRows] = useState<Organization[]>([]),
-    [failed, setFailed] = useState(false),
-    [reload, setReload] = useState(0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reload retries membership reads
-  useEffect(() => {
-    let active = true;
-    setRows([]);
-    setFailed(false);
-    if (session)
-      void getOrganizations(session.user.id)
-        .then((data) => {
-          if (active) {
-            setRows(data);
-            const selected = data.find((row) => row.id === id);
-            if (selected && id)
-              applyWorkspaceLanguage(
-                id,
-                selected.default_language === "en" ? "en" : "fr",
-              );
-          }
-        })
-        .catch(() => {
-          if (active) setFailed(true);
-        });
-    return () => {
-      active = false;
-    };
-  }, [session?.user.id, id, reload, applyWorkspaceLanguage]);
-  const active = rows.find((row) => row.id === id);
-  const name = active?.name ?? t("companies");
+  const name = active?.name ?? (loading ? "" : t("companies"));
   return (
     <details
       className="company-menu"
@@ -70,10 +52,16 @@ export function CompanyNavigation({
     >
       <summary className="workspace-switch compact-identity">
         <span className="company-avatar">
-          {active?.name.slice(0, 2).toUpperCase() ?? "R."}
+          {active?.name.slice(0, 2).toUpperCase() ?? (loading ? "" : "R.")}
         </span>
         <span className="identity-copy">
-          <strong>{name}</strong>
+          <strong>
+            {loading ? (
+              <span className="company-name-placeholder" aria-hidden="true" />
+            ) : (
+              name
+            )}
+          </strong>
         </span>
         <ChevronDown size={14} />
       </summary>
@@ -102,7 +90,7 @@ export function CompanyNavigation({
         {failed && (
           <div role="alert">
             <p>{t("loadError")}</p>
-            <Button variant="ghost" onClick={() => setReload((n) => n + 1)}>
+            <Button variant="ghost" onClick={() => void refresh()}>
               {t("retry")}
             </Button>
           </div>
@@ -135,11 +123,16 @@ export function AccountControls({
   organizationId?: string;
 }) {
   const menu = useRef<HTMLDetailsElement>(null);
+  const location = useLocation();
+  // biome-ignore lint/correctness/useExhaustiveDependencies: navigation closes the persistent disclosure
+  useEffect(() => {
+    if (menu.current) menu.current.open = false;
+  }, [location.key]);
   const { session } = useAuth(),
     t = useAuthCopy();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
-    [refresh, setRefresh] = useState(0);
+    [menuOpen, setMenuOpen] = useState(false);
   async function logout() {
     setBusy(true);
     setError("");
@@ -157,7 +150,8 @@ export function AccountControls({
       className="account-menu"
       ref={menu}
       onToggle={(event) => {
-        if (event.currentTarget.open) setRefresh((n) => n + 1);
+        const open = event.currentTarget.open;
+        setMenuOpen(open);
       }}
       onKeyDown={(e) => {
         if (e.key === "Escape" && e.currentTarget.open) {
@@ -178,11 +172,8 @@ export function AccountControls({
         <ChevronDown size={14} />
       </summary>
       <div className="sidebar-account">
-        {organizationId && (
-          <AccountStorageSummary
-            organizationId={organizationId}
-            refreshKey={refresh}
-          />
+        {menuOpen && organizationId && (
+          <AccountStorageSummary organizationId={organizationId} />
         )}
         <Link
           className="account-demo-link"

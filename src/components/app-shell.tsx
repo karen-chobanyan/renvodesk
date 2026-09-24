@@ -30,11 +30,13 @@ export function AppShell({
   children,
   live = false,
   company,
+  companyLoading = false,
   organizationId,
 }: {
   children?: ReactNode;
   live?: boolean;
   company?: string;
+  companyLoading?: boolean;
   organizationId?: string;
 }) {
   const params = useParams();
@@ -213,7 +215,16 @@ export function AppShell({
                 </Button>
               </DialogPrimitive.Trigger>
               <span className="topbar-brand">
-                {live ? company || "RenvoDesk" : "Atelier & Habitat"}
+                {live && companyLoading ? (
+                  <span
+                    className="topbar-company-placeholder"
+                    aria-hidden="true"
+                  />
+                ) : live ? (
+                  company || "RenvoDesk"
+                ) : (
+                  "Atelier & Habitat"
+                )}
               </span>
               <span className="topbar-slash">/</span>
               <span className="muted">

@@ -149,6 +149,7 @@ for (const decision of ["accepted", "declined"] as const)
     );
     page.on("dialog", (dialog) => dialog.accept());
     await page.goto(`/workspace/${org}/projects/${project}/estimates/${id}`);
+    await page.getByRole("button", { name: "Tout refuser" }).click();
     await page
       .getByLabel("Référence de l’échange")
       .fill("Email sent externally, reference 123");

@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/features/auth/auth-provider";
+import { workspaceKeys } from "@/features/organizations/workspace-context";
 import { useLocale } from "@/lib/i18n";
 import { requireSupabase } from "@/lib/supabase/client";
 import {
   formatStorageBytes,
-  type StorageScope,
   type StorageUsageData,
   storageLevel,
 } from "./storage-model";
@@ -76,6 +78,17 @@ const copy = {
   },
 };
 
+function useStorageUsage(organizationId: string) {
+  const { session } = useAuth();
+  const userId = session?.user.id ?? "";
+  return useQuery({
+    queryKey: workspaceKeys.storage(userId, organizationId),
+    queryFn: () => readStorageUsage(organizationId),
+    enabled: !!organizationId,
+    staleTime: 15_000,
+  });
+}
+
 export function StorageUsage({
   organizationId,
   refreshKey = 0,
@@ -85,32 +98,20 @@ export function StorageUsage({
 }) {
   const { locale } = useLocale();
   const c = copy[locale];
-  const [usage, setUsage] = useState<StorageUsageData | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [retry, setRetry] = useState(0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: refreshKey and retry explicitly refetch current counters
+  const query = useStorageUsage(organizationId);
+  const usage = query.data ?? null;
+  const failed = query.isError && !usage;
+  // biome-ignore lint/correctness/useExhaustiveDependencies: upload/deletion completion explicitly refreshes usage
   useEffect(() => {
-    let active = true;
-    setUsage(null);
-    setFailed(false);
-    void readStorageUsage(organizationId)
-      .then((data) => {
-        if (active) setUsage(data);
-      })
-      .catch(() => {
-        if (active) setFailed(true);
-      });
-    return () => {
-      active = false;
-    };
-  }, [organizationId, refreshKey, retry]);
+    if (refreshKey) void query.refetch();
+  }, [refreshKey]);
   return (
     <section className="storage-usage" aria-label={c.title}>
       <h2>{c.title}</h2>
       {failed ? (
         <div>
           <p>{c.error}</p>
-          <Button variant="outline" onClick={() => setRetry((n) => n + 1)}>
+          <Button variant="outline" onClick={() => void query.refetch()}>
             {c.retry}
           </Button>
         </div>
@@ -157,26 +158,12 @@ export function StorageUsage({
 
 export function AccountStorageSummary({
   organizationId,
-  refreshKey,
 }: {
   organizationId: string;
-  refreshKey: number;
 }) {
   const { locale } = useLocale();
-  const [account, setAccount] = useState<StorageScope | null>(null);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: opening the menu refreshes account usage
-  useEffect(() => {
-    let active = true;
-    setAccount(null);
-    void readStorageUsage(organizationId)
-      .then((data) => {
-        if (active) setAccount(data.account);
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [organizationId, refreshKey]);
+  const query = useStorageUsage(organizationId);
+  const account = query.data?.account;
   if (!account) return null;
   return (
     <p className="account-storage-summary">

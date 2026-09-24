@@ -398,7 +398,7 @@ async function mockApi(page: Page) {
   );
   return () => requests;
 }
-async function login(page: Page, dismissConsent = false) {
+async function login(page: Page, dismissConsent = true) {
   await page.goto("/login");
   if (dismissConsent)
     await page
@@ -1069,6 +1069,7 @@ test("invalid credentials have a friendly localized error", async ({
 }) => {
   await mockApi(page);
   await page.goto("/login");
+  await page.getByRole("button", { name: "Tout refuser" }).click();
   await page
     .getByRole("textbox", { name: "Adresse e-mail" })
     .fill("test@example.test");
@@ -1087,6 +1088,7 @@ test("signup and recovery explain the email step without sending mail", async ({
 }) => {
   await mockApi(page);
   await page.goto("/signup");
+  await page.getByRole("button", { name: "Tout refuser" }).click();
   await page
     .getByRole("textbox", { name: "Adresse e-mail" })
     .fill("test@example.test");
@@ -1436,6 +1438,82 @@ test("company navigation keeps selection across reload and detail routes", async
   await expect(
     page.locator("main").getByRole("button", { name: "Se déconnecter" }),
   ).toHaveCount(0);
+});
+
+test("workspace navigation keeps its shell and cached company content", async ({
+  page,
+}) => {
+  await mockApi(page);
+  let membershipReads = 0;
+  let organizationReads = 0;
+  let projectReads = 0;
+  await page.route("**/rest/v1/organization_memberships**", async (route) => {
+    membershipReads++;
+    await route.fallback();
+  });
+  await page.route("**/rest/v1/organizations**", async (route) => {
+    if (route.request().method() === "GET") {
+      organizationReads++;
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+    await route.fallback();
+  });
+  await page.route("**/rest/v1/projects**", async (route) => {
+    if (route.request().method() === "GET") projectReads++;
+    await route.fallback();
+  });
+  await login(page, true);
+  await page.getByLabel("Nom de l’entreprise").fill("Atelier stable");
+  await page.getByRole("button", { name: "Créer mon entreprise" }).click();
+  await expect(page.getByText("Aucun projet pour le moment.")).toBeVisible();
+  await page
+    .getByRole("textbox", { name: "Rechercher un projet ou un client…" })
+    .fill("chantier futur");
+  async function revealSidebar() {
+    if (
+      test.info().project.name === "mobile" &&
+      !(await page.locator(".company-menu").isVisible())
+    )
+      await page.getByRole("button", { name: "Navigation" }).click();
+  }
+  await revealSidebar();
+  await expect(page.locator(".company-menu > summary")).toContainText(
+    "Atelier stable",
+  );
+  await page.locator(".app-shell").evaluate((node) => {
+    node.setAttribute("data-navigation-test", "same-shell");
+  });
+  const initialMembershipReads = membershipReads;
+  const initialProjectReads = projectReads;
+  async function openSettings() {
+    await revealSidebar();
+    await page.locator(".company-menu > summary").click();
+    await page.getByRole("link", { name: "Paramètres", exact: true }).click();
+  }
+  await openSettings();
+  await expect(page.locator(".app-shell")).toHaveAttribute(
+    "data-navigation-test",
+    "same-shell",
+  );
+  await expect(page.getByLabel("Langue par défaut")).toHaveValue("fr");
+  expect(organizationReads).toBe(1);
+  await revealSidebar();
+  await page
+    .locator(`.sidebar nav a[href="/workspace?company=${org}"]`)
+    .click();
+  await expect(page.getByText("Aucun projet pour le moment.")).toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Rechercher un projet ou un client…" }),
+  ).toHaveValue("chantier futur");
+  expect(projectReads).toBe(initialProjectReads);
+  await openSettings();
+  await expect(page.getByLabel("Langue par défaut")).toBeVisible();
+  expect(organizationReads).toBe(1);
+  expect(membershipReads).toBe(initialMembershipReads);
+  await expect(page.locator(".app-shell")).toHaveAttribute(
+    "data-navigation-test",
+    "same-shell",
+  );
 });
 
 test("company estimates search, pagination and saved draft links", async ({
@@ -1988,6 +2066,7 @@ test("invitation returns after login and requires explicit acceptance", async ({
     });
   });
   await page.goto(`/invite/${inviteId}`);
+  await page.getByRole("button", { name: "Tout refuser" }).click();
   await page.getByRole("link", { name: "Se connecter", exact: true }).click();
   await page.getByLabel("Adresse e-mail").fill("test@example.test");
   await page
