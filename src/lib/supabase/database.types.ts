@@ -200,9 +200,11 @@ export type Database = {
           country: string;
           created_at: string;
           created_by: string;
+          default_language: string;
           id: string;
           name: string;
           request_id: string;
+          settings_revision: number;
         };
         Insert: {
           contact_address?: string;
@@ -212,9 +214,11 @@ export type Database = {
           country: string;
           created_at?: string;
           created_by: string;
+          default_language?: string;
           id?: string;
           name: string;
           request_id: string;
+          settings_revision?: number;
         };
         Update: {
           contact_address?: string;
@@ -224,9 +228,11 @@ export type Database = {
           country?: string;
           created_at?: string;
           created_by?: string;
+          default_language?: string;
           id?: string;
           name?: string;
           request_id?: string;
+          settings_revision?: number;
         };
         Relationships: [];
       };

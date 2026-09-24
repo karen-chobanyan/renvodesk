@@ -27,6 +27,7 @@ async function mockApi(page: Page) {
     contact_phone: "",
     contact_revision: 1,
   };
+  let preferences = { default_language: "fr", settings_revision: 1 };
   let requests = 0;
   const projects: Record<string, unknown>[] = [];
   let loseResponse = true;
@@ -329,13 +330,28 @@ async function mockApi(page: Page) {
         expect(url.searchParams.get("id")).toBe(`eq.${org}`);
         if (method === "PATCH") {
           const body = route.request().postDataJSON();
-          expect(url.searchParams.get("contact_revision")).toBe(
-            `eq.${contacts.contact_revision}`,
-          );
-          contacts = { ...contacts, ...body };
+          if (body.settings_revision) {
+            expect(url.searchParams.get("settings_revision")).toBe(
+              `eq.${preferences.settings_revision}`,
+            );
+            preferences = { ...preferences, ...body };
+          } else {
+            expect(url.searchParams.get("contact_revision")).toBe(
+              `eq.${contacts.contact_revision}`,
+            );
+            contacts = { ...contacts, ...body };
+          }
         }
         await route.fulfill({
-          json: [{ id: org, name: company, country: "BE", ...contacts }],
+          json: [
+            {
+              id: org,
+              name: company,
+              country: "BE",
+              ...contacts,
+              ...preferences,
+            },
+          ],
         });
         return;
       }
@@ -353,7 +369,12 @@ async function mockApi(page: Page) {
                 {
                   organization_id: org,
                   role: "owner",
-                  organizations: { id: org, name: company, country: "BE" },
+                  organizations: {
+                    id: org,
+                    name: company,
+                    country: "BE",
+                    default_language: "fr",
+                  },
                 },
               ]
             : [],
@@ -415,11 +436,18 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     await page.getByRole("button", { name: "Navigation" }).click();
   await page.locator(".company-menu > summary").click();
   await page
-    .getByRole("link", { name: "Paramètres de l’entreprise", exact: true })
+    .getByRole("link", {
+      name: "Paramètres",
+      exact: true,
+    })
     .click();
   await expect(
-    page.getByRole("heading", { name: "Paramètres de l’entreprise" }),
+    page.getByRole("heading", { name: "Paramètres", exact: true }),
   ).toBeVisible();
+  await expect(page.getByLabel("Langue par défaut")).toHaveValue("fr");
+  await expect(page.getByLabel("Pays de l’entreprise")).toHaveValue("BE");
+  await expect(page.getByText("EUR · €")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Abonnement" })).toBeVisible();
   await page
     .getByText("Coordonnées pour les documents", { exact: true })
     .click();

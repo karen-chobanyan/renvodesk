@@ -154,7 +154,7 @@ fixtures were rendered and visually checked, with PDF text/total assertions.
 The development application now reserves object-storage capacity against a
 **1 GB account allowance across owned companies** and a **1 GB allowance per
 company** (decimal GB). Project files and all sketch revisions count; incomplete
-uploads retain a reservation until recovered or canceled. Company settings and
+uploads retain a reservation until recovered or canceled. Settings and
 project Documents show usage. Owners see account usage in the account menu.
 Quota enforcement is applied to the development Supabase project; live Storage
 API upload/deletion verification remains open. See
@@ -182,7 +182,7 @@ browser tests mock the API and cover errors, recovery, previews and deletion.
 
 Protected workspace, project and estimate pages reuse the demo application shell.
 The saved project register uses the same visual hierarchy and table styles, with
-search/status filters and counts scoped to loaded projects. Company settings have a dedicated page. Saved project pages provide links to details, estimates and files.
+search/status filters and counts scoped to loaded projects. Settings has a dedicated page. Saved project pages provide links to details, estimates and files.
 Sketch previews are explicitly fictional; task navigation opens the live company schedule.
 The global estimates link opens the live company estimate register.
 Keep demo records separate from live data while replacing previews incrementally.
@@ -206,13 +206,18 @@ tracking is now connected. See decision 008 and `supabase/tests/task_isolation.s
 
 ## Company and account navigation
 
-The live sidebar owns company selection, Add a company, Company settings, demo
+The live sidebar owns company selection, Add a company, Settings, demo
 access and account sign-out. Projects no longer embeds company administration.
 `/workspace?company=<id>` selects the project register; project, schedule and settings
 routes carry the company ID in the path. Switching companies returns to that company’s
-register. `/workspace/:organizationId/settings` contains document contact details.
-Selection is explicit in the URL and survives reload; unqualified `/workspace` uses
-the first available membership. No permissions or database schema changed.
+register. `/workspace/:organizationId/settings` contains owner-editable default
+language and BE/FR/NL company country, fixed EUR currency, document contact
+details, storage usage and a future subscription section. A personal language
+choice overrides the workspace default. Country changes do not update project
+addresses or sent estimate snapshots; future draft PDF exports use the current
+country. See [decision 024](docs/decisions/024-workspace-settings.md).
+Selection is explicit in the URL and survives reload; unqualified `/workspace`
+uses the first available membership.
 
 Company estimates: `/workspace/:organizationId/estimates` lists saved drafts with server-side title/project/client search, 20-row pagination and direct draft/project links. Creation starts from a project. No schema or permission changes; demo estimate routes remain separate.
 

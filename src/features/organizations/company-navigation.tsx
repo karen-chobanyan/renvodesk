@@ -18,7 +18,7 @@ export function CompanyNavigation({
 }) {
   const { session } = useAuth(),
     t = useAuthCopy(),
-    { locale } = useLocale(),
+    { locale, applyWorkspaceLanguage } = useLocale(),
     navigate = useNavigate();
   const { owner } = useCompanyAccess(id);
   const menu = useRef<HTMLDetailsElement>(null);
@@ -37,7 +37,15 @@ export function CompanyNavigation({
     if (session)
       void getOrganizations(session.user.id)
         .then((data) => {
-          if (active) setRows(data);
+          if (active) {
+            setRows(data);
+            const selected = data.find((row) => row.id === id);
+            if (selected && id)
+              applyWorkspaceLanguage(
+                id,
+                selected.default_language === "en" ? "en" : "fr",
+              );
+          }
         })
         .catch(() => {
           if (active) setFailed(true);
@@ -45,7 +53,7 @@ export function CompanyNavigation({
     return () => {
       active = false;
     };
-  }, [session?.user.id, id, reload]);
+  }, [session?.user.id, id, reload, applyWorkspaceLanguage]);
   const active = rows.find((row) => row.id === id);
   const name = active?.name ?? t("companies");
   return (
@@ -111,9 +119,7 @@ export function CompanyNavigation({
               {locale === "fr" ? "Équipe" : "Team"}
             </Link>
             <Link to={`/workspace/${id}/settings`} onClick={dismiss}>
-              {locale === "fr"
-                ? "Paramètres de l’entreprise"
-                : "Company settings"}
+              {locale === "fr" ? "Paramètres" : "Settings"}
             </Link>
           </>
         )}

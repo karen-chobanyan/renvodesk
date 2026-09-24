@@ -30,6 +30,7 @@
   --control-height: 40px;
   --text-sm: 12px;
   --text-base: 14px;
+  --text-lg: 18px;
   --shadow-overlay: 0 16px 64px #172e2826;
   font-family: "Inter Variable", sans-serif;
   color: var(--text);
@@ -3999,6 +4000,63 @@ details[open] > .compact-identity > svg {
   background: var(--surface);
   padding: var(--space-6);
   margin-block: var(--space-4);
+}
+.workspace-settings {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 840px;
+  margin-top: var(--space-6);
+}
+.workspace-settings-section {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: var(--space-6);
+}
+.workspace-settings-section h2 {
+  margin: 0 0 var(--space-2);
+}
+.workspace-settings-section .helper-text {
+  margin: 0;
+}
+.workspace-preferences-form {
+  margin-top: var(--space-6);
+}
+.workspace-preferences-form .project-fields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.workspace-preferences-form .field {
+  min-width: 0;
+}
+.workspace-preferences-form .field small {
+  color: var(--muted);
+  line-height: 1.5;
+}
+.workspace-currency strong {
+  font-size: var(--text-lg);
+}
+.workspace-settings-actions,
+.workspace-settings-feedback {
+  grid-column: 1 / -1;
+}
+.workspace-settings .storage-usage {
+  margin: 0;
+}
+.workspace-settings > .saved-projects {
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: var(--space-6);
+}
+.workspace-settings > .saved-projects summary {
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+@media (max-width: 700px) {
+  .workspace-preferences-form .project-fields {
+    grid-template-columns: 1fr;
+  }
 }
 .storage-usage h2 {
   margin: 0 0 1rem;

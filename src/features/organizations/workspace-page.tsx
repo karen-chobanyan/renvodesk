@@ -15,6 +15,7 @@ import {
   getOrganizations,
   type Organization,
 } from "./organization-service";
+import { WorkspacePreferences } from "./workspace-preferences";
 export function WorkspacePage({ settings = false }: { settings?: boolean }) {
   const { session } = useAuth();
   return session ? (
@@ -38,8 +39,7 @@ function Workspace({
   const requested = params.organizationId ?? search.get("company") ?? "";
   const t = useAuthCopy();
   const { t: ui, locale } = useLocale();
-  const settingsTitle =
-    locale === "fr" ? "Paramètres de l’entreprise" : "Company settings";
+  const settingsTitle = locale === "fr" ? "Paramètres" : "Settings";
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
@@ -174,13 +174,25 @@ function Workspace({
           </form>
         ) : activeOrganization ? (
           settings ? (
-            <>
+            <div className="workspace-settings">
+              <WorkspacePreferences
+                key={activeOrganization.id}
+                id={activeOrganization.id}
+              />
               <StorageUsage organizationId={activeOrganization.id} />
               <CompanyContacts
                 key={activeOrganization.id}
                 id={activeOrganization.id}
               />
-            </>
+              <section className="workspace-settings-section">
+                <h2>{locale === "fr" ? "Abonnement" : "Subscription"}</h2>
+                <p className="helper-text">
+                  {locale === "fr"
+                    ? "La gestion des offres et de la facturation sera disponible ici plus tard."
+                    : "Plan and billing management will be available here later."}
+                </p>
+              </section>
+            </div>
           ) : (
             <SavedProjects
               key={activeOrganization.id}

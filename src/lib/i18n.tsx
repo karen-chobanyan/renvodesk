@@ -1,8 +1,10 @@
 import {
   createContext,
   type ReactNode,
+  useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 export const fr = {
@@ -298,16 +300,54 @@ export type Locale = "fr" | "en";
 const LocaleContext = createContext<{
   locale: Locale;
   setLocale: (locale: Locale) => void;
+  applyWorkspaceLanguage: (id: string, locale: Locale) => void;
+  saveWorkspaceLanguage: (id: string, locale: Locale) => void;
   t: (key: Key) => string;
-}>({ locale: "fr", setLocale: () => {}, t: (key) => fr[key] });
+}>({
+  locale: "fr",
+  setLocale: () => {},
+  applyWorkspaceLanguage: () => {},
+  saveWorkspaceLanguage: () => {},
+  t: (key) => fr[key],
+});
 export function LocaleProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocale] = useState<Locale>(() => {
+  const activeWorkspace = useRef<string | null>(null);
+  const personalLanguage = useRef(false);
+  const [locale, setCurrentLocale] = useState<Locale>(() => {
     try {
-      return localStorage.getItem("renvodesk-locale") === "en" ? "en" : "fr";
+      const stored = localStorage.getItem("renvodesk-locale");
+      const source = localStorage.getItem("renvodesk-locale-source");
+      personalLanguage.current =
+        source === "manual" || (source === null && stored !== null);
+      if (source === null)
+        localStorage.setItem(
+          "renvodesk-locale-source",
+          personalLanguage.current ? "manual" : "workspace",
+        );
+      return stored === "en" ? "en" : "fr";
     } catch {
       return "fr";
     }
   });
+  const setLocale = useCallback((language: Locale) => {
+    personalLanguage.current = true;
+    try {
+      localStorage.setItem("renvodesk-locale-source", "manual");
+    } catch {
+      /* Storage may be unavailable. */
+    }
+    setCurrentLocale(language);
+  }, []);
+  const applyWorkspaceLanguage = useCallback((id: string, language: Locale) => {
+    if (activeWorkspace.current !== id) {
+      activeWorkspace.current = id;
+      if (!personalLanguage.current) setCurrentLocale(language);
+    }
+  }, []);
+  const saveWorkspaceLanguage = useCallback((id: string, language: Locale) => {
+    activeWorkspace.current = id;
+    if (!personalLanguage.current) setCurrentLocale(language);
+  }, []);
   useEffect(() => {
     document.documentElement.lang = locale;
     try {
@@ -321,6 +361,8 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
       value={{
         locale,
         setLocale,
+        applyWorkspaceLanguage,
+        saveWorkspaceLanguage,
         t: (key) => (locale === "fr" ? fr : en)[key],
       }}
     >

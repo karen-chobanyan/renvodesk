@@ -343,7 +343,7 @@ Read README.md and the latest milestone plans for current implementation status.
 
 Protected workspace, project and estimate pages reuse the demo application shell.
 The saved project register uses the same visual hierarchy and table styles, with
-search/status filters and counts scoped to loaded projects. Company settings have a dedicated page. Saved project pages provide links to details, estimates and files.
+search/status filters and counts scoped to loaded projects. Settings has a dedicated owner-only page. Saved project pages provide links to details, estimates and files.
 Saved projects have private editable sketches; task navigation opens the live company schedule.
 The global estimates link opens the live company estimate register.
 Keep demo records separate from live data while replacing previews incrementally.
@@ -371,13 +371,19 @@ Saved project overview now mirrors the demo detail composition: real project hea
 
 ## Company and account navigation
 
-The live sidebar owns company selection, Add a company, Company settings, demo
+The live sidebar owns company selection, Add a company, Settings, demo
 access and account sign-out. Projects no longer embeds company administration.
 `/workspace?company=<id>` selects the project register; project, schedule and settings
 routes carry the company ID in the path. Switching companies returns to that company’s
-register. `/workspace/:organizationId/settings` contains document contact details.
-Selection is explicit in the URL and survives reload; unqualified `/workspace` uses
-the first available membership. No permissions or database schema changed.
+register. `/workspace/:organizationId/settings` contains workspace default language,
+editable BE/FR/NL company country, fixed EUR currency, document contact details,
+storage usage and a future subscription section. Personal language choices take
+precedence over the workspace default. Country edits do not alter project
+addresses or sent estimate snapshots; future draft PDF exports use the current
+country. EUR financial amounts remain fixed. Preferences
+and contacts use separate revision checks. See decision 024. Selection is explicit
+in the URL and survives reload; unqualified `/workspace` uses the first available
+membership.
 
 Live sidebar identities use compact avatar/name disclosure rows matching the demo. Company selection, add/settings links and account sign-out are inside keyboard-accessible expandable panels. Escape closes the panel and returns focus to its trigger; mobile drawer remains scrollable.
 
