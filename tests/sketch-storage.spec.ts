@@ -284,6 +284,34 @@ test("saved sketch opens in place, restores history and restricts members", asyn
       .dataURL,
   ).toBe(png);
   await page.reload();
+  await page.locator(".language-picker select").selectOption("en");
+  const choose = page.getByRole("button", {
+    name: "Choose a file",
+    exact: true,
+  });
+  await choose.focus();
+  await expect(choose).toBeFocused();
+  const picker = page.waitForEvent("filechooser");
+  await page.keyboard.press("Enter");
+  await (await picker).setFiles({
+    name: "layout-check.txt",
+    mimeType: "text/plain",
+    buffer: Buffer.from("Layout fixture"),
+  });
+  await expect(page.locator(".document-selected")).toHaveText(
+    "layout-check.txt",
+  );
+  await expect(page.locator("#project-sketches .sketch-preview")).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `/private/tmp/project-documents-en-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  await page.locator(".language-picker select").selectOption("fr");
   await page.locator("#project-sketches .sketch-list-row").click();
   await page.evaluate(() => {
     document.body.dataset.sketchPageMarker = "kept";

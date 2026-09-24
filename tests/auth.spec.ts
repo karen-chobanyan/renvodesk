@@ -1904,7 +1904,7 @@ test("member edits only assigned tasks and sees no owner controls", async ({
         json: url.searchParams.has("assignee_id") ? [tasks[0]] : tasks,
       });
   });
-  await login(page);
+  await login(page, true);
   await expect(
     page.getByRole("link", { name: "Member site", exact: true }),
   ).toBeVisible();
@@ -2019,7 +2019,7 @@ test("project overview navigation, retained drafts, isolated failures and legacy
           },
     ),
   );
-  await login(page);
+  await login(page, true);
   await page.getByLabel("Nom de l’entreprise").fill("Atelier du Parc");
   await page.getByRole("button", { name: "Créer mon entreprise" }).click();
   await page.getByRole("button", { name: "Nouveau projet" }).click();

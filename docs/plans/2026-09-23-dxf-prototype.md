@@ -1,5 +1,8 @@
 # DXF viewer evaluation
 
+Historical evaluation; decision 021 retired the standalone prototype and its
+commands after renderer checks moved to the project viewer suite.
+
 Scope: isolated, read-only browser prototype with synthetic fixtures and local
 DXF selection. This evaluates MLightCAD before any project/storage integration.
 No DWG parser, CAD editing, persistence, takeoff or production feature claims.

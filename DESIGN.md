@@ -149,3 +149,22 @@ demo lives inside the account menu alongside sign-out; the existing footer keeps
 the design-system link. Demo routes retain their explicit fictional-data notice.
 Company selection, settings/team access, keyboard dismissal and the mobile drawer
 keep their existing behavior.
+
+## Project Documents
+
+Documents uses the shared Inter typeface and control radii. A compact upload target
+and paired camera/voice actions precede a native file table with name, type, size
+and explicit actions. Selection reveals the upload confirmation action; selecting
+or capturing a file never uploads it automatically. On phones file rows stack
+metadata and actions without horizontal page scrolling.
+
+The narrower sketch column has a fine vertical divider, an aligned creation
+control and private previews in thin bordered interactive tiles. It stacks below
+files on narrower screens. Keep placeholders distinct from actual saved previews,
+FR/EN copy complete, and hover/drag feedback compatible with reduced motion.
+
+The full Activity journal spans the project content width. Its 24px heading aligns
+with the category filter and labeled Refresh action. Day headings have fine rules;
+desktop rows align time, domain icon, event detail, actor and Open action. Narrow
+layouts stack metadata while retaining an adjacent action and 44px mobile targets.
+The overview retains its compact feed. Reduced-motion disables row transitions.

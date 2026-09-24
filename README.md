@@ -349,8 +349,6 @@ Fonts and entities may differ from the source CAD application. See
 [implementation and verification](docs/decisions/019-project-dxf-previews.md).
 The development migration is applied; production deployment is still pending.
 
-`pnpm dev:cad --port 5176` retains the standalone local evaluation at
-`http://127.0.0.1:5176/cad-prototype.html` with a fictional sample. Its files stay
-in the browser. `pnpm build:cad` and `pnpm test:cad` build/test that separate entry.
-Normal builds include only the shared canvas entry, with the CAD engine loaded
-on demand and excluded from landing-page imports.
+Normal builds load the React canvas component on demand; the CAD engine stays out
+of landing-page imports. The standalone prototype has been retired. The project
+DXF browser tests use a fictional fixture in `tests/fixtures/cad-sample.dxf`.

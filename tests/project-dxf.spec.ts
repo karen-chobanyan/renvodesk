@@ -4,8 +4,58 @@ import { expect, type Page, test } from "@playwright/test";
 const org = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const project = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const uid = "11111111-1111-4111-8111-111111111111";
-const sample = readFileSync("src/features/cad-prototype/sample.dxf");
+const sample = readFileSync("tests/fixtures/cad-sample.dxf");
 const base = `/workspace/${org}/projects/${project}?tab=documents`;
+
+async function renderedPixels(page: Page) {
+  const canvas = page.locator(".dxf-stage .cad-render-surface canvas").first();
+  const png = (await canvas.screenshot()).toString("base64");
+  return page.evaluate(async (base64) => {
+    const image = new Image();
+    image.src = `data:image/png;base64,${base64}`;
+    await image.decode();
+    const target = document.createElement("canvas");
+    target.width = image.width;
+    target.height = image.height;
+    const context = target.getContext("2d");
+    if (!context) throw new Error("No image context");
+    context.drawImage(image, 0, 0);
+    const { data } = context.getImageData(0, 0, target.width, target.height);
+    let walls = 0;
+    let labels = 0;
+    let dimensions = 0;
+    let dimensionLeft = target.width;
+    let dimensionRight = -1;
+    for (let y = 10; y < target.height - 10; y++)
+      for (let x = 10; x < target.width - 10; x++) {
+        const ucs = x < target.width * 0.15 && y > target.height * 0.75;
+        const i = (y * target.width + x) * 4;
+        const r = data[i];
+        const g = data[i + 1];
+        const b = data[i + 2];
+        if (
+          !ucs &&
+          r > 100 &&
+          g > 100 &&
+          b > 100 &&
+          Math.max(r, g, b) - Math.min(r, g, b) < 35
+        )
+          walls++;
+        if (!ucs && g > 100 && r < 70 && b < 70) labels++;
+        if (g > 100 && b > 100 && r < 70) {
+          dimensions++;
+          dimensionLeft = Math.min(dimensionLeft, x);
+          dimensionRight = Math.max(dimensionRight, x);
+        }
+      }
+    return {
+      walls,
+      labels,
+      dimensions,
+      dimensionWidth: Math.max(0, dimensionRight - dimensionLeft),
+    };
+  }, png);
+}
 
 async function fixture(page: Page, owner: boolean, locale = "en") {
   const user = {
@@ -186,7 +236,7 @@ async function openPlan(page: Page) {
     { timeout: 30000 },
   );
   await expect(
-    page.frameLocator("iframe").locator("canvas").first(),
+    page.locator(".dxf-stage .cad-render-surface canvas").first(),
   ).toBeVisible();
 }
 
@@ -208,14 +258,40 @@ test("owner uploads DXF, reopens saved plan, uses controls and deletes original"
   await page.reload();
   await openPlan(page);
   const dialog = page.getByRole("dialog");
-  expect(await dialog.locator("iframe").getAttribute("src")).toBe(
-    "/cad-canvas.html",
-  );
+  await expect(dialog.locator("iframe")).toHaveCount(0);
+  await expect
+    .poll(async () => (await renderedPixels(page)).walls)
+    .toBeGreaterThan(200);
+  const initial = await renderedPixels(page);
+  expect(initial.labels).toBeGreaterThan(100);
+  expect(initial.dimensions).toBeGreaterThan(100);
   await dialog.getByRole("button", { name: "Zoom out", exact: true }).click();
+  await expect
+    .poll(
+      async () =>
+        (await renderedPixels(page)).dimensionWidth / initial.dimensionWidth,
+    )
+    .toBeGreaterThan(0.77);
+  await expect
+    .poll(
+      async () =>
+        (await renderedPixels(page)).dimensionWidth / initial.dimensionWidth,
+    )
+    .toBeLessThan(0.83);
   await dialog.getByRole("button", { name: "Zoom in", exact: true }).click();
+  await expect
+    .poll(async () =>
+      Math.abs(
+        (await renderedPixels(page)).dimensionWidth - initial.dimensionWidth,
+      ),
+    )
+    .toBeLessThan(4);
   await dialog
     .getByRole("button", { name: "Fit to screen", exact: true })
     .click();
+  await expect
+    .poll(async () => (await renderedPixels(page)).dimensions)
+    .toBeGreaterThan(100);
   const layersToggle = dialog
     .locator(".dxf-controls")
     .getByRole("button", { name: "Layers", exact: true });
@@ -279,7 +355,7 @@ test("owner uploads DXF, reopens saved plan, uses controls and deletes original"
     fullPage: false,
   });
   await dialog.getByRole("button", { name: "Close", exact: true }).click();
-  await expect(page.locator("iframe")).toHaveCount(0);
+  await expect(page.locator(".cad-render-surface")).toHaveCount(0);
   await openPlan(page);
   expect(state.signed).toBe(2);
   await page.keyboard.press("Escape");
@@ -315,7 +391,7 @@ test("member can view DXF; errors recover and loaded plans survive link expiry",
     await expect(page.getByRole("dialog").getByRole("alert")).toContainText(
       "could not be displayed",
     );
-    await expect(page.locator("iframe")).toHaveCount(0);
+    await expect(page.locator(".cad-render-surface")).toHaveCount(0);
     await page.keyboard.press("Escape");
     state[failure] = false;
   }
@@ -331,7 +407,7 @@ test("member can view DXF; errors recover and loaded plans survive link expiry",
     "Plan opened",
   );
   await expect(
-    page.frameLocator("iframe").locator("canvas").first(),
+    page.locator(".dxf-stage .cad-render-surface canvas").first(),
   ).toBeVisible();
   await page
     .getByRole("dialog")
@@ -344,7 +420,7 @@ test("member can view DXF; errors recover and loaded plans survive link expiry",
   expect(state.downloads).toBe(downloads);
   expect(state.signed).toBe(signed);
   await page.keyboard.press("Escape");
-  await expect(page.locator("iframe")).toHaveCount(0);
+  await expect(page.locator(".cad-render-surface")).toHaveCount(0);
   await openPlan(page);
   expect(state.signed).toBe(signed + 1);
 });
@@ -382,7 +458,7 @@ test("French preview closes during download and can be opened again", async ({
     .click();
   release();
   await page.unroute(pattern);
-  await expect(page.locator("iframe")).toHaveCount(0);
+  await expect(page.locator(".cad-render-surface")).toHaveCount(0);
   await page
     .locator(".project-files")
     .getByRole("button", { name: "Ouvrir le plan", exact: true })
@@ -403,4 +479,51 @@ test("French preview closes during download and can be opened again", async ({
   await expect(
     page.getByRole("dialog").getByText("Lecture seule · DXF", { exact: true }),
   ).toBeVisible();
+});
+
+test("saved plan supports drag pan and mobile pinch", async ({
+  page,
+  context,
+  isMobile,
+}) => {
+  await fixture(page, false);
+  await page.goto(base);
+  await page.getByRole("button", { name: "Reject all", exact: true }).click();
+  await openPlan(page);
+  const canvas = page.locator(".dxf-stage .cad-render-surface canvas").first();
+  await canvas.scrollIntoViewIfNeeded();
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error("No canvas bounds");
+  const before = (await canvas.screenshot()).toString("base64");
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  if (isMobile) {
+    const cdp = await context.newCDPSession(page);
+    const points = (distance: number) => [
+      { x: x - distance, y, id: 1 },
+      { x: x + distance, y, id: 2 },
+    ];
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchStart",
+      touchPoints: points(30),
+    });
+    for (let distance = 35; distance <= 80; distance += 5)
+      await cdp.send("Input.dispatchTouchEvent", {
+        type: "touchMove",
+        touchPoints: points(distance),
+      });
+    await cdp.send("Input.dispatchTouchEvent", {
+      type: "touchEnd",
+      touchPoints: [],
+    });
+    await cdp.detach();
+  } else {
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    await page.mouse.move(x + 70, y + 40, { steps: 10 });
+    await page.mouse.up();
+  }
+  await expect
+    .poll(async () => (await canvas.screenshot()).toString("base64"))
+    .not.toBe(before);
 });

@@ -1,7 +1,9 @@
 # 018 — Isolated DXF viewer evaluation
 
 Historical evaluation milestone. Decision 019 supersedes the build exclusion and
-attachment-integration status below; fidelity and resource-limit caveats remain.
+attachment-integration status below. Decision 020 replaces the iframe runtime;
+decision 021 retires the standalone prototype. The evaluation evidence and
+fidelity/resource-limit caveats remain historical context.
 
 The first CAD milestone evaluates `@mlightcad/cad-simple-viewer` 1.7.1 in a
 standalone prototype. It is not yet a project Documents feature. Normal production
@@ -9,6 +11,8 @@ builds exclude the prototype HTML entries and CAD engine; deployment routes are
 unchanged. Excalidraw remains the saved sketch editor.
 
 ## Run and verify
+
+These were the historical evaluation commands; decision 021 removed them.
 
 - `pnpm dev:cad --port 5176` then open `/cad-prototype.html`.
 - `pnpm build:cad` produces `dist-cad-prototype` separately.

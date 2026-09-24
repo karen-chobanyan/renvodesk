@@ -1,5 +1,10 @@
 # 019 — Private project DXF previews
 
+Decision 020 replaces the iframe runtime described below with a direct React
+component. Decision 021 retires the separate prototype and moves rendering
+coverage into the project viewer tests. File policies, private downloads and
+fidelity limits remain.
+
 The user approved connecting the evaluated viewer to Project → Documents.
 Owners can upload/delete DXF attachments; members can view/download them. This
 extends the existing file domain rather than creating a second drawing editor.

@@ -4,7 +4,6 @@ node_modules/
 
 # Build output and tool caches
 dist/
-dist-cad-prototype/
 .vite/
 .cache/
 *.tsbuildinfo

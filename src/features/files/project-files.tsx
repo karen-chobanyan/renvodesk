@@ -1,3 +1,4 @@
+import { Camera, FileText, Mic, Upload } from "lucide-react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -143,15 +144,16 @@ export function ProjectFiles({
   return (
     <section id="project-files" className="saved-projects project-files">
       <header className="document-section-heading">
-        <span className="document-eyebrow">
-          {locale === "fr" ? "Bibliothèque" : "Library"}
-        </span>
-        <h2>{c.title}</h2>
-        <p className="helper-text">
-          {locale === "fr"
-            ? "Plans, photos et pièces utiles au chantier."
-            : "Plans, photos and essentials for your site."}
-        </p>
+        <div>
+          <h2>{c.title}</h2>
+          <p className="helper-text">{c.description}</p>
+        </div>
+        {canManage && (
+          <Button disabled={busy} onClick={() => input.current?.click()}>
+            <Upload size={16} aria-hidden="true" />
+            {c.add}
+          </Button>
+        )}
       </header>
       {canManage && (
         <fieldset
@@ -190,43 +192,63 @@ export function ProjectFiles({
           }}
         >
           <div className="document-upload">
+            <div className="document-drop-target">
+              <Upload size={24} aria-hidden="true" />
+              <p>
+                {dragging ? c.drop : c.drag}{" "}
+                <button
+                  type="button"
+                  className="document-choose"
+                  disabled={busy}
+                  onClick={() => input.current?.click()}
+                >
+                  {c.choose}
+                </button>
+              </p>
+              <p className="helper-text" id="project-file-hint">
+                {c.hint}
+              </p>
+              <input
+                ref={input}
+                id="project-file-input"
+                hidden
+                aria-label={c.choose}
+                aria-describedby="project-file-hint"
+                tabIndex={-1}
+                type="file"
+                accept=".dxf,.pdf,.jpg,.jpeg,.png,.webp,.txt,.docx,.xlsx,.webm,.m4a,.ogg"
+                disabled={busy}
+                onChange={(e) => selectFile(e.target.files?.[0] ?? null)}
+              />
+            </div>
             <div className="capture-actions">
               <Button
                 variant="outline"
                 disabled={busy}
                 onClick={() => setCapture("photo")}
               >
-                {locale === "fr" ? "Prendre une photo" : "Take a photo"}
+                <Camera size={18} aria-hidden="true" />
+                {c.photo}
               </Button>
               <Button
                 variant="outline"
                 disabled={busy}
                 onClick={() => setCapture("voice")}
               >
-                {locale === "fr" ? "Note vocale" : "Voice note"}
+                <Mic size={18} aria-hidden="true" />
+                {c.voice}
               </Button>
             </div>
-            <p className="document-drop-hint">{dragging ? c.drop : c.drag}</p>
-            <label className="field" htmlFor="project-file-input">
-              {c.choose}
-              <input
-                ref={input}
-                id="project-file-input"
-                type="file"
-                accept=".dxf,.pdf,.jpg,.jpeg,.png,.webp,.txt,.docx,.xlsx,.webm,.m4a,.ogg"
-                disabled={busy}
-                onChange={(e) => selectFile(e.target.files?.[0] ?? null)}
-              />
-            </label>
-            <p className="helper-text">{c.hint}</p>
             {selected && (
-              <p className="document-selected" role="status">
-                {selected.name}
-              </p>
+              <div className="document-upload-selection">
+                <p className="document-selected" role="status">
+                  {selected.name}
+                </p>
+                <Button disabled={busy} onClick={upload}>
+                  {busy ? c.loading : c.upload}
+                </Button>
+              </div>
             )}
-            <Button disabled={!selected || busy} onClick={upload}>
-              {busy ? c.loading : c.upload}
-            </Button>
           </div>
         </fieldset>
       )}
@@ -261,85 +283,105 @@ export function ProjectFiles({
       ) : !loading && !rows.length ? (
         <p className="document-empty">{c.empty}</p>
       ) : null}
-      <ul className="saved-project-list document-file-list">
-        {rows.map((file) => (
-          <li key={file.id}>
-            <div className="document-file-row">
-              <span className="document-file-type" aria-hidden="true">
-                {file.original_name
-                  .split(".")
-                  .pop()
-                  ?.slice(0, 5)
-                  .toUpperCase() || "FILE"}
-              </span>
-              <div className="document-file-info">
-                <strong>{file.original_name}</strong>
-                <p>
+      {rows.length > 0 && (
+        <table className="document-file-table">
+          <caption className="sr-only">{c.title}</caption>
+          <thead>
+            <tr>
+              <th scope="col">{c.name}</th>
+              <th scope="col">{c.type}</th>
+              <th scope="col">{c.size}</th>
+              <th scope="col">{c.actions}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((file) => (
+              <tr key={file.id}>
+                <td className="document-file-name">
+                  <div className="document-file-info">
+                    <FileText size={22} aria-hidden="true" />
+                    <div>
+                      <strong>{file.original_name}</strong>
+                      {file.state !== "ready" && (
+                        <p>
+                          {file.state === "pending" ? c.pending : c.deleting}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </td>
+                <td className="document-file-type">
+                  {file.original_name
+                    .split(".")
+                    .pop()
+                    ?.slice(0, 5)
+                    .toUpperCase() || "FILE"}
+                </td>
+                <td className="document-file-size">
                   {new Intl.NumberFormat(locale, {
                     maximumFractionDigits: 1,
                   }).format(file.size_bytes / 1024)}{" "}
                   KiB
-                  {file.state !== "ready"
-                    ? ` · ${file.state === "pending" ? c.pending : c.deleting}`
-                    : ""}
-                </p>
-              </div>
-              <div className="file-actions">
-                {file.state === "ready" ? (
-                  <>
-                    <Button
-                      variant="outline"
-                      disabled={busy}
-                      onClick={() => action(() => downloadFile(file))}
-                    >
-                      {c.download}
-                    </Button>
-                    {canPreview(file.mime_type) && (
+                </td>
+                <td>
+                  <div className="file-actions">
+                    {file.state === "ready" ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() => action(() => downloadFile(file))}
+                        >
+                          {c.download}
+                        </Button>
+                        {canPreview(file.mime_type) && (
+                          <Button
+                            variant="outline"
+                            disabled={busy}
+                            onClick={() =>
+                              action(async () => {
+                                const url = await previewUrl(file);
+                                setPreview({ file, url });
+                              })
+                            }
+                          >
+                            {file.mime_type === "application/dxf"
+                              ? c.openPlan
+                              : c.preview}
+                          </Button>
+                        )}
+                      </>
+                    ) : canManage && file.state === "pending" ? (
                       <Button
                         variant="outline"
                         disabled={busy}
                         onClick={() =>
                           action(async () => {
-                            const url = await previewUrl(file);
-                            setPreview({ file, url });
+                            await confirmUpload(file);
+                            setReload((n) => n + 1);
+                            setNotice("success");
                           })
                         }
                       >
-                        {file.mime_type === "application/dxf"
-                          ? c.openPlan
-                          : c.preview}
+                        {c.verify}
+                      </Button>
+                    ) : null}
+                    {canManage && (
+                      <Button
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => setRemoving(file)}
+                      >
+                        {c.remove}
                       </Button>
                     )}
-                  </>
-                ) : canManage && file.state === "pending" ? (
-                  <Button
-                    variant="outline"
-                    disabled={busy}
-                    onClick={() =>
-                      action(async () => {
-                        await confirmUpload(file);
-                        setReload((n) => n + 1);
-                        setNotice("success");
-                      })
-                    }
-                  >
-                    {c.verify}
-                  </Button>
-                ) : null}
-                {canManage && (
-                  <Button
-                    variant="ghost"
-                    disabled={busy}
-                    onClick={() => setRemoving(file)}
-                  >
-                    {c.remove}
-                  </Button>
-                )}
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
       {more && !failed && (
         <Button
           disabled={busy || loading}
