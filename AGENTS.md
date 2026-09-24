@@ -91,6 +91,10 @@ and automatic quantity takeoff unless explicitly requested.
   with financial or external side effects.
 - Avoid speculative abstractions, microservices, and generic workflow engines.
 - Keep country-specific billing logic separate from project management.
+- Fastify with TypeScript is selected for future custom Node endpoints. Introduce
+  a pnpm workspace with the first concrete API feature; no API or monorepo exists
+  yet. Supabase remains the Auth, Postgres, RLS and Storage backend. See decision
+  022. Explain new backend code in detail so the user can learn Fastify.
 
 ### Existing code map
 
