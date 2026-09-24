@@ -20,6 +20,7 @@ import { MediaCapture } from "./media-capture";
 
 const DxfPreview = lazy(() => import("../cad/dxf-preview"));
 const PdfPreview = lazy(() => import("./pdf-preview"));
+const ImagePreview = lazy(() => import("./image-preview"));
 export function ProjectFiles({
   organizationId,
   projectId,
@@ -450,7 +451,13 @@ export function ProjectFiles({
       >
         <DialogContent
           className={
-            preview?.file.mime_type === "application/dxf" ? "dxf-dialog" : ""
+            preview?.file.mime_type === "application/dxf"
+              ? "dxf-dialog"
+              : preview?.file.mime_type === "application/pdf"
+                ? "pdf-dialog file-viewer-dialog"
+                : preview?.file.mime_type.startsWith("image/")
+                  ? "image-dialog file-viewer-dialog"
+                  : ""
           }
           title={preview?.file.original_name ?? c.preview}
           description={
@@ -471,6 +478,10 @@ export function ProjectFiles({
           ) : preview?.file.mime_type === "application/pdf" ? (
             <Suspense fallback={<p role="status">{c.loading}</p>}>
               <PdfPreview
+                key={preview.url}
+                onDownload={() => action(() => downloadFile(preview.file))}
+                downloading={busy}
+                downloadError={error === "error"}
                 url={preview.url}
                 title={preview.file.original_name}
               />
@@ -483,13 +494,18 @@ export function ProjectFiles({
               aria-label={preview.file.original_name}
               onError={() => setExpired(true)}
             />
-          ) : preview ? (
-            <img
-              className="file-preview"
-              alt={preview.file.original_name}
-              src={preview.url}
-              onError={() => setExpired(true)}
-            />
+          ) : preview?.file.mime_type.startsWith("image/") ? (
+            <Suspense fallback={<p role="status">{c.loading}</p>}>
+              <ImagePreview
+                key={preview.url}
+                url={preview.url}
+                title={preview.file.original_name}
+                onDownload={() => action(() => downloadFile(preview.file))}
+                downloading={busy}
+                downloadError={error === "error"}
+                onError={() => setExpired(true)}
+              />
+            </Suspense>
           ) : null}
         </DialogContent>
       </Dialog>

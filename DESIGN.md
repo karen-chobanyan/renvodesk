@@ -168,3 +168,21 @@ with the category filter and labeled Refresh action. Day headings have fine rule
 desktop rows align time, domain icon, event detail, actor and Open action. Narrow
 layouts stack metadata while retaining an adjacent action and 44px mobile targets.
 The overview retains its compact feed. Reduced-motion disables row transitions.
+
+## PDF reading workspace
+
+Saved PDF previews use a large viewport-bounded dialog and a light paper surface.
+The toolbar stays outside the scrolling page: previous/next, page count, relative
+zoom (50–200%), fit width and download. At 100%, the page fits the available width
+up to a comfortable 1100px reading width. Phones use a full-screen dialog with
+wrapped controls. Keep keyboard scrolling, Escape/focus return and FR/EN labels.
+PDF.js remains lazy; offscreen rendering isolates cancelled work and limits each
+raster to eight million pixels and a 4096px edge. This is a canvas preview, without
+text selection/search or document editing. Download retains the original file.
+
+Saved image previews share the large document dialog with PDF previews. Images fit the
+available viewing area on open and resize; zoom ranges from 50% to 400% relative to
+that fit. The toolbar keeps fit and private download actions visible while the image
+scrolls independently. The mobile dialog fills the viewport. French and English
+labels, keyboard panning, loading/error feedback and the existing signed-URL expiry
+behavior remain part of the image flow.

@@ -298,7 +298,24 @@ async function mockApi(page: Page) {
               storedFile?.mime_type === "application/pdf"
                 ? (() => {
                     const doc = new jsPDF();
-                    doc.text("Project plan preview", 20, 30);
+                    doc.setFontSize(24);
+                    doc.text("PROJECT DOCUMENT", 20, 30);
+                    doc.setFontSize(12);
+                    doc.text(
+                      "Fictional renovation plan - PDF viewer verification",
+                      20,
+                      45,
+                    );
+                    doc.line(20, 55, 190, 55);
+                    for (let line = 0; line < 12; line++) {
+                      doc.text(
+                        `Site detail ${line + 1} - materials and installation notes`,
+                        20,
+                        70 + line * 12,
+                      );
+                    }
+                    doc.addPage();
+                    doc.text("Second preview page", 20, 30);
                     return Buffer.from(doc.output("arraybuffer"));
                   })()
                 : Buffer.from(
@@ -709,11 +726,113 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     path: `/private/tmp/project-documents-${test.info().project.name}.png`,
     fullPage: true,
   });
+  const previewImage = await page.evaluate(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 1200;
+    canvas.height = 800;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Canvas unavailable");
+    context.fillStyle = "#e9ede9";
+    context.fillRect(0, 0, 1200, 800);
+    context.fillStyle = "#244b63";
+    context.fillRect(130, 120, 940, 540);
+    context.fillStyle = "#bce5c5";
+    context.fillRect(200, 195, 390, 310);
+    context.fillStyle = "#ffffff";
+    context.font = "40px sans-serif";
+    context.fillText("Fictional site image", 220, 585);
+    return canvas.toDataURL("image/png").split(",")[1];
+  });
+  const imageRoute = "**/object/sign/project-files/preview.png?token=test";
+  await page.route(imageRoute, (route) =>
+    route.fulfill({
+      body: Buffer.from(previewImage, "base64"),
+      contentType: "image/png",
+    }),
+  );
   await files.getByRole("button", { name: "Aperçu", exact: true }).click();
+  const imageDialog = page.getByRole("dialog");
+  const image = imageDialog.getByRole("img", { name: "chantier.png" });
+  await expect(image).toBeVisible();
+  await expect
+    .poll(() =>
+      image.evaluate((element) => (element as HTMLImageElement).naturalWidth),
+    )
+    .toBe(1200);
+  const imageBounds = await imageDialog.boundingBox();
+  expect(imageBounds?.y).toBeGreaterThanOrEqual(0);
+  expect(
+    (imageBounds?.y ?? 0) + (imageBounds?.height ?? 0),
+  ).toBeLessThanOrEqual((page.viewportSize()?.height ?? 0) + 1);
+  const fittedWidth = await image.evaluate(
+    (element) => element.getBoundingClientRect().width,
+  );
+  await imageDialog
+    .getByRole("button", { name: "Agrandir", exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      image.evaluate((element) => element.getBoundingClientRect().width),
+    )
+    .toBeGreaterThan(fittedWidth);
+  const imageStage = imageDialog.getByRole("region", {
+    name: "Image du projet",
+  });
+  await expect
+    .poll(() =>
+      imageStage.evaluate(
+        (element) => element.scrollWidth > element.clientWidth,
+      ),
+    )
+    .toBe(true);
+  await imageStage.focus();
+  await expect(imageStage).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect
+    .poll(() => imageStage.evaluate((element) => element.scrollLeft))
+    .toBeGreaterThan(0);
+  await imageDialog
+    .getByRole("button", { name: "Ajuster à la fenêtre", exact: true })
+    .click();
+  await expect
+    .poll(() =>
+      image.evaluate((element) => element.getBoundingClientRect().width),
+    )
+    .toBe(fittedWidth);
+  const imageDownload = page.waitForEvent("download");
+  await imageDialog
+    .getByRole("button", { name: "Télécharger", exact: true })
+    .click();
+  expect((await imageDownload).suggestedFilename()).toBe("chantier.png");
+  await page.screenshot({
+    path: `/private/tmp/renvo-image-fr-${test.info().project.name}.png`,
+    fullPage: false,
+  });
+  await page.keyboard.press("Escape");
+  await page.locator(".language-picker select").selectOption("en");
+  await files.getByRole("button", { name: "Preview", exact: true }).click();
+  await expect(
+    page
+      .getByRole("dialog")
+      .getByRole("button", { name: "Fit to window", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("dialog").getByRole("img", { name: "chantier.png" }),
   ).toBeVisible();
+  await expect
+    .poll(() =>
+      page
+        .getByRole("dialog")
+        .evaluate((element) => getComputedStyle(element).opacity),
+    )
+    .toBe("1");
+  await page.screenshot({
+    path: `/private/tmp/renvo-image-en-${test.info().project.name}.png`,
+    fullPage: false,
+  });
   await page.keyboard.press("Escape");
+  await page.locator(".language-picker select").selectOption("fr");
+  await page.unroute(imageRoute);
   const fileDownload = page.waitForEvent("download");
   await files.getByRole("button", { name: "Télécharger", exact: true }).click();
   expect((await fileDownload).suggestedFilename()).toBe("chantier.png");
@@ -734,6 +853,8 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await expect(files.getByText("chantier.png", { exact: true })).toHaveCount(0);
   const pdf = new jsPDF();
   pdf.text("Project plan preview", 20, 30);
+  pdf.addPage();
+  pdf.text("Second page", 20, 30);
   await files.locator('input[type="file"]').setInputFiles({
     name: "plan.pdf",
     mimeType: "application/pdf",
@@ -747,11 +868,70 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await expect(
     page.getByRole("dialog").locator('canvas[data-rendered="true"]'),
   ).toBeVisible();
+  const pdfDialog = page.getByRole("dialog");
+  const dialogBounds = await pdfDialog.boundingBox();
+  expect(dialogBounds?.y).toBeGreaterThanOrEqual(0);
+  expect(
+    (dialogBounds?.y ?? 0) + (dialogBounds?.height ?? 0),
+  ).toBeLessThanOrEqual((page.viewportSize()?.height ?? 0) + 1);
+  const sheet = pdfDialog.locator("canvas");
+  const initialWidth = await sheet.evaluate(
+    (el) => el.getBoundingClientRect().width,
+  );
+  await pdfDialog
+    .getByRole("button", { name: "Agrandir", exact: true })
+    .click();
+  await expect
+    .poll(() => sheet.evaluate((el) => el.getBoundingClientRect().width))
+    .toBeGreaterThan(initialWidth);
+  await pdfDialog
+    .getByRole("button", { name: "Ajuster la largeur", exact: true })
+    .click();
+  await expect
+    .poll(() => sheet.evaluate((el) => el.getBoundingClientRect().width))
+    .toBe(initialWidth);
+  await pdfDialog
+    .getByRole("button", { name: "Suivante", exact: true })
+    .click();
+  await expect(sheet).toHaveAttribute("aria-label", "plan.pdf - 2");
+  await expect(sheet).toHaveAttribute("data-rendered", "true");
+  await expect(
+    pdfDialog.getByRole("button", { name: "Suivante", exact: true }),
+  ).toBeDisabled();
+  await pdfDialog
+    .getByRole("button", { name: "Précédente", exact: true })
+    .click();
+  await expect(sheet).toHaveAttribute("aria-label", "plan.pdf - 1");
+  await expect(sheet).toHaveAttribute("data-rendered", "true");
   await page.screenshot({
     path: `/private/tmp/renvo-file-preview-${test.info().project.name}.png`,
-    fullPage: true,
+    fullPage: false,
   });
   await page.keyboard.press("Escape");
+  await page.locator(".language-picker select").selectOption("en");
+  await files.getByRole("button", { name: "Preview", exact: true }).click();
+  await expect(
+    page.getByRole("dialog").locator('canvas[data-rendered="true"]'),
+  ).toBeVisible();
+  const pdfDownload = page.waitForEvent("download");
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Download", exact: true })
+    .click();
+  expect((await pdfDownload).suggestedFilename()).toBe("plan.pdf");
+  const viewport = page.getByRole("region", { name: "PDF document page" });
+  await viewport.focus();
+  await expect(viewport).toBeFocused();
+  await page.keyboard.press("PageDown");
+  await expect(
+    page.getByRole("button", { name: "Fit width", exact: true }),
+  ).toBeInViewport();
+  await page.screenshot({
+    path: `/private/tmp/renvo-pdf-en-${test.info().project.name}.png`,
+    fullPage: false,
+  });
+  await page.keyboard.press("Escape");
+  await page.locator(".language-picker select").selectOption("fr");
   await files.screenshot({
     path: `/private/tmp/renvo-files-${test.info().project.name}.png`,
   });
