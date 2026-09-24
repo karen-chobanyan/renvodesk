@@ -4,6 +4,7 @@ import { Link, useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/auth-provider";
 import { authErrorKey, useAuthCopy } from "@/features/auth/copy";
+import { AccountStorageSummary } from "@/features/storage-usage/storage-usage";
 import { useCompanyAccess } from "@/features/team/company-access";
 import { useLocale } from "@/lib/i18n";
 import { requireSupabase } from "@/lib/supabase/client";
@@ -120,12 +121,19 @@ export function CompanyNavigation({
     </details>
   );
 }
-export function AccountControls({ close }: { close: () => void }) {
+export function AccountControls({
+  close,
+  organizationId,
+}: {
+  close: () => void;
+  organizationId?: string;
+}) {
   const menu = useRef<HTMLDetailsElement>(null);
   const { session } = useAuth(),
     t = useAuthCopy();
   const [busy, setBusy] = useState(false),
-    [error, setError] = useState("");
+    [error, setError] = useState(""),
+    [refresh, setRefresh] = useState(0);
   async function logout() {
     setBusy(true);
     setError("");
@@ -142,6 +150,9 @@ export function AccountControls({ close }: { close: () => void }) {
     <details
       className="account-menu"
       ref={menu}
+      onToggle={(event) => {
+        if (event.currentTarget.open) setRefresh((n) => n + 1);
+      }}
       onKeyDown={(e) => {
         if (e.key === "Escape" && e.currentTarget.open) {
           e.stopPropagation();
@@ -161,6 +172,12 @@ export function AccountControls({ close }: { close: () => void }) {
         <ChevronDown size={14} />
       </summary>
       <div className="sidebar-account">
+        {organizationId && (
+          <AccountStorageSummary
+            organizationId={organizationId}
+            refreshKey={refresh}
+          />
+        )}
         <Link
           className="account-demo-link"
           to="/projects"

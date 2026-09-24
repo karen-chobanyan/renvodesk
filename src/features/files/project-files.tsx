@@ -2,6 +2,8 @@ import { Camera, FileText, Mic, Upload } from "lucide-react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { quotaErrorCode } from "@/features/storage-usage/storage-model";
+import { StorageUsage } from "@/features/storage-usage/storage-usage";
 import { useLocale } from "@/lib/i18n";
 import { fileCopy } from "./file-copy";
 import { canPreview, PREVIEW_URL_SECONDS, validateFile } from "./file-model";
@@ -42,7 +44,13 @@ export function ProjectFiles({
     [busy, setBusy] = useState(false),
     [percent, setPercent] = useState(0),
     [error, setError] = useState<
-      "invalid" | "heic" | "error" | "single" | null
+      | "invalid"
+      | "heic"
+      | "error"
+      | "single"
+      | "quotaAccount"
+      | "quotaWorkspace"
+      | null
     >(null),
     [notice, setNotice] = useState<"success" | "deleted" | null>(null);
   const [removing, setRemoving] = useState<ProjectFile | null>(null),
@@ -122,8 +130,15 @@ export function ProjectFiles({
       setRequestId(crypto.randomUUID());
       if (input.current) input.current.value = "";
       setNotice("success");
-    } catch {
-      setError("error");
+    } catch (error) {
+      const code = quotaErrorCode(error);
+      setError(
+        code === "PZ101"
+          ? "quotaAccount"
+          : code === "PZ102"
+            ? "quotaWorkspace"
+            : "error",
+      );
     } finally {
       setBusy(false);
       setReload((n) => n + 1);
@@ -156,6 +171,9 @@ export function ProjectFiles({
           </Button>
         )}
       </header>
+      {canManage && (
+        <StorageUsage organizationId={organizationId} refreshKey={reload} />
+      )}
       {canManage && (
         <fieldset
           aria-label={c.choose}

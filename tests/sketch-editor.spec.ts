@@ -84,6 +84,22 @@ test("Excalidraw imports images, autosaves, retries and blocks conflicts", async
   await expect(page.getByRole("status")).toHaveText("Saved");
   await page.evaluate(() => {
     (
+      window as unknown as { sketchHarness: { quota: boolean } }
+    ).sketchHarness.quota = true;
+  });
+  await page.getByLabel("Sketch name").fill("Quota blocked sketch");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByRole("alert")).toContainText("account storage");
+  await expect(page.getByRole("status")).toHaveText("Unsaved changes");
+  await page.evaluate(() => {
+    (
+      window as unknown as { sketchHarness: { quota: boolean } }
+    ).sketchHarness.quota = false;
+  });
+  await page.getByRole("button", { name: "Try again", exact: true }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved");
+  await page.evaluate(() => {
+    (
       window as unknown as { sketchHarness: { conflict: boolean } }
     ).sketchHarness.conflict = true;
   });

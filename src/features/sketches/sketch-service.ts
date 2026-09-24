@@ -140,6 +140,7 @@ export async function persistSketch(sk: Sketch, a: SaveAttempt) {
     )
   )
     throw new Error("Save identity mismatch");
+  if (saved.canceled_at) throw new Error("Save was canceled");
   if (!saved.committed_at) {
     await upload(saved.scene_key, a.scene, a.sceneHash);
     await upload(saved.preview_key, a.preview, a.previewHash);
@@ -152,4 +153,34 @@ export async function persistSketch(sk: Sketch, a: SaveAttempt) {
   if (error) throw error;
   if (data) track("sketch_published", a.id);
   return data;
+}
+
+export async function cancelPendingSketchSave(sk: Sketch, id: string) {
+  const client = requireSupabase();
+  const result = await client
+    .from("sketch_saves")
+    .select("*")
+    .eq("organization_id", sk.organization_id)
+    .eq("sketch_id", sk.id)
+    .eq("id", id)
+    .maybeSingle();
+  if (result.error) throw result.error;
+  const save = result.data;
+  if (!save) return;
+  if (save.committed_at) throw new Error("Committed saves cannot be canceled");
+  const cancel = await client.rpc("cancel_sketch_save", {
+    p_org: sk.organization_id,
+    p_save: id,
+  });
+  if (cancel.error) throw cancel.error;
+  const keys = [save.scene_key, save.preview_key].filter(
+    (key): key is string => !!key,
+  );
+  const removed = await bucket().remove(keys);
+  if (removed.error) throw removed.error;
+  const finalized = await client.rpc("finalize_sketch_cancellation", {
+    p_org: sk.organization_id,
+    p_save: id,
+  });
+  if (finalized.error) throw finalized.error;
 }

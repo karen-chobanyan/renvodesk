@@ -309,6 +309,18 @@ Read README.md and the latest milestone plans for current implementation status.
 
 ## Project file invariants
 
+- Development quota accounting limits each creator account to 1,000,000,000
+  bytes across its owned organizations and each organization to the same amount.
+  Both checks happen on reservation. Project files and all sketch revisions count;
+  pending uploads reserve capacity. Counters and allocations live in the private
+  schema; read usage only via the owner-authorized RPC. Preserve source-trigger
+  atomicity, account-before-workspace lock order and idempotent retries.
+- Quota migration 20260924090253 is applied to the development project. Rollback
+  SQL and a two-connection account-limit test pass; live Storage API metadata
+  verification remains open. Do not claim production verification. See docs/STORAGE-QUOTAS.md
+  and decision 023. Never free a charge before Storage API deletion and verified
+  object absence; never delete storage.objects directly.
+
 - project_files links to projects through a composite organization/project FK.
   Keys are generated organization/project/file UUID paths. Original names are data,
   never paths. Metadata includes uploader, MIME, size and initial version 1.

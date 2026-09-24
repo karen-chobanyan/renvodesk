@@ -7,8 +7,8 @@ import { Input } from "@/components/ui/input";
 import { useAuth } from "@/features/auth/auth-provider";
 import { authErrorKey, useAuthCopy } from "@/features/auth/copy";
 import { SavedProjects } from "@/features/projects/saved-projects";
+import { StorageUsage } from "@/features/storage-usage/storage-usage";
 import { useLocale } from "@/lib/i18n";
-
 import { CompanyContacts } from "./company-contacts";
 import {
   createOrganization,
@@ -174,10 +174,13 @@ function Workspace({
           </form>
         ) : activeOrganization ? (
           settings ? (
-            <CompanyContacts
-              key={activeOrganization.id}
-              id={activeOrganization.id}
-            />
+            <>
+              <StorageUsage organizationId={activeOrganization.id} />
+              <CompanyContacts
+                key={activeOrganization.id}
+                id={activeOrganization.id}
+              />
+            </>
           ) : (
             <SavedProjects
               key={activeOrganization.id}

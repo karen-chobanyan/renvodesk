@@ -15,6 +15,7 @@ import { sketchCopy } from "./sketch-copy";
 import "./sketch-modal.css";
 import type { Scene } from "./sketch-model";
 import {
+  cancelPendingSketchSave,
   getSave,
   getSketch,
   history,
@@ -228,6 +229,9 @@ export function SketchModal({
                   restored={restored && access.owner}
                   locale={locale}
                   persist={(a) => persistSketch(data.sk, a)}
+                  cancelPending={(attempt) =>
+                    cancelPendingSketchSave(data.sk, attempt.id)
+                  }
                   onSaved={(value) => {
                     setVersion(value);
                     if (restored)

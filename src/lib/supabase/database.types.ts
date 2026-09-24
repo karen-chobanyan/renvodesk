@@ -649,6 +649,8 @@ export type Database = {
       sketch_saves: {
         Row: {
           base_revision: number;
+          canceled_at: string | null;
+          cancellation_finalized_at: string | null;
           committed_at: string | null;
           created_at: string;
           created_by: string;
@@ -669,6 +671,8 @@ export type Database = {
         };
         Insert: {
           base_revision: number;
+          canceled_at?: string | null;
+          cancellation_finalized_at?: string | null;
           committed_at?: string | null;
           created_at?: string;
           created_by?: string;
@@ -689,6 +693,8 @@ export type Database = {
         };
         Update: {
           base_revision?: number;
+          canceled_at?: string | null;
+          cancellation_finalized_at?: string | null;
           committed_at?: string | null;
           created_at?: string;
           created_by?: string;
@@ -769,9 +775,17 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      cancel_sketch_save: {
+        Args: { p_org: string; p_save: string };
+        Returns: undefined;
+      };
       create_organization: {
         Args: { p_country: string; p_name: string; p_request_id: string };
         Returns: string;
+      };
+      finalize_sketch_cancellation: {
+        Args: { p_org: string; p_save: string };
+        Returns: undefined;
       };
       project_cost_summary: {
         Args: { p_organization_id: string; p_project_id: string };
@@ -788,6 +802,17 @@ export type Database = {
       publish_sketch: {
         Args: { p_org: string; p_save: string; p_sketch: string };
         Returns: number;
+      };
+      read_storage_usage: {
+        Args: { p_org: string };
+        Returns: {
+          account_limit_bytes: number;
+          account_reserved_bytes: number;
+          account_used_bytes: number;
+          workspace_limit_bytes: number;
+          workspace_reserved_bytes: number;
+          workspace_used_bytes: number;
+        }[];
       };
       record_estimate_event: {
         Args: {

@@ -157,7 +157,10 @@ export function AppShell({
       )}
       <div className="sidebar-bottom">
         {live ? (
-          <AccountControls close={() => setMobileOpen(false)} />
+          <AccountControls
+            close={() => setMobileOpen(false)}
+            organizationId={owner ? activeOrg : undefined}
+          />
         ) : (
           <>
             <div className="demo-label">

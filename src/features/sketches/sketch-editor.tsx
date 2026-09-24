@@ -19,6 +19,7 @@ export function SketchEditor({
   locale,
   restored = false,
   persist,
+  cancelPending,
   onSaved,
   reload,
   back,
@@ -31,6 +32,7 @@ export function SketchEditor({
   locale: "fr" | "en";
   restored?: boolean;
   persist: (attempt: SaveAttempt) => Promise<number>;
+  cancelPending: (attempt: SaveAttempt) => Promise<void>;
   onSaved: (version: number) => void;
   reload: () => void;
   back: string;
@@ -43,7 +45,13 @@ export function SketchEditor({
     [dirty, setDirty] = useState(restored),
     [generation, setGeneration] = useState(0),
     [status, setStatus] = useState<
-      "idle" | "saving" | "failed" | "conflict" | "invalid"
+      | "idle"
+      | "saving"
+      | "failed"
+      | "conflict"
+      | "invalid"
+      | "quotaAccount"
+      | "quotaWorkspace"
     >("idle");
   const lastCanvasSignature = useRef("");
   const importInput = useRef<HTMLInputElement>(null);
@@ -155,12 +163,34 @@ export function SketchEditor({
         setGeneration((n) => n + 1);
       }
     } catch (error) {
-      if (mounted.current)
+      if (mounted.current) {
+        const code = (error as { code?: string })?.code;
+        if (code === "PZ101" || code === "PZ102") pending.current = null;
         setStatus(
-          (error as { code?: string })?.code === "40001"
+          code === "40001"
             ? "conflict"
-            : "failed",
+            : code === "PZ101"
+              ? "quotaAccount"
+              : code === "PZ102"
+                ? "quotaWorkspace"
+                : "failed",
         );
+      }
+    } finally {
+      running.current = false;
+    }
+  }
+  async function releaseIncompleteSave() {
+    const attempt = pending.current;
+    if (!attempt || running.current) return;
+    running.current = true;
+    setStatus("saving");
+    try {
+      await cancelPending(attempt);
+      pending.current = null;
+      if (mounted.current) setStatus("failed");
+    } catch {
+      if (mounted.current) setStatus("failed");
     } finally {
       running.current = false;
     }
@@ -237,7 +267,11 @@ export function SketchEditor({
               }
               onClick={() => void save()}
             >
-              {status === "failed" ? c.retry : c.save}
+              {status === "failed" ||
+              status === "quotaAccount" ||
+              status === "quotaWorkspace"
+                ? c.retry
+                : c.save}
             </Button>
           )}
           <Button
@@ -281,9 +315,35 @@ export function SketchEditor({
       </header>
       <p className="helper-text">{readOnly ? c.hint : c.autosave}</p>
       {restored && <p>{c.restoring}</p>}
-      {["failed", "conflict", "invalid"].includes(status) && (
+      {[
+        "failed",
+        "conflict",
+        "invalid",
+        "quotaAccount",
+        "quotaWorkspace",
+      ].includes(status) && (
         <div className="sketch-notice" role="alert">
-          <p>{c[status as "failed" | "conflict" | "invalid"]}</p>
+          <p>
+            {
+              c[
+                status as
+                  | "failed"
+                  | "conflict"
+                  | "invalid"
+                  | "quotaAccount"
+                  | "quotaWorkspace"
+              ]
+            }
+          </p>
+          {pending.current &&
+            (status === "failed" || status === "conflict") && (
+              <Button
+                variant="outline"
+                onClick={() => void releaseIncompleteSave()}
+              >
+                {c.releaseIncomplete}
+              </Button>
+            )}
           <Button variant="outline" onClick={reloadCurrent}>
             {c.reload}
           </Button>

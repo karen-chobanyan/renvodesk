@@ -16,6 +16,11 @@ export const sketchCopy = {
     dirty: "Modifications non enregistrées",
     failed:
       "Enregistrement non confirmé. Le dessin reste ouvert ; réessayez pour récupérer la même sauvegarde.",
+    quotaAccount:
+      "Le stockage de votre compte (1 Go pour toutes vos entreprises) est plein. Le dessin reste ouvert ; libérez de l’espace, puis réessayez.",
+    quotaWorkspace:
+      "Le stockage de cette entreprise (1 Go) est plein. Le dessin reste ouvert ; libérez de l’espace, puis réessayez.",
+    releaseIncomplete: "Annuler l’import incomplet",
     conflict:
       "Une autre version a été enregistrée. Exportez votre travail, puis rechargez la version actuelle avant de continuer.",
     invalid:
@@ -60,6 +65,11 @@ export const sketchCopy = {
     dirty: "Unsaved changes",
     failed:
       "Save not confirmed. Your drawing is still open; retry to recover the same save.",
+    quotaAccount:
+      "Your account storage (1 GB across all your companies) is full. Your drawing stays open; free space, then retry.",
+    quotaWorkspace:
+      "This company's storage (1 GB) is full. Your drawing stays open; free space, then retry.",
+    releaseIncomplete: "Cancel incomplete upload",
     conflict:
       "Another version was saved. Export your work, then reload the current version before continuing.",
     invalid:

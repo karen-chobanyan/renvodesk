@@ -3993,3 +3993,36 @@ details[open] > .compact-identity > svg {
   color: inherit;
   font: inherit;
 }
+.storage-usage {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  padding: var(--space-6);
+  margin-block: var(--space-4);
+}
+.storage-usage h2 {
+  margin: 0 0 1rem;
+}
+.storage-usage-row + .storage-usage-row {
+  border-top: 1px solid var(--border);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+.storage-usage-row strong {
+  display: block;
+  margin-bottom: 0.4rem;
+}
+.storage-usage-row progress {
+  display: block;
+  width: 100%;
+  height: 0.55rem;
+  accent-color: var(--accent);
+}
+.storage-usage-row p {
+  margin: 0.5rem 0 0;
+}
+.account-storage-summary {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: 1.45;
+}

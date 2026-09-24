@@ -151,6 +151,15 @@ fixtures were rendered and visually checked, with PDF text/total assertions.
 
 ## Project files
 
+The development application now reserves object-storage capacity against a
+**1 GB account allowance across owned companies** and a **1 GB allowance per
+company** (decimal GB). Project files and all sketch revisions count; incomplete
+uploads retain a reservation until recovered or canceled. Company settings and
+project Documents show usage. Owners see account usage in the account menu.
+Quota enforcement is applied to the development Supabase project; live Storage
+API upload/deletion verification remains open. See
+[storage quota operations](docs/STORAGE-QUOTAS.md) and [decision 023](docs/decisions/023-account-workspace-storage-quotas.md).
+
 Open a saved project and scroll to **Project files**. Select a PDF, JPEG, PNG,
 WebP, TXT, DOCX or XLSX file up to 10 MiB, then upload. Images and PDFs have private
 previews; other documents download. Deletion requires confirmation. HEIC/HEIF

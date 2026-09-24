@@ -23,6 +23,10 @@ export const fileCopy = {
     heic: "HEIC/HEIF n’est pas encore pris en charge. Convertissez la photo en JPG ou PNG.",
     error:
       "L’opération n’a pas abouti. Réessayez ; un transfert incomplet peut être vérifié ou supprimé.",
+    quotaAccount:
+      "Le stockage de votre compte (1 Go pour toutes vos entreprises) est plein. Supprimez des fichiers inutiles ou des imports incomplets.",
+    quotaWorkspace:
+      "Le stockage de cette entreprise (1 Go) est plein. Supprimez des fichiers inutiles ou des imports incomplets.",
     loadError: "Impossible de charger les fichiers.",
     pending: "Import incomplet",
     deleting: "Suppression à terminer",
@@ -67,6 +71,10 @@ export const fileCopy = {
     heic: "HEIC/HEIF is not supported yet. Convert the photo to JPG or PNG.",
     error:
       "The operation did not finish. Retry; incomplete uploads can be verified or removed.",
+    quotaAccount:
+      "Your account storage (1 GB across all your companies) is full. Delete unneeded files or incomplete uploads.",
+    quotaWorkspace:
+      "This company's storage (1 GB) is full. Delete unneeded files or incomplete uploads.",
     loadError: "Could not load files.",
     pending: "Incomplete upload",
     deleting: "Deletion needs completing",
