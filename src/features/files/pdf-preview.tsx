@@ -52,7 +52,11 @@ export default function PdfPreview({
           import("pdfjs-dist/build/pdf.worker.min.mjs?url"),
         ]);
         if (!active) return;
-        lib.GlobalWorkerOptions.workerSrc = worker.default;
+        // The production server once cached this immutable asset with the wrong
+        // MIME type. A distinct URL fetches fresh headers after Nginx is fixed.
+        const workerUrl = new URL(worker.default, window.location.href);
+        workerUrl.searchParams.set("cache", "pdf-worker-mime-fix-2");
+        lib.GlobalWorkerOptions.workerSrc = workerUrl.href;
         const task = lib.getDocument({
           url,
           enableXfa: false,

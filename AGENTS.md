@@ -542,10 +542,11 @@ or Resources headings to the live sidebar. Demo routes retain explicit demo labe
 
 ## Production telemetry and VPS
 
-Ubuntu/Caddy without Docker is the selected hosting target. `deploy/Caddyfile`
+Ubuntu/Caddy without Docker was the initial hosting target. `deploy/Caddyfile`
 serves public prerendered pages before restricted noindex app fallback; unknown
 paths return 404. `deploy/production.env.example` holds provided public GA4/Sentry
-configuration. No remote deployment or provider dashboard changes have been made.
+configuration. The public site now responds through Nginx; the current VPS
+configuration and provider dashboard settings have not been audited here.
 
 `src/lib/telemetry` requires a production build, exact origin and separate opt-in
 for analytics/diagnostics. Do not add autocapture, replay, advertising, raw URLs,
@@ -562,7 +563,10 @@ checks mock all providers; they do not establish real account ingestion.
 
 Hosting preference updated: Ubuntu with Nginx, without Docker. Use deploy/nginx.conf
 and docs/NGINX-DEPLOYMENT.md; Caddy files remain an alternative. Do not run both
-on the same HTTP/HTTPS ports. No VPS deployment has been performed.
+on the same HTTP/HTTPS ports. The installed HTTPS configuration was updated on
+2026-09-25 to serve the PDF.js `.mjs` worker as JavaScript, and a real saved PDF
+rendered in the production browser. See the production PDF worker plan. Review
+future VPS configuration changes separately from the repository template.
 
 ## Project DXF previews
 

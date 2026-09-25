@@ -110,14 +110,26 @@ instead of installing a second one.
 - Open https://renvodesk.com and https://renvodesk.com/en/.
 - Reload a workspace deep link; it must load the app, not the landing page.
 - Confirm `/missing-page` and `/assets/missing.js` return HTTP 404.
+- Confirm the PDF module worker is served as JavaScript, including through the
+  HTTPS server block. From the built project directory:
+
+  ```sh
+  worker_asset=$(basename "$(find dist/assets -maxdepth 1 -name 'pdf.worker.min-*.mjs' -print -quit)")
+  curl -sSI "https://renvodesk.com/assets/$worker_asset?cache=pdf-worker-mime-fix-2"
+  ```
+
+  The response must be 200 with `Content-Type: application/javascript` or
+  another JavaScript MIME type. `application/octet-stream` breaks PDF previews
+  under `nosniff`.
 - Verify privacy pages, signup, login, files and camera/microphone over HTTPS.
 - Configure Supabase production auth redirects from docs/SUPABASE.md and test email
   confirmation/recovery delivery.
 - Complete docs/TELEMETRY.md before enabling analytics, then rebuild/redeploy.
 - Confirm TLS renewal and establish server patching/backups/uptime monitoring.
 
-This configuration has not been installed on your VPS. Run `nginx -t` on the actual
-server before reloading; installed Nginx modules and existing sites can differ.
+The live site responds through Nginx, but its installed configuration has not
+been audited against this template. Run `nginx -t` on the actual server before
+reloading; installed modules and existing sites can differ.
 
 Reference: [Nginx static files and try_files](https://docs.nginx.com/nginx/admin-guide/web-server/serving-static-content/).
 
@@ -156,7 +168,7 @@ if configuration changes. Preserve Certbot's TLS directives.
 
 Publish `/fonts/` and all hashed assets with the application build. The DXF viewer
 is a lazy React component and no longer needs a separate HTML route or a framing
-exception. Keep `X-Frame-Options: DENY`. This configuration has not been deployed
-or validated with `nginx -t` on the VPS. CAD parsing is currently on the main
+exception. Keep `X-Frame-Options: DENY`. This configuration has not been validated
+with `nginx -t` on the VPS. CAD parsing is currently on the main
 thread; representative drawing and resource-limit evaluation remains a
 public-production gate (decisions 019 and 020).
