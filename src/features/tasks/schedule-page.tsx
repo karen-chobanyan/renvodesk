@@ -76,26 +76,34 @@ function CompanySchedule({ organizationId }: { organizationId: string }) {
       </div>
       {mode === "week" && (
         <div className="week-toolbar">
-          <Button
-            variant="outline"
-            disabled={start <= "1900-01-08"}
-            onClick={() => setStart(addDays(start, -7))}
-          >
-            {c.previous}
-          </Button>
-          <strong aria-live="polite">
-            {dateLabel(start, locale)} — {dateLabel(addDays(start, 6), locale)}
-          </strong>
-          <Button
-            variant="outline"
-            disabled={start >= "2100-12-24"}
-            onClick={() => setStart(addDays(start, 7))}
-          >
-            {c.next}
-          </Button>
-          <Button variant="ghost" onClick={() => setStart(weekStart(today()))}>
-            {c.today}
-          </Button>
+          <div className="week-range">
+            <strong aria-live="polite">
+              {dateLabel(start, locale)} —{" "}
+              {dateLabel(addDays(start, 6), locale)}
+            </strong>
+          </div>
+          <div className="week-navigation">
+            <Button
+              variant="outline"
+              disabled={start <= "1900-01-08"}
+              onClick={() => setStart(addDays(start, -7))}
+            >
+              {c.previous}
+            </Button>
+            <Button
+              variant="outline"
+              disabled={start >= "2100-12-24"}
+              onClick={() => setStart(addDays(start, 7))}
+            >
+              {c.next}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setStart(weekStart(today()))}
+            >
+              {c.today}
+            </Button>
+          </div>
         </div>
       )}
       <TaskPanel

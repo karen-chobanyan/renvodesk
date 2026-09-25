@@ -159,10 +159,7 @@ export function AppShell({
       )}
       <div className="sidebar-bottom">
         {live ? (
-          <AccountControls
-            close={() => setMobileOpen(false)}
-            organizationId={owner ? activeOrg : undefined}
-          />
+          <AccountControls close={() => setMobileOpen(false)} />
         ) : (
           <>
             <div className="demo-label">
@@ -238,18 +235,20 @@ export function AppShell({
               <span className="demo-chip">
                 {live ? authText("realData") : t("demo")}
               </span>
-              <label className="language-picker">
-                <span className="sr-only">{t("language")}</span>
-                <select
-                  value={locale}
-                  onChange={(e) =>
-                    setLocale(e.target.value === "en" ? "en" : "fr")
-                  }
-                >
-                  <option value="fr">FR</option>
-                  <option value="en">EN</option>
-                </select>
-              </label>
+              {!live && (
+                <label className="language-picker">
+                  <span className="sr-only">{t("language")}</span>
+                  <select
+                    value={locale}
+                    onChange={(e) =>
+                      setLocale(e.target.value === "en" ? "en" : "fr")
+                    }
+                  >
+                    <option value="fr">FR</option>
+                    <option value="en">EN</option>
+                  </select>
+                </label>
+              )}
             </div>
           </div>
           <main id="main" tabIndex={-1}>

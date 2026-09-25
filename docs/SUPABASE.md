@@ -6,21 +6,64 @@ project URL and publishable key. `.env.example` is safe to commit.
 
 ## Auth dashboard settings required
 
-In Authentication → URL Configuration:
-- Development site URL: `http://127.0.0.1:5173`
-- Allow `http://127.0.0.1:5173/auth/callback`
-- Allow `http://127.0.0.1:5173/auth/reset`
-- If using localhost, add the exact equivalent localhost routes too.
-- Before deployment, add the actual HTTPS application origin and callback/reset
-  paths. Do not allow broad production wildcard redirects.
+In Authentication → URL Configuration for project `oripsywzngftarbprlgk`:
+- Set **Site URL** to `https://renvodesk.com`. This is Supabase Auth's default
+  destination, separate from the Vite build's `SITE_URL` metadata variable.
+- Allow `https://renvodesk.com/auth/callback` for signup confirmation and
+  `https://renvodesk.com/auth/reset` for password recovery.
+- Signup from an invitation includes a validated `next=/invite/<uuid>` query on
+  the callback. Allow the callback-scoped pattern
+  `https://renvodesk.com/auth/callback?next=%2Finvite%2F*`, not a wildcard
+  production origin. Test the actual invitation redirect after configuration.
+- Retain `http://127.0.0.1:5173/auth/callback` and
+  `http://127.0.0.1:5173/auth/reset` for local development on the shared project,
+  with `http://127.0.0.1:5173/auth/callback?next=%2Finvite%2F*` for local
+  invitation signup.
+  Add equivalent `localhost:5173` entries only if that hostname is used.
 
-Keep email confirmation enabled. Configure a suitable SMTP provider before inviting
-real customers; built-in Supabase email delivery has restrictions. Do not disable
-email verification to work around email delivery problems.
+On 2026-09-25 the hosted project's Site URL was still
+`http://localhost:3000` and its Redirect URLs list was empty. Supabase therefore
+sent the default localhost link even though the production app requests its own
+`/auth/callback` URL. The six scoped redirects above and the production Site URL
+were then saved and confirmed after a dashboard reload. Fresh signup and recovery
+emails were subsequently tested as described below. Editing this file or
+rebuilding the app does not change the hosted Auth settings.
+
+On 2026-09-25 the user enabled custom SMTP in the hosted Auth dashboard using
+their Titan mailbox. The dashboard switch remained enabled after a reload;
+the user entered the password directly in Supabase, never in this repository.
+The selected sender and SMTP username are `contact@renvodesk.com`, with
+`smtp.titan.email` on port 465 (SSL/TLS). The dashboard conceals saved
+credential fields, so delivered emails were used to verify the actual sender.
+The hosted Confirm sign up and Reset password templates now use RenvoDesk
+branding and French/English copy, while retaining `{{ .ConfirmationURL }}`.
+Both were previewed and saved in the dashboard. The user confirmed that a fresh
+signup email arrived from `contact@renvodesk.com` and its link returned to the
+production app and signed them in. They also confirmed a fresh recovery email
+from that sender opened the production new-password form. The password was not
+changed in that check. DNS sender authentication has not been independently audited.
+Public DNS on 2026-09-25 has Titan MX records, an SPF record including
+`spf.titan.email`, and a DMARC quarantine policy. DKIM status still requires
+checking the domain's unique selector in Titan's Email Reputation panel or the
+authentication results in a delivered message.
+
+Keep email confirmation and custom SMTP enabled. Do not disable email
+verification to work around email delivery problems.
 
 PKCE email links should be opened in the browser that initiated signup or reset.
 Recovery validates the session before allowing a password update. Requests display
-a generic account-existence message. Email links require the redirect settings above.
+a generic account-existence message. Request a fresh confirmation link instead
+of using a previously issued localhost link. Email links require the redirect
+settings above.
+
+The signed-in account page uses Auth user metadata for `full_name` and
+`preferred_language`; these values are user-editable and must never authorize
+access. Its password form sends `current_password` with the new password. Before
+deploying it, enable and verify **Require current password when changing
+password** in Auth password security settings. The client field by itself does
+not enforce that requirement. Test a wrong current password and a successful
+change with a disposable account; the mocked browser test does not prove live
+Auth policy behavior. See decision 026.
 
 ## Database
 
@@ -37,11 +80,13 @@ Never use these fixture users or addresses as real accounts.
 ## Verification boundaries
 
 Browser tests mock Auth/Data API responses and verify UI behavior without sending
-email. Live rollback SQL verifies tenant isolation. No real signup/confirmation or
-recovery-email delivery is claimed until the dashboard settings and SMTP are verified.
+email. Live rollback SQL verifies tenant isolation. Production signup and recovery
+delivery were confirmed by the user, not by automated browser tests.
 No service-role secret is required or present in the frontend.
 
-Verified: email/password signup is enabled and automatic email confirmation is off.
+Verified on 2026-09-25: email/password signup and Confirm email are enabled in
+the hosted project's Auth settings. The user confirmed a successful fresh signup
+email and sign-in, plus recovery email delivery and arrival at the reset form.
 Anonymous REST reads of organizations return HTTP 401. The latest security advisor check (2026-09-20) flags leaked-password protection
 as disabled; configure this in Auth before production. Test users, memberships and organizations were rolled back and confirmed absent.
 

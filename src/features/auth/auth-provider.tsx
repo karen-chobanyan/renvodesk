@@ -7,6 +7,7 @@ import {
   useState,
 } from "react";
 import { Navigate, Outlet } from "react-router";
+import { useLocale } from "@/lib/i18n";
 import { supabase } from "@/lib/supabase/client";
 import { useAuthCopy } from "./copy";
 
@@ -17,6 +18,7 @@ const AuthContext = createContext<AuthState>({
   failed: false,
 });
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { setLocale } = useLocale();
   const [state, setState] = useState<AuthState>({
     session: null,
     loading: true,
@@ -31,13 +33,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let received = false;
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       received = true;
-      if (active) setState({ session, loading: false, failed: false });
+      if (active) {
+        const language = session?.user.user_metadata?.preferred_language;
+        if (language === "fr" || language === "en") setLocale(language);
+        setState({ session, loading: false, failed: false });
+      }
     });
     void supabase.auth
       .getSession()
       .then(({ data, error }) => {
-        if (active && !received)
+        if (active && !received) {
+          const language = data.session?.user.user_metadata?.preferred_language;
+          if (language === "fr" || language === "en") setLocale(language);
           setState({ session: data.session, loading: false, failed: !!error });
+        }
       })
       .catch(() => {
         if (active) setState({ session: null, loading: false, failed: true });
@@ -46,7 +55,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       active = false;
       data.subscription.unsubscribe();
     };
-  }, []);
+  }, [setLocale]);
   return <AuthContext.Provider value={state}>{children}</AuthContext.Provider>;
 }
 export const useAuth = () => useContext(AuthContext);

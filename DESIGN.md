@@ -57,10 +57,13 @@ Saved project overview now mirrors the demo detail composition: real project hea
 
 Tasks use flat rows with text status badges, dates, notes and an explicit overdue
 label. Editing uses existing form controls; deletion uses the shared confirmation
-modal. The weekly schedule is seven columns on desktop, two on narrower desktop,
-and a stacked daily agenda on phones. Today has a subtle tinted background. Company
-identity remains visible; task cards link back to saved projects. French and English
-are complete. Task previews in the register are now replaced by live schedule links.
+modal. The weekly schedule is a light, ruled planning board: seven columns on
+desktop, two on narrower desktop, and a stacked daily agenda on phones. Compact
+weekly cards show title, project, assignee and status; the overdue and undated lists
+retain full details. Today has a labeled red rule, so color is not its only cue.
+Company identity remains visible and task cards link back to saved projects.
+French and English are complete. Task previews in the register are replaced by live
+schedule links.
 
 ## Company and account navigation
 

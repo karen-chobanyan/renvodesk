@@ -4,7 +4,6 @@ import { Link, useLocation, useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/auth-provider";
 import { authErrorKey, useAuthCopy } from "@/features/auth/copy";
-import { AccountStorageSummary } from "@/features/storage-usage/storage-usage";
 import { useCompanyAccess } from "@/features/team/company-access";
 import { useLocale } from "@/lib/i18n";
 import { requireSupabase } from "@/lib/supabase/client";
@@ -115,13 +114,7 @@ export function CompanyNavigation({
     </details>
   );
 }
-export function AccountControls({
-  close,
-  organizationId,
-}: {
-  close: () => void;
-  organizationId?: string;
-}) {
+export function AccountControls({ close }: { close: () => void }) {
   const menu = useRef<HTMLDetailsElement>(null);
   const location = useLocation();
   // biome-ignore lint/correctness/useExhaustiveDependencies: navigation closes the persistent disclosure
@@ -131,8 +124,7 @@ export function AccountControls({
   const { session } = useAuth(),
     t = useAuthCopy();
   const [busy, setBusy] = useState(false),
-    [error, setError] = useState(""),
-    [menuOpen, setMenuOpen] = useState(false);
+    [error, setError] = useState("");
   async function logout() {
     setBusy(true);
     setError("");
@@ -149,10 +141,6 @@ export function AccountControls({
     <details
       className="account-menu"
       ref={menu}
-      onToggle={(event) => {
-        const open = event.currentTarget.open;
-        setMenuOpen(open);
-      }}
       onKeyDown={(e) => {
         if (e.key === "Escape" && e.currentTarget.open) {
           e.stopPropagation();
@@ -166,15 +154,27 @@ export function AccountControls({
           {session?.user.email?.slice(0, 2).toUpperCase() ?? "R."}
         </span>
         <span className="identity-copy">
-          <strong>{session?.user.email}</strong>
-          <small>{t("account")}</small>
+          <strong>
+            {typeof session?.user.user_metadata?.full_name === "string" &&
+            session.user.user_metadata.full_name.trim()
+              ? session.user.user_metadata.full_name
+              : session?.user.email}
+          </strong>
+          <small>{session?.user.email}</small>
         </span>
         <ChevronDown size={14} />
       </summary>
       <div className="sidebar-account">
-        {menuOpen && organizationId && (
-          <AccountStorageSummary organizationId={organizationId} />
-        )}
+        <Link
+          className="account-demo-link"
+          to="/workspace/account"
+          onClick={() => {
+            if (menu.current) menu.current.open = false;
+            close();
+          }}
+        >
+          {t("accountSettings")}
+        </Link>
         <Link
           className="account-demo-link"
           to="/projects"

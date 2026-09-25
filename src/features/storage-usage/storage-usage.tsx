@@ -155,21 +155,3 @@ export function StorageUsage({
     </section>
   );
 }
-
-export function AccountStorageSummary({
-  organizationId,
-}: {
-  organizationId: string;
-}) {
-  const { locale } = useLocale();
-  const query = useStorageUsage(organizationId);
-  const account = query.data?.account;
-  if (!account) return null;
-  return (
-    <p className="account-storage-summary">
-      {locale === "fr" ? "Stockage du compte" : "Account storage"}:{" "}
-      {formatStorageBytes(account.used + account.reserved, locale)} /{" "}
-      {formatStorageBytes(account.limit, locale)}
-    </p>
-  );
-}

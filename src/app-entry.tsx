@@ -19,6 +19,7 @@ import "./styles.css";
 import { AppShell } from "./components/app-shell";
 import { EmptyState } from "./components/shared";
 import { Button } from "./components/ui/button";
+import { AccountSettingsPage } from "./features/auth/account-settings-page";
 import { AuthCallback, AuthPage } from "./features/auth/auth-page";
 import { AuthProvider, RequireAuth } from "./features/auth/auth-provider";
 import { ClientsPage } from "./features/clients/clients-page";
@@ -130,6 +131,7 @@ function Application() {
                 <Route element={<RequireAuth />}>
                   <Route path="workspace" element={<WorkspaceDataRoute />}>
                     <Route index element={<WorkspacePage />} />
+                    <Route path="account" element={<AccountSettingsPage />} />
                     <Route
                       path=":organizationId/projects/:id/sketches/:sketchId"
                       element={<SketchPage />}

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { selectPersonalLanguage } from "./fixtures/personal-language";
 
 const org = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   project = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
@@ -17,6 +18,7 @@ test("saved sketch opens in place, restores history and restricts members", asyn
     user_metadata: {},
     created_at: "2026-01-01T00:00:00Z",
   };
+  let accountUser = { ...user, user_metadata: { ...user.user_metadata } };
   const token = `${Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url")}.${Buffer.from(JSON.stringify({ sub: uid, role: "authenticated", exp: 4102444800 })).toString("base64url")}.test`;
   await page.addInitScript(
     ({ user, token }) => {
@@ -73,7 +75,17 @@ test("saved sketch opens in place, restores history and restricts members", asyn
         url = new URL(req.url()),
         name = url.pathname.split("/").pop(),
         method = req.method();
-      if (name === "user") return route.fulfill({ json: user });
+      if (name === "user") {
+        if (method === "PUT") {
+          const body = req.postDataJSON();
+          accountUser = {
+            ...accountUser,
+            user_metadata: { ...accountUser.user_metadata, ...body.data },
+          };
+          return route.fulfill({ json: { user: accountUser } });
+        }
+        return route.fulfill({ json: accountUser });
+      }
       if (name === "organization_memberships")
         return route.fulfill({
           json:
@@ -284,7 +296,7 @@ test("saved sketch opens in place, restores history and restricts members", asyn
       .dataURL,
   ).toBe(png);
   await page.reload();
-  await page.locator(".language-picker select").selectOption("en");
+  await selectPersonalLanguage(page, "en");
   const choose = page.getByRole("button", {
     name: "Choose a file",
     exact: true,
@@ -311,7 +323,7 @@ test("saved sketch opens in place, restores history and restricts members", asyn
     path: `/private/tmp/project-documents-en-${test.info().project.name}.png`,
     fullPage: true,
   });
-  await page.locator(".language-picker select").selectOption("fr");
+  await selectPersonalLanguage(page, "fr");
   await page.locator("#project-sketches .sketch-list-row").click();
   await page.evaluate(() => {
     document.body.dataset.sketchPageMarker = "kept";

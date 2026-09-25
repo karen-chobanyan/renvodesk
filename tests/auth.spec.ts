@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { jsPDF } from "jspdf";
+import { selectPersonalLanguage } from "./fixtures/personal-language";
 
 const id = "11111111-1111-4111-8111-111111111111";
 const org = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -17,6 +18,7 @@ const encode = (data: unknown) =>
   Buffer.from(JSON.stringify(data)).toString("base64url");
 const token = `${encode({ alg: "HS256", typ: "JWT" })}.${encode({ sub: id, role: "authenticated", exp: 4102444800 })}.test-signature`;
 async function mockApi(page: Page) {
+  let accountUser = { ...user, user_metadata: { ...user.user_metadata } };
   let company: string | null = null;
   let storedFile: Record<string, unknown> | null = null;
   let objectPresent = false;
@@ -70,7 +72,7 @@ async function mockApi(page: Page) {
             refresh_token: "test-refresh",
             token_type: "bearer",
             expires_in: 3600,
-            user,
+            user: accountUser,
           },
         });
         return;
@@ -87,7 +89,14 @@ async function mockApi(page: Page) {
         return;
       }
       if (url.pathname.endsWith("/user")) {
-        await route.fulfill({ json: user });
+        if (method === "PUT") {
+          const body = route.request().postDataJSON();
+          accountUser = {
+            ...accountUser,
+            user_metadata: { ...accountUser.user_metadata, ...body.data },
+          };
+          await route.fulfill({ json: { user: accountUser } });
+        } else await route.fulfill({ json: accountUser });
         return;
       }
       if (url.pathname.endsWith("/estimates")) {
@@ -496,7 +505,7 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await expect(
     page.getByText("Rénovation cuisine", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  await selectPersonalLanguage(page, "en");
   await expect(
     page.getByRole("heading", { name: "Company projects" }),
   ).toBeVisible();
@@ -560,7 +569,7 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     .getByRole("dialog")
     .getByRole("button", { name: "Close", exact: true })
     .click();
-  await page.getByRole("combobox", { name: "Language" }).selectOption("fr");
+  await selectPersonalLanguage(page, "fr");
   await page
     .getByRole("button", { name: "Modifier les détails", exact: true })
     .first()
@@ -837,7 +846,7 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     fullPage: false,
   });
   await page.keyboard.press("Escape");
-  await page.locator(".language-picker select").selectOption("en");
+  await selectPersonalLanguage(page, "en");
   await files.getByRole("button", { name: "Preview", exact: true }).click();
   await expect(
     page
@@ -859,7 +868,7 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     fullPage: false,
   });
   await page.keyboard.press("Escape");
-  await page.locator(".language-picker select").selectOption("fr");
+  await selectPersonalLanguage(page, "fr");
   await page.unroute(imageRoute);
   const fileDownload = page.waitForEvent("download");
   await files.getByRole("button", { name: "Télécharger", exact: true }).click();
@@ -936,7 +945,7 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     fullPage: false,
   });
   await page.keyboard.press("Escape");
-  await page.locator(".language-picker select").selectOption("en");
+  await selectPersonalLanguage(page, "en");
   await files.getByRole("button", { name: "Preview", exact: true }).click();
   await expect(
     page.getByRole("dialog").locator('canvas[data-rendered="true"]'),
@@ -959,7 +968,7 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     fullPage: false,
   });
   await page.keyboard.press("Escape");
-  await page.locator(".language-picker select").selectOption("fr");
+  await selectPersonalLanguage(page, "fr");
   await files.screenshot({
     path: `/private/tmp/renvo-files-${test.info().project.name}.png`,
   });
@@ -1013,7 +1022,7 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Other estimate edit" }),
   ).toBeVisible();
-  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  await selectPersonalLanguage(page, "en");
   await expect(page.getByLabel("Description 1", { exact: true })).toHaveValue(
     "Peinture",
   );
@@ -1083,6 +1092,93 @@ test("invalid credentials have a friendly localized error", async ({
     page.getByRole("heading", { name: "Welcome to RenvoDesk." }),
   ).toBeVisible();
 });
+test("account settings save profile language and change password", async ({
+  page,
+}, testInfo) => {
+  await mockApi(page);
+  let accountUser = { ...user, user_metadata: { ...user.user_metadata } };
+  let passwordUpdates = 0;
+  await page.route(
+    "https://oripsywzngftarbprlgk.supabase.co/auth/v1/user",
+    async (route) => {
+      if (route.request().method() !== "PUT") {
+        await route.fulfill({ json: accountUser });
+        return;
+      }
+      const body = route.request().postDataJSON();
+      if (body.data) {
+        expect(body.data).toEqual({
+          full_name: "Camille Laurent",
+          preferred_language: "en",
+        });
+        accountUser = {
+          ...accountUser,
+          user_metadata: { ...accountUser.user_metadata, ...body.data },
+        };
+      } else if (body.password) {
+        passwordUpdates++;
+        expect(body.current_password).toBe("current-password");
+        expect(body.password).toBe("new-password-123");
+        if (passwordUpdates === 1) {
+          await route.fulfill({
+            status: 400,
+            headers: {
+              "x-supabase-api-version": "2024-01-01",
+              "access-control-expose-headers": "x-supabase-api-version",
+            },
+            json: { code: "invalid_credentials", msg: "Invalid credentials" },
+          });
+          return;
+        }
+      }
+      await route.fulfill({ json: { user: accountUser } });
+    },
+  );
+  await page.goto("/login");
+  await page.getByRole("button", { name: "Tout refuser" }).click();
+  await page.getByRole("textbox", { name: "Adresse e-mail" }).fill(user.email);
+  await page.getByLabel("Mot de passe", { exact: true }).fill("test-password");
+  await page.getByRole("button", { name: "Se connecter", exact: true }).click();
+  await expect(page).toHaveURL(/\/workspace/);
+  if (testInfo.project.name === "mobile")
+    await page.getByRole("button", { name: "Navigation" }).click();
+  await page.locator(".account-menu > summary").click();
+  await page.getByRole("link", { name: "Paramètres du compte" }).click();
+  await expect(page).toHaveURL(/\/workspace\/account$/);
+  await page
+    .getByRole("textbox", { name: "Nom complet" })
+    .fill("Camille Laurent");
+  await page
+    .getByRole("combobox", { name: "Langue préférée" })
+    .selectOption("en");
+  await page.getByRole("button", { name: "Enregistrer le profil" }).click();
+  await expect(page.getByRole("status")).toContainText("Profile saved");
+  await expect(page.locator("html")).toHaveAttribute("lang", "en");
+  await page.reload();
+  await expect(page.getByRole("textbox", { name: "Full name" })).toHaveValue(
+    "Camille Laurent",
+  );
+  await expect(
+    page.getByRole("combobox", { name: "Preferred language" }),
+  ).toHaveValue("en");
+  await page.getByLabel("Current password").fill("current-password");
+  await page
+    .getByLabel("New password", { exact: true })
+    .fill("new-password-123");
+  await page.getByLabel("Confirm new password").fill("different-password-123");
+  await page.getByRole("button", { name: "Change password" }).click();
+  await expect(page.getByRole("alert")).toContainText("do not match");
+  expect(passwordUpdates).toBe(0);
+  await page.getByLabel("Confirm new password").fill("new-password-123");
+  await page.getByRole("button", { name: "Change password" }).click();
+  await expect(page.getByRole("alert")).toContainText(
+    "current password is incorrect",
+  );
+  await page.getByRole("button", { name: "Change password" }).click();
+  await expect(page.getByRole("status")).toContainText("Password updated");
+  expect(passwordUpdates).toBe(2);
+  await expect(page.getByLabel("Current password")).toHaveValue("");
+});
 test("signup and recovery explain the email step without sending mail", async ({
   page,
 }) => {
@@ -1112,7 +1208,13 @@ test("signup and recovery explain the email step without sending mail", async ({
   await page.getByRole("checkbox").focus();
   await page.keyboard.press("Space");
   await page.getByRole("combobox", { name: "Language" }).selectOption("fr");
+  const signupRequest = page.waitForRequest((request) =>
+    new URL(request.url()).pathname.endsWith("/auth/v1/signup"),
+  );
   await page.getByRole("button", { name: "Créer mon compte" }).click();
+  expect(
+    new URL((await signupRequest).url()).searchParams.get("redirect_to"),
+  ).toBe(`${new URL(page.url()).origin}/auth/callback`);
   await expect(page.getByRole("status")).toContainText(
     "Consultez votre boîte mail",
   );
@@ -1120,9 +1222,33 @@ test("signup and recovery explain the email step without sending mail", async ({
   await page
     .getByRole("textbox", { name: "Adresse e-mail" })
     .fill("test@example.test");
+  const recoveryRequest = page.waitForRequest((request) =>
+    new URL(request.url()).pathname.endsWith("/auth/v1/recover"),
+  );
   await page.getByRole("button", { name: "Envoyer le lien" }).click();
+  expect(
+    new URL((await recoveryRequest).url()).searchParams.get("redirect_to"),
+  ).toBe(`${new URL(page.url()).origin}/auth/reset`);
   await expect(page.getByRole("status")).toContainText(
     "Si un compte correspond",
+  );
+  const inviteId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+  await page.goto(`/signup?next=${encodeURIComponent(`/invite/${inviteId}`)}`);
+  await page
+    .getByRole("textbox", { name: "Adresse e-mail" })
+    .fill("test@example.test");
+  await page
+    .getByLabel("Mot de passe", { exact: true })
+    .fill("long-test-password");
+  await page.getByRole("checkbox").check();
+  const inviteSignupRequest = page.waitForRequest((request) =>
+    new URL(request.url()).pathname.endsWith("/auth/v1/signup"),
+  );
+  await page.getByRole("button", { name: "Créer mon compte" }).click();
+  expect(
+    new URL((await inviteSignupRequest).url()).searchParams.get("redirect_to"),
+  ).toBe(
+    `${new URL(page.url()).origin}/auth/callback?next=${encodeURIComponent(`/invite/${inviteId}`)}`,
   );
   await page.goto("/auth/reset");
   await expect(page.getByRole("alert")).toContainText("Ce lien a expiré");
@@ -1334,7 +1460,7 @@ test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
   await page.getByRole("button", { name: "Sans date", exact: true }).click();
   await expect(page.locator(".task-row")).toHaveCount(0);
   await page.goto(projectUrl);
-  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  await selectPersonalLanguage(page, "en");
   await expect(
     page
       .getByRole("region", { name: "Project tasks" })
@@ -1568,7 +1694,7 @@ test("company estimates search, pagination and saved draft links", async ({
     .fill("Dupont");
   await page.getByRole("button", { name: "Rechercher", exact: true }).click();
   await expect(page.locator("tbody tr")).toHaveCount(20);
-  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  await selectPersonalLanguage(page, "en");
   await expect(
     page.getByRole("heading", { name: "Estimates", exact: true }),
   ).toBeVisible();
@@ -1739,7 +1865,7 @@ test("project budget, cost recovery, conflict and void history", async ({
   await expect(
     panel.locator(".metrics").getByText("9,71 €", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  await selectPersonalLanguage(page, "en");
   const english = page.getByRole("region", {
     name: "Budget and costs",
     exact: true,
@@ -2011,7 +2137,7 @@ test("owner invites with recovery, revokes and removes a teammate", async ({
   await expect(
     page.getByText("teammate@example.test", { exact: true }),
   ).toHaveCount(0);
-  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  await selectPersonalLanguage(page, "en");
   await expect(
     page.getByRole("heading", { name: "Team", exact: true }),
   ).toBeVisible();
@@ -2192,6 +2318,12 @@ test("member edits only assigned tasks and sees no owner controls", async ({
       });
   });
   await login(page, true);
+  await expect(page).toHaveURL(/\/workspace/);
+  await page.goto("/workspace/account");
+  await expect(
+    page.getByRole("heading", { name: "Paramètres du compte" }),
+  ).toBeVisible();
+  await page.goto(`/workspace?company=${org}`);
   await expect(
     page.getByRole("link", { name: "Member site", exact: true }),
   ).toBeVisible();
@@ -2449,7 +2581,7 @@ test("project overview navigation, retained drafts, isolated failures and legacy
     "Camille Laurent",
   );
   await expect(nav).toBeVisible();
-  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  await selectPersonalLanguage(page, "en");
   await expect(
     nav.getByRole("link", { name: "Overview", exact: true }),
   ).toBeVisible();

@@ -38,6 +38,8 @@ export const taskCopy = {
     previous: "Semaine précédente",
     next: "Semaine suivante",
     today: "Cette semaine",
+    currentDay: "Aujourd’hui",
+    scheduledTasks: "Tâches planifiées",
     scope:
       "Planning de l’entreprise sélectionnée. Les tâches sur plusieurs jours apparaissent chaque jour.",
     back: "Retour aux projets",
@@ -88,6 +90,8 @@ export const taskCopy = {
     previous: "Previous week",
     next: "Next week",
     today: "This week",
+    currentDay: "Today",
+    scheduledTasks: "Scheduled tasks",
     scope:
       "Schedule for the selected company. Tasks spanning several days appear on each day.",
     back: "Back to projects",

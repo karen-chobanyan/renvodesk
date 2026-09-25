@@ -379,7 +379,12 @@ or invalidate affected cache entries after writes. Short-lived register and sche
 view choices survive route changes only in memory. See decision 025.
 
 The live sidebar owns company selection, Add a company, Settings, demo
-access and account sign-out. Projects no longer embeds company administration.
+access, Account settings and account sign-out. The account disclosure contains
+only Account settings, demo access and sign-out; the demo retains its header
+language switch. `/workspace/account` holds the account's full name, preferred
+language and password change form for every signed-in member; user metadata is
+never authorization data. See decision 026.
+Projects no longer embeds company administration.
 `/workspace?company=<id>` selects the project register; project, schedule and settings
 routes carry the company ID in the path. Switching companies returns to that company’s
 register. `/workspace/:organizationId/settings` contains workspace default language,

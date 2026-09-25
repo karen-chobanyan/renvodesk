@@ -14,7 +14,7 @@ const copy = {
   fr: {
     title: "Préférences de l’espace de travail",
     hint: "Ces valeurs sont partagées par les membres de cette entreprise.",
-    language: "Langue par défaut",
+    language: "Langue par défaut de l’espace de travail",
     languageHint:
       "Appliquée si aucune langue personnelle n’a été choisie. Chacun peut garder sa propre langue d’interface.",
     french: "Français",
@@ -41,7 +41,7 @@ const copy = {
   en: {
     title: "Workspace preferences",
     hint: "These values are shared by members of this company.",
-    language: "Default language",
+    language: "Default language for this workspace",
     languageHint:
       "Applied when no personal language has been chosen. Each person can keep their own interface language.",
     french: "Français",

@@ -126,9 +126,13 @@ export function TaskPanel({
       setBusy(false);
     }
   }
+  const compactWeek = !project && mode === "week";
   function taskItem(row: (typeof rows)[number]) {
     return (
-      <article className={`task-row task-card-${row.status}`} key={row.id}>
+      <article
+        className={`task-row task-card-${row.status}${compactWeek ? " week-task" : ""}`}
+        key={row.id}
+      >
         <div className="task-content">
           <strong>{row.title}</strong>
           {!project && (
@@ -146,11 +150,15 @@ export function TaskPanel({
                 teamText.savedAssignment)
               : teamText.unassigned}
           </small>
-          {row.notes && <p className="task-notes">{row.notes}</p>}
-          <small>
-            {row.start_date ? dateLabel(row.start_date, locale) : c.noDate} →{" "}
-            {row.due_date ? dateLabel(row.due_date, locale) : c.noDate}
-          </small>
+          {!compactWeek && row.notes && (
+            <p className="task-notes">{row.notes}</p>
+          )}
+          {!compactWeek && (
+            <small>
+              {row.start_date ? dateLabel(row.start_date, locale) : c.noDate} →{" "}
+              {row.due_date ? dateLabel(row.due_date, locale) : c.noDate}
+            </small>
+          )}
         </div>
         <div className="task-actions">
           <span className={`status task-status-${row.status}`}>
@@ -197,7 +205,7 @@ export function TaskPanel({
             {project
               ? c.tasks
               : mode === "week"
-                ? c.week
+                ? c.scheduledTasks
                 : mode === "overdue"
                   ? c.overdue
                   : c.undated}
@@ -241,47 +249,57 @@ export function TaskPanel({
         </div>
       ) : (
         <>
-          {!loading && rows.length === 0 && (
+          {!loading && rows.length === 0 && mode !== "week" && (
             <p className="workspace-loading">{c.empty}</p>
           )}
           {mode === "week" && start ? (
             <div className="week-grid">
               {Array.from({ length: 7 }, (_, i) => addDays(start, i)).map(
-                (date) => (
-                  <section
-                    key={date}
-                    className={date === day ? "week-day is-today" : "week-day"}
-                  >
-                    <h3 className="calendar-day-heading">
-                      <time
-                        dateTime={date}
-                        aria-current={date === day ? "date" : undefined}
-                      >
-                        <span>
-                          {new Intl.DateTimeFormat(locale, {
-                            weekday: "short",
-                            timeZone: "UTC",
-                          }).format(new Date(`${date}T12:00:00Z`))}
-                        </span>
-                        <strong>{date.slice(8).replace(/^0/, "")}</strong>
-                        <small>
-                          {new Intl.DateTimeFormat(locale, {
-                            month: "short",
-                            timeZone: "UTC",
-                          }).format(new Date(`${date}T12:00:00Z`))}
-                        </small>
-                      </time>
-                    </h3>
-                    {!loading && !rows.some((row) => onDay(row, date)) && (
-                      <p className="calendar-day-empty">
-                        {locale === "fr"
-                          ? "Rien de prévu"
-                          : "Nothing scheduled"}
-                      </p>
-                    )}
-                    {rows.filter((row) => onDay(row, date)).map(taskItem)}
-                  </section>
-                ),
+                (date) => {
+                  const dayRows = rows.filter((row) => onDay(row, date));
+                  return (
+                    <section
+                      key={date}
+                      className={
+                        date === day ? "week-day is-today" : "week-day"
+                      }
+                    >
+                      <h3 className="calendar-day-heading">
+                        <time
+                          dateTime={date}
+                          aria-current={date === day ? "date" : undefined}
+                        >
+                          <span>
+                            {new Intl.DateTimeFormat(locale, {
+                              weekday: "short",
+                              timeZone: "UTC",
+                            }).format(new Date(`${date}T12:00:00Z`))}
+                          </span>
+                          <strong>{date.slice(8).replace(/^0/, "")}</strong>
+                          <small>
+                            {new Intl.DateTimeFormat(locale, {
+                              month: "short",
+                              timeZone: "UTC",
+                            }).format(new Date(`${date}T12:00:00Z`))}
+                          </small>
+                          {date === day && (
+                            <em className="calendar-today-label">
+                              {c.currentDay}
+                            </em>
+                          )}
+                        </time>
+                      </h3>
+                      {!loading && dayRows.length === 0 && (
+                        <p className="calendar-day-empty">
+                          {locale === "fr"
+                            ? "Rien de prévu"
+                            : "Nothing scheduled"}
+                        </p>
+                      )}
+                      {dayRows.map(taskItem)}
+                    </section>
+                  );
+                },
               )}
             </div>
           ) : (
