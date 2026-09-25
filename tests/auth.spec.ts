@@ -1179,6 +1179,91 @@ test("account settings save profile language and change password", async ({
   expect(passwordUpdates).toBe(2);
   await expect(page.getByLabel("Current password")).toHaveValue("");
 });
+test("live pages share the shell content bounds", async ({
+  page,
+}, testInfo) => {
+  await mockApi(page);
+  if (testInfo.project.name === "desktop")
+    await page.setViewportSize({ width: 2200, height: 1000 });
+  const projectId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+  await page.route("**/rest/v1/organization_memberships**", (route) =>
+    route.fulfill({
+      json: [
+        {
+          organization_id: org,
+          role: "owner",
+          organizations: {
+            id: org,
+            name: "Atelier du Parc",
+            country: "BE",
+            default_language: "fr",
+          },
+        },
+      ],
+    }),
+  );
+  await page.route("**/rest/v1/projects**", (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: projectId,
+          organization_id: org,
+          name: "Maison du Parc",
+          client_name: "Camille Laurent",
+          city: "Bruxelles",
+          address: "12 rue Exemple",
+          status: "active",
+          revision: 1,
+        },
+      ],
+    }),
+  );
+  await page.route("**/rest/v1/estimates**", (route) =>
+    route.fulfill({ json: [] }),
+  );
+  await page.route("**/rest/v1/project_files**", (route) =>
+    route.fulfill({ json: [] }),
+  );
+  await login(page, true);
+  await expect(page).toHaveURL(/\/workspace/);
+  for (const [path, selector] of [
+    [`/workspace?company=${org}`, ".connected-workspace"],
+    ["/workspace/account", ".account-settings-page"],
+    [`/workspace/${org}/settings`, ".connected-workspace"],
+    [`/workspace/${org}/clients`, ".clients-register"],
+    [`/workspace/${org}/schedule`, ".schedule-workspace"],
+    [`/workspace/${org}/projects/${projectId}`, ".project-detail-workspace"],
+    [
+      `/workspace/${org}/projects/${projectId}/estimates/${projectId}`,
+      ".live-estimate",
+    ],
+  ] as const) {
+    await page.goto(path);
+    const content = page.locator(selector);
+    await expect(content).toBeVisible();
+    const bounds = await page.locator(".app-content").evaluate((main) => {
+      const rect = main.getBoundingClientRect();
+      const style = getComputedStyle(main);
+      return {
+        left: rect.left + Number.parseFloat(style.paddingLeft),
+        right: rect.right - Number.parseFloat(style.paddingRight),
+      };
+    });
+    const rect = await content.boundingBox();
+    expect(rect, path).not.toBeNull();
+    expect(Math.abs((rect?.x ?? 0) - bounds.left), path).toBeLessThan(2);
+    expect(
+      Math.abs((rect?.x ?? 0) + (rect?.width ?? 0) - bounds.right),
+      path,
+    ).toBeLessThan(2);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+      path,
+    ).toBe(true);
+  }
+});
 test("signup and recovery explain the email step without sending mail", async ({
   page,
 }) => {

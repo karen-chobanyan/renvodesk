@@ -44,6 +44,9 @@ production-safe behavior. Browser QA is required at desktop and mobile sizes.
 ## Shared workspace layout
 
 Protected workspace, project and estimate pages reuse the demo application shell.
+The shell's `.app-content` owns the shared 1700px maximum width and responsive
+page gutters. Page components fill that area; narrower widths belong to specific
+forms, text blocks or dialogs, not the outer page container.
 The saved project register uses the same visual hierarchy and table styles, with
 search/status filters and counts scoped to loaded projects. Company settings have a dedicated page. Saved project pages provide links to details, estimates and files.
 Saved project sketches have real private previews; task navigation opens the live company schedule.
@@ -122,8 +125,8 @@ overview contains a flat financial summary, bounded task/estimate/sketch/file
 previews, and independent project context. Detailed ledgers live in their tabs.
 
 Use `project-detail-workspace` for this layout; `project-workspace` belongs to the
-demo register grid and must not be reused. Content is capped at 1400px with 32px
-desktop / 16px mobile horizontal padding. Mobile metrics become label/value rows
+demo register grid and must not be reused. The shared shell sets its width and
+responsive page gutters. Mobile metrics become label/value rows
 to keep currency amounts intact. Horizontal tab scrolling is local to navigation.
 Project editing is a guarded dialog; creation fields open on demand. Keep skeletons
 and errors local so one failed request does not remove project context or navigation.

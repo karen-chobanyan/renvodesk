@@ -251,7 +251,7 @@ export function AppShell({
               )}
             </div>
           </div>
-          <main id="main" tabIndex={-1}>
+          <main className="app-content" id="main" tabIndex={-1}>
             {children ?? <Outlet />}
           </main>
           <footer className="app-footer">
