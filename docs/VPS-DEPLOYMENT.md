@@ -20,7 +20,7 @@ pnpm install --frozen-lockfile
 pnpm lint
 pnpm typecheck
 pnpm test
-pnpm build
+pnpm build:production
 pnpm test:e2e --config playwright.telemetry.config.ts --workers=2
 ```
 

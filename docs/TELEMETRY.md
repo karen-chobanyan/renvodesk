@@ -92,7 +92,8 @@ for operator configuration and the outstanding operational details to verify.
 pnpm lint
 pnpm typecheck
 pnpm test
-# First build with deploy/production.env.example values in the environment:
+# First configure .env.production.local from deploy/production.env.example:
+pnpm build:production
 pnpm test:e2e --config playwright.telemetry.config.ts --workers=2
 ```
 

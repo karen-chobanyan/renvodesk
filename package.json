@@ -10,6 +10,7 @@
   "scripts": {
     "dev": "node scripts/copy-excalidraw-fonts.mjs && vite --host 127.0.0.1",
     "build": "node scripts/copy-excalidraw-fonts.mjs && tsc --noEmit && vite build && node scripts/prerender-landing.mjs",
+    "build:production": "node scripts/check-production-config.mjs && pnpm build",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",

@@ -14,12 +14,15 @@ firewall while preserving SSH access.
 Prepare `.env.production.local` from `deploy/production.env.example`, without
 overwriting existing settings. Preserve the Supabase public URL and publishable
 key. Keep `VITE_TELEMETRY_ENABLED=false` until the privacy notice and GA dashboard
-settings in TELEMETRY.md are complete. Production metadata requires
-`SITE_URL=https://renvodesk.com`.
+settings in TELEMETRY.md are complete. In particular, turn off the web stream's
+Enhanced measurement before sending the application's explicit events. Production
+metadata requires `SITE_URL=https://renvodesk.com`. Once those checks are complete,
+use the guarded build command below. It fails if the origin, site URL, telemetry
+flag or RenvoDesk measurement ID is missing or incorrect.
 
 ```sh
 pnpm install --frozen-lockfile
-pnpm build
+pnpm build:production
 ```
 
 Variables are compiled into the build. Changing a server environment file alone
