@@ -667,6 +667,25 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
       return destination.stream;
     };
   });
+  await page
+    .locator(".project-tabs")
+    .getByRole("link", { name: "Vue d’ensemble", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Enregistrer une note vocale" })
+    .click();
+  await expect(page).toHaveURL(/\?tab=documents#project-files$/);
+  await expect(page.getByRole("dialog", { name: "Note vocale" })).toBeVisible();
+  await page
+    .getByRole("dialog", { name: "Note vocale" })
+    .getByRole("button", { name: "Annuler", exact: true })
+    .last()
+    .click();
+  await expect(
+    page
+      .locator(".project-tabs")
+      .getByRole("link", { name: "Documents", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
   await files
     .getByRole("button", { name: "Prendre une photo", exact: true })
     .click();
@@ -2425,6 +2444,16 @@ test("member edits only assigned tasks and sees no owner controls", async ({
   ).toHaveCount(0);
   if (isMobile) await page.keyboard.press("Escape");
   await page.getByRole("link", { name: "Member site", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Enregistrer une note vocale" }),
+  ).toHaveCount(0);
+  await page
+    .locator(".project-tabs")
+    .getByRole("link", { name: "Documents", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Transcrire avec l’IA" }),
+  ).toHaveCount(0);
   await page
     .locator(".project-tabs")
     .getByRole("link", { name: "Tâches", exact: true })
@@ -2478,6 +2507,113 @@ test("member edits only assigned tasks and sees no owner controls", async ({
   await page.goto(`/workspace/${org}/clients`);
   await expect(
     page.getByRole("heading", { name: "Accès réservé au propriétaire" }),
+  ).toBeVisible();
+});
+
+test("owner reviews an AI voice-note proposal before creating a task", async ({
+  page,
+}) => {
+  await mockApi(page);
+  const projectId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+  const fileId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+  const project = {
+    id: projectId,
+    organization_id: org,
+    name: "Kitchen site",
+    client_name: "Client",
+    city: "Namur",
+    address: null,
+    status: "active",
+    revision: 1,
+  };
+  const savedTasks: Record<string, unknown>[] = [];
+  let analyzed = 0;
+  await page.route("**/rest/v1/organization_memberships**", (route) =>
+    route.fulfill({
+      json: [
+        {
+          organization_id: org,
+          role: "owner",
+          organizations: { id: org, name: "Test company", country: "BE" },
+        },
+      ],
+    }),
+  );
+  await page.route("**/rest/v1/projects**", (route) =>
+    route.fulfill({ json: [project] }),
+  );
+  await page.route("**/rest/v1/project_files**", (route) =>
+    route.fulfill({
+      json: [
+        {
+          id: fileId,
+          organization_id: org,
+          project_id: projectId,
+          original_name: "site-note.webm",
+          mime_type: "audio/webm",
+          size_bytes: 2048,
+          state: "ready",
+          object_key: `${org}/${projectId}/${fileId}`,
+          created_at: "2026-09-26T12:00:00Z",
+        },
+      ],
+    }),
+  );
+  await page.route("**/rest/v1/project_tasks**", async (route) => {
+    if (route.request().method() === "POST") {
+      const body = route.request().postDataJSON();
+      expect(body.organization_id).toBe(org);
+      expect(body.project_id).toBe(projectId);
+      savedTasks.push({
+        ...body,
+        revision: 1,
+        projects: { name: project.name },
+      });
+      await route.fulfill({ json: savedTasks.at(-1) });
+    } else await route.fulfill({ json: savedTasks });
+  });
+  await page.route("**/api/v1/**/ai-analysis", (route) => {
+    analyzed++;
+    expect(route.request().headers().authorization).toMatch(/^Bearer /);
+    return route.fulfill({
+      json: {
+        transcript: "Vérifier la fenêtre de la cuisine.",
+        summary: "Une fenêtre doit être vérifiée.",
+        tasks: [
+          {
+            title: "Vérifier la fenêtre",
+            notes: "Cuisine",
+            evidence: "Vérifier la fenêtre de la cuisine",
+          },
+        ],
+      },
+    });
+  });
+  await login(page, true);
+  await expect(page).toHaveURL(/\/workspace/);
+  await page.goto(`/workspace/${org}/projects/${projectId}?tab=documents`);
+  await page.getByRole("button", { name: "Transcrire avec l’IA" }).click();
+  const dialog = page.getByRole("dialog", { name: "Analyser la note vocale" });
+  await expect(dialog).toBeVisible();
+  await expect(
+    dialog.getByText("Vérifier la fenêtre de la cuisine."),
+  ).toBeVisible();
+  expect(analyzed).toBe(1);
+  expect(savedTasks).toHaveLength(0);
+  await dialog
+    .getByLabel("Titre de la tâche")
+    .fill("Contrôler la fenêtre de la cuisine");
+  await dialog.getByRole("button", { name: "Créer cette tâche" }).click();
+  await expect(dialog.getByText("Tâche créée")).toBeVisible();
+  expect(savedTasks).toHaveLength(1);
+  expect(savedTasks[0].title).toBe("Contrôler la fenêtre de la cuisine");
+  await dialog.getByRole("button", { name: "Fermer" }).last().click();
+  await page
+    .locator(".project-tabs")
+    .getByRole("link", { name: "Tâches" })
+    .click();
+  await expect(
+    page.getByText("Contrôler la fenêtre de la cuisine"),
   ).toBeVisible();
 });
 

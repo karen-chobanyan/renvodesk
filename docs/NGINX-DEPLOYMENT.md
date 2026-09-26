@@ -1,9 +1,10 @@
 # Ubuntu VPS with Nginx — renvodesk.com
 
-Nginx serves the compiled static application. Supabase remains the backend; no
-Docker, PM2, Node server or reverse proxy to Vite is needed. Nginx is the current
-preferred option; the Caddy configuration remains an alternative, not a second
-server to run on the same ports.
+Nginx currently serves the compiled static application. Supabase remains the
+deployed backend; the local Fastify API package is not deployed or proxied here.
+No Docker, PM2 or reverse proxy to Vite is needed for the current static site.
+Nginx is the current preferred option; the Caddy configuration remains an
+alternative, not a second server to run on the same ports.
 
 ## 1. DNS and build on your computer
 

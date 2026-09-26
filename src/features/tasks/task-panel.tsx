@@ -34,10 +34,12 @@ export function TaskPanel({
   org,
   project,
   filter = {},
+  refreshKey = 0,
 }: {
   org: string;
   project?: string;
   filter?: TaskFilter;
+  refreshKey?: number;
 }) {
   const { locale } = useLocale(),
     c = taskCopy[locale];
@@ -89,7 +91,7 @@ export function TaskPanel({
     return () => {
       active = false;
     };
-  }, [org, project, mode, start, filterToday, assignee, reload]);
+  }, [org, project, mode, start, filterToday, assignee, reload, refreshKey]);
   async function loadMore() {
     setLoading(true);
     try {

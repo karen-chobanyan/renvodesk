@@ -91,10 +91,15 @@ and automatic quantity takeoff unless explicitly requested.
   with financial or external side effects.
 - Avoid speculative abstractions, microservices, and generic workflow engines.
 - Keep country-specific billing logic separate from project management.
-- Fastify with TypeScript is selected for future custom Node endpoints. Introduce
-  a pnpm workspace with the first concrete API feature; no API or monorepo exists
-  yet. Supabase remains the Auth, Postgres, RLS and Storage backend. See decision
-  022. Explain new backend code in detail so the user can learn Fastify.
+- A pnpm workspace now contains the Vite application at the root and a small
+  TypeScript/Fastify API in `apps/api`. The API has a health route and an
+  owner-authorized project context read and a feature-flagged site-note AI
+  route. The route transcribes a ready project voice note and validates a
+  task-proposal function call; it never writes tasks. The owner review UI uses
+  existing task creation. No AI output is persisted, no AI database migration
+  exists and the API is not deployed. Supabase remains Auth, Postgres, RLS and
+  Storage. See docs/API.md and decisions 022 and 029. Explain new backend code
+  in detail so the user can learn Fastify.
 
 ### Existing code map
 
@@ -115,9 +120,9 @@ and automatic quantity takeoff unless explicitly requested.
 - `src/lib/supabase`: publishable browser client and generated database types.
 - `supabase/migrations`, `supabase/tests`: migrations and rollback-only isolation tests.
 
-There is no custom server application yet. Use dedicated server endpoints or Edge
-Functions if privileged work becomes necessary; never import privileged code into
-the Vite browser bundle. Do not copy Carbon's module conventions into this repository.
+The custom API is local-only. Add privileged work to dedicated server endpoints;
+never import provider credentials or privileged code into the Vite browser bundle.
+Do not copy Carbon's module conventions into this repository.
 
 ## Authentication and tenant isolation
 
@@ -217,6 +222,11 @@ Use DESIGN.md and the existing reference screens when extending it.
   aligned with the actual repository and replace provisional decisions explicitly.
 
 ## Verification
+
+GitHub Actions now runs read-only CI for pull requests and `main`: frozen pnpm
+install, lint, typecheck, unit tests, web/API build and mocked Playwright browser
+tests. It does not deploy or run live Supabase rollback SQL suites. See docs/CI.md
+and decision 027.
 
 Commands: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`,
 `pnpm test:e2e` (install Chromium first with `pnpm exec playwright install chromium`).
@@ -510,6 +520,7 @@ counts into aggregate claims. Project editing uses the shared dialog, revision
 checks, and an unsaved-close warning. See the project-view-layout plan.
 
 - Project files support camera JPEG capture and MediaRecorder voice notes (WebM, MP4/M4A, Ogg). Review before upload; existing owner-only writes and member reads apply. Capture must release tracks on close/unmount; recording is capped at five minutes / 10 MiB. Audio MIME allowlists are in the project_voice_notes migration; do not broaden them to arbitrary video.
+- The project overview's owner-only recording shortcut uses the Documents capture and upload flow. With the public AI flag and server key configured, owners may analyze a ready WebM or MP4/M4A note. The server rereads the scoped file using the caller token, sends it to `gpt-transcribe`, and validates one `gpt-6-luna` proposal tool call. Suggestions are review-only until the owner explicitly creates a task. Ogg audio remains an attachment without AI analysis. No live provider call, EU residency eligibility, production rollout or durable AI result cache is verified.
 
 ## Project activity journal
 

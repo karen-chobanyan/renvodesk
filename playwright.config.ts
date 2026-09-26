@@ -1,12 +1,24 @@
 import { defineConfig, devices } from "@playwright/test";
+
+const portValue = process.env.PLAYWRIGHT_PORT ?? "5173";
+const port = Number(portValue);
+if (!/^\d+$/.test(portValue) || port < 1 || port > 65535) {
+  throw new Error("PLAYWRIGHT_PORT must be a TCP port number");
+}
+
 export default defineConfig({
   testDir: "./tests",
   fullyParallel: true,
-  use: { baseURL: "http://127.0.0.1:5173", trace: "retain-on-failure" },
+  workers: process.env.CI ? 1 : undefined,
+  use: {
+    baseURL: `http://127.0.0.1:${port}`,
+    trace: "retain-on-failure",
+  },
   webServer: {
-    command: "pnpm dev --port 5173 --strictPort",
-    url: "http://127.0.0.1:5173",
-    reuseExistingServer: !process.env.CI,
+    command: `pnpm dev --port ${port} --strictPort`,
+    url: `http://127.0.0.1:${port}`,
+    reuseExistingServer: false,
+    env: { VITE_AI_SITE_NOTES_ENABLED: "true" },
   },
   projects: [
     {

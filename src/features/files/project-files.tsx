@@ -1,4 +1,4 @@
-import { Camera, FileText, Mic, Upload } from "lucide-react";
+import { Camera, FileText, Mic, Sparkles, Upload } from "lucide-react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -19,6 +19,8 @@ import {
 } from "./file-service";
 
 import { MediaCapture } from "./media-capture";
+import { analyzeSiteNote, type SiteNoteAnalysis } from "./site-note-ai-service";
+import { SiteNoteReview } from "./site-note-review";
 
 const DxfPreview = lazy(() => import("../cad/dxf-preview"));
 const PdfPreview = lazy(() => import("./pdf-preview"));
@@ -27,10 +29,16 @@ export function ProjectFiles({
   organizationId,
   projectId,
   canManage,
+  voiceNoteRequested,
+  onVoiceNoteRequestHandled,
+  onTaskCreated,
 }: {
   organizationId: string;
   projectId: string;
   canManage: boolean;
+  voiceNoteRequested: boolean;
+  onVoiceNoteRequestHandled: () => void;
+  onTaskCreated: () => void;
 }) {
   const { locale } = useLocale(),
     c = fileCopy[locale];
@@ -59,6 +67,21 @@ export function ProjectFiles({
     ),
     [expired, setExpired] = useState(false);
   const [capture, setCapture] = useState<"photo" | "voice" | null>(null);
+  const [analyzing, setAnalyzing] = useState<string | null>(null);
+  const [analysisError, setAnalysisError] = useState<
+    "failed" | "unavailable" | null
+  >(null);
+  const [review, setReview] = useState<{
+    key: string;
+    analysis: SiteNoteAnalysis;
+  } | null>(null);
+  const canAnalyze =
+    canManage && import.meta.env.VITE_AI_SITE_NOTES_ENABLED === "true";
+  useEffect(() => {
+    if (!canManage || !voiceNoteRequested) return;
+    setCapture("voice");
+    onVoiceNoteRequestHandled();
+  }, [canManage, voiceNoteRequested, onVoiceNoteRequestHandled]);
   const [dragging, setDragging] = useState(false);
   const dragDepth = useRef(0);
   const input = useRef<HTMLInputElement>(null),
@@ -103,6 +126,27 @@ export function ProjectFiles({
     const problem = file ? validateFile(file) : null;
     setError(problem);
     setSelected(problem ? null : file);
+  }
+  async function analyze(file: ProjectFile) {
+    if (!canAnalyze || analyzing || busy) return;
+    setAnalyzing(file.id);
+    setAnalysisError(null);
+    try {
+      const analysis = await analyzeSiteNote(
+        organizationId,
+        projectId,
+        file.id,
+      );
+      setReview({ key: crypto.randomUUID(), analysis });
+    } catch (error) {
+      setAnalysisError(
+        error instanceof Error && error.message === "unavailable"
+          ? "unavailable"
+          : "failed",
+      );
+    } finally {
+      setAnalyzing(null);
+    }
   }
   async function upload() {
     if (!selected || busy) return;
@@ -288,6 +332,12 @@ export function ProjectFiles({
         </div>
       )}
       {notice && <p role="status">{c[notice]}</p>}
+      {analyzing && <p role="status">{c.analyzing}</p>}
+      {analysisError && (
+        <p role="alert" className="error-message">
+          {c[analysisError === "unavailable" ? "aiUnavailable" : "aiFailed"]}
+        </p>
+      )}
       {error && (
         <p role="alert" className="error-message">
           {c[error]}
@@ -303,103 +353,119 @@ export function ProjectFiles({
         <p className="document-empty">{c.empty}</p>
       ) : null}
       {rows.length > 0 && (
-        <table className="document-file-table">
-          <caption className="sr-only">{c.title}</caption>
-          <thead>
-            <tr>
-              <th scope="col">{c.name}</th>
-              <th scope="col">{c.type}</th>
-              <th scope="col">{c.size}</th>
-              <th scope="col">{c.actions}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((file) => (
-              <tr key={file.id}>
-                <td className="document-file-name">
-                  <div className="document-file-info">
-                    <FileText size={22} aria-hidden="true" />
-                    <div>
-                      <strong>{file.original_name}</strong>
-                      {file.state !== "ready" && (
-                        <p>
-                          {file.state === "pending" ? c.pending : c.deleting}
-                        </p>
-                      )}
+        <>
+          {canAnalyze && <p className="helper-text">{c.aiDisclosure}</p>}
+          <table className="document-file-table">
+            <caption className="sr-only">{c.title}</caption>
+            <thead>
+              <tr>
+                <th scope="col">{c.name}</th>
+                <th scope="col">{c.type}</th>
+                <th scope="col">{c.size}</th>
+                <th scope="col">{c.actions}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((file) => (
+                <tr key={file.id}>
+                  <td className="document-file-name">
+                    <div className="document-file-info">
+                      <FileText size={22} aria-hidden="true" />
+                      <div>
+                        <strong>{file.original_name}</strong>
+                        {file.state !== "ready" && (
+                          <p>
+                            {file.state === "pending" ? c.pending : c.deleting}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </td>
-                <td className="document-file-type">
-                  {file.original_name
-                    .split(".")
-                    .pop()
-                    ?.slice(0, 5)
-                    .toUpperCase() || "FILE"}
-                </td>
-                <td className="document-file-size">
-                  {new Intl.NumberFormat(locale, {
-                    maximumFractionDigits: 1,
-                  }).format(file.size_bytes / 1024)}{" "}
-                  KiB
-                </td>
-                <td>
-                  <div className="file-actions">
-                    {file.state === "ready" ? (
-                      <>
-                        <Button
-                          variant="outline"
-                          disabled={busy}
-                          onClick={() => action(() => downloadFile(file))}
-                        >
-                          {c.download}
-                        </Button>
-                        {canPreview(file.mime_type) && (
+                  </td>
+                  <td className="document-file-type">
+                    {file.original_name
+                      .split(".")
+                      .pop()
+                      ?.slice(0, 5)
+                      .toUpperCase() || "FILE"}
+                  </td>
+                  <td className="document-file-size">
+                    {new Intl.NumberFormat(locale, {
+                      maximumFractionDigits: 1,
+                    }).format(file.size_bytes / 1024)}{" "}
+                    KiB
+                  </td>
+                  <td>
+                    <div className="file-actions">
+                      {file.state === "ready" ? (
+                        <>
                           <Button
                             variant="outline"
                             disabled={busy}
-                            onClick={() =>
-                              action(async () => {
-                                const url = await previewUrl(file);
-                                setPreview({ file, url });
-                              })
-                            }
+                            onClick={() => action(() => downloadFile(file))}
                           >
-                            {file.mime_type === "application/dxf"
-                              ? c.openPlan
-                              : c.preview}
+                            {c.download}
                           </Button>
-                        )}
-                      </>
-                    ) : canManage && file.state === "pending" ? (
-                      <Button
-                        variant="outline"
-                        disabled={busy}
-                        onClick={() =>
-                          action(async () => {
-                            await confirmUpload(file);
-                            setReload((n) => n + 1);
-                            setNotice("success");
-                          })
-                        }
-                      >
-                        {c.verify}
-                      </Button>
-                    ) : null}
-                    {canManage && (
-                      <Button
-                        variant="ghost"
-                        disabled={busy}
-                        onClick={() => setRemoving(file)}
-                      >
-                        {c.remove}
-                      </Button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                          {canPreview(file.mime_type) && (
+                            <Button
+                              variant="outline"
+                              disabled={busy}
+                              onClick={() =>
+                                action(async () => {
+                                  const url = await previewUrl(file);
+                                  setPreview({ file, url });
+                                })
+                              }
+                            >
+                              {file.mime_type === "application/dxf"
+                                ? c.openPlan
+                                : c.preview}
+                            </Button>
+                          )}
+                          {canAnalyze &&
+                            ["audio/webm", "audio/mp4"].includes(
+                              file.mime_type,
+                            ) && (
+                              <Button
+                                variant="outline"
+                                disabled={busy || !!analyzing}
+                                onClick={() => void analyze(file)}
+                              >
+                                <Sparkles size={16} aria-hidden="true" />
+                                {c.analyze}
+                              </Button>
+                            )}
+                        </>
+                      ) : canManage && file.state === "pending" ? (
+                        <Button
+                          variant="outline"
+                          disabled={busy}
+                          onClick={() =>
+                            action(async () => {
+                              await confirmUpload(file);
+                              setReload((n) => n + 1);
+                              setNotice("success");
+                            })
+                          }
+                        >
+                          {c.verify}
+                        </Button>
+                      ) : null}
+                      {canManage && (
+                        <Button
+                          variant="ghost"
+                          disabled={busy}
+                          onClick={() => setRemoving(file)}
+                        >
+                          {c.remove}
+                        </Button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
       )}
       {more && !failed && (
         <Button
@@ -461,6 +527,16 @@ export function ProjectFiles({
           {error && <p role="alert">{c[error]}</p>}
         </DialogContent>
       </Dialog>
+      {review && (
+        <SiteNoteReview
+          key={review.key}
+          analysis={review.analysis}
+          organizationId={organizationId}
+          projectId={projectId}
+          close={() => setReview(null)}
+          onTaskCreated={onTaskCreated}
+        />
+      )}
       <Dialog
         open={!!preview}
         onOpenChange={(open) => {

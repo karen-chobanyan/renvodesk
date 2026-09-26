@@ -3,7 +3,13 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import {
+  type FormEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Link,
   useLocation,
@@ -151,8 +157,17 @@ function ProjectDetail({
       : "overview";
   const [visited, setVisited] = useState<Set<ProjectTab>>(() => new Set()),
     [editing, setEditing] = useState(false);
+  const [voiceNoteRequested, setVoiceNoteRequested] = useState(false);
+  const voiceNoteRequestHandled = useCallback(() => {
+    setVoiceNoteRequested(false);
+  }, []);
+  function recordVoiceNote() {
+    setVoiceNoteRequested(true);
+    void navigate({ search: "?tab=documents", hash: "#project-files" });
+  }
   const [sketchId, setSketchId] = useState<string | null>(null);
   const [sketchRefresh, setSketchRefresh] = useState(0);
+  const [taskRefresh, setTaskRefresh] = useState(0);
   const editDirty = useRef(false),
     panel = useRef<HTMLElement>(null);
   useEffect(() => {
@@ -291,10 +306,11 @@ function ProjectDetail({
               {(visited.has("overview") || active === "overview") && (
                 <div hidden={active !== "overview"}>
                   <SavedProjectOverview
-                    key={`${project.revision}:${sketchRefresh}`}
+                    key={`${project.revision}:${sketchRefresh}:${taskRefresh}`}
                     project={project}
                     owner={owner}
                     onOpenSketch={setSketchId}
+                    onRecordVoiceNote={recordVoiceNote}
                   />
                 </div>
               )}
@@ -306,7 +322,11 @@ function ProjectDetail({
                   >
                     {l.schedule}
                   </Link>
-                  <TaskPanel org={organizationId} project={id} />
+                  <TaskPanel
+                    org={organizationId}
+                    project={id}
+                    refreshKey={taskRefresh}
+                  />
                 </div>
               )}
               {owner && (visited.has("budget") || active === "budget") && (
@@ -332,6 +352,9 @@ function ProjectDetail({
                     organizationId={organizationId}
                     projectId={id}
                     canManage={owner}
+                    voiceNoteRequested={voiceNoteRequested}
+                    onVoiceNoteRequestHandled={voiceNoteRequestHandled}
+                    onTaskCreated={() => setTaskRefresh((n) => n + 1)}
                   />
                   <ProjectSketches
                     org={organizationId}

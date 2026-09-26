@@ -6,6 +6,11 @@ export default defineConfig({
   // Concurrent app/prototype servers must not overwrite each other’s optimized modules.
   cacheDir: "node_modules/.vite-app",
   plugins: [react(), tailwindcss()],
+  server: {
+    proxy: {
+      "/api": "http://127.0.0.1:3001",
+    },
+  },
   optimizeDeps: {
     include: [
       "pdfjs-dist",
@@ -44,5 +49,5 @@ export default defineConfig({
       },
     },
   },
-  test: { include: ["src/**/*.test.ts"] },
+  test: { include: ["src/**/*.test.ts", "apps/api/src/**/*.test.ts"] },
 });

@@ -4,7 +4,9 @@
     "includes": [
       "**",
       "!dist",
+      "!apps/api/dist",
       "!.cache",
+      "!.vscode",
       "!node_modules",
       "!pnpm-lock.yaml",
       "!test-results",

@@ -47,6 +47,12 @@ publishable key in browser configuration; never add a service-role or secret key
 `.env.local` is ignored by Git. Vite must be restarted after environment changes.
 The demo is accessible without Supabase configuration at `/projects`.
 
+An initial Fastify API package lives in `apps/api`. It exposes a health check,
+an owner-authorized project context read, and an optional voice-note AI route.
+The latter needs a server-only OpenAI key and a public UI flag; the API has no
+production deployment. Follow [API setup](docs/API.md) to run it in a second
+terminal with `pnpm dev:api`.
+
 The development Supabase project is **RenvoDesk**, reference
 `oripsywzngftarbprlgk`, in **Frankfurt (eu-central-1)**. Follow
 [Supabase setup](docs/SUPABASE.md) for email confirmation, callback/reset redirect
@@ -94,6 +100,10 @@ schedules, project files, team access and sketches are implemented. Full account
 quantity takeoff are outside the initial scope.
 
 ## Verification
+
+GitHub Actions runs the workspace checks and mocked desktop/mobile browser suite
+for pull requests and `main`. It does not publish the site or validate live
+Supabase services; see [CI](docs/CI.md).
 
 ```sh
 pnpm lint
@@ -316,7 +326,9 @@ continue to open the appropriate panel.
 
 ### Camera and voice attachments
 
-Project Documents → Take a photo / Voice note opens device capture. Review, choose Use this file, then Upload. Voice notes are limited to five minutes and 10 MiB, with private audio playback. Camera images are converted to JPEG (up to 2000 px on the longest edge). Device access requires browser permission and HTTPS, except localhost. Closing capture releases the device; switching away from the browser cancels capture. Existing owner upload permissions apply. No transcription is generated.
+Project Documents → Take a photo / Voice note opens device capture; owners also have a Record voice note shortcut on the project overview. Review, choose Use this file, then Upload. Voice notes are limited to five minutes and 10 MiB, with private audio playback. Camera images are converted to JPEG (up to 2000 px on the longest edge). Device access requires browser permission and HTTPS, except localhost. Closing capture releases the device; switching away from the browser cancels capture. Existing owner upload permissions apply.
+
+When the local Fastify API and AI feature flag are configured, owners can transcribe a ready WebM or MP4/M4A note. OpenAI returns a transcript and a tool-call proposal with a summary and up to five suggested tasks. The owner reviews and edits each suggestion before creating it; analysis does not write tasks. The API and AI feature are not deployed in production. See [API setup](docs/API.md).
 
 Project creation shows client details at all times. Select an existing client to autofill them, or enter a new client's details. Create project saves the new client in the directory and links the project. Client creation uses a stable retry ID; if project saving fails, the client may already exist and is reused on retry. Property selection remains optional.
 

@@ -1,3 +1,4 @@
+import { Mic } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -79,10 +80,12 @@ export function SavedProjectOverview({
   project,
   owner,
   onOpenSketch,
+  onRecordVoiceNote,
 }: {
   project: SavedProject;
   owner: boolean;
   onOpenSketch: (id: string) => void;
+  onRecordVoiceNote: () => void;
 }) {
   const { locale } = useLocale(),
     c = layoutCopy[locale],
@@ -91,6 +94,14 @@ export function SavedProjectOverview({
     base = `/workspace/${org}/projects/${id}`;
   return (
     <>
+      {owner && (
+        <div className="project-overview-actions">
+          <Button type="button" onClick={onRecordVoiceNote}>
+            <Mic size={18} aria-hidden="true" />
+            {c.recordVoiceNote}
+          </Button>
+        </div>
+      )}
       {owner && <CostSummary org={org} project={id} />}
       <div className="project-overview-grid">
         <div>

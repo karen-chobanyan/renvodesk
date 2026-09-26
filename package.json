@@ -9,10 +9,11 @@
   },
   "scripts": {
     "dev": "node scripts/copy-excalidraw-fonts.mjs && vite --host 127.0.0.1",
-    "build": "node scripts/copy-excalidraw-fonts.mjs && tsc --noEmit && vite build && node scripts/prerender-landing.mjs",
+    "dev:api": "pnpm --filter @renvodesk/api dev",
+    "build": "node scripts/copy-excalidraw-fonts.mjs && tsc --noEmit && vite build && node scripts/prerender-landing.mjs && pnpm --filter @renvodesk/api build",
     "build:production": "node scripts/check-production-config.mjs && pnpm build",
     "preview": "vite preview --host 127.0.0.1",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && pnpm --filter @renvodesk/api typecheck",
     "lint": "biome check .",
     "format": "biome check --write .",
     "test": "vitest run",

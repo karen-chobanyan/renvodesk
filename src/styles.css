@@ -1896,6 +1896,34 @@ th.numeric {
   max-width: 100%;
   margin: 1rem 0.5rem 1rem 0;
 }
+.dialog-content.site-note-review-dialog {
+  max-width: 680px;
+}
+.site-note-review-content {
+  display: grid;
+  gap: 24px;
+  margin: 24px 0;
+}
+.site-note-review-content h3 {
+  font-size: 15px;
+  margin: 0 0 10px;
+}
+.site-note-transcript {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.site-note-task {
+  border-top: 1px solid var(--border);
+  padding: 18px 0;
+}
+.site-note-task .field {
+  display: block;
+  margin-bottom: 12px;
+}
+.site-note-task textarea.input {
+  min-height: 84px;
+  resize: vertical;
+}
 
 .dialog-content.file-viewer-dialog {
   width: calc(100vw - 48px);
@@ -2718,6 +2746,10 @@ details[open] > .compact-identity > svg {
   margin: 0 0 12px;
   padding: 20px 0;
   border-top: 0;
+}
+.project-overview-actions {
+  display: flex;
+  margin-bottom: 16px;
 }
 .project-detail-workspace .metrics strong {
   font-size: clamp(21px, 2.3vw, 30px);
