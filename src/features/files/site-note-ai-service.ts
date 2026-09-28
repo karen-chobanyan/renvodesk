@@ -4,6 +4,8 @@ export type SiteNoteAnalysis = {
   transcript: string;
   summary: string;
   tasks: { title: string; notes: string; evidence: string }[];
+  omittedTaskCount: number;
+  proposalStatus: "ready" | "unavailable";
 };
 
 export async function analyzeSiteNote(
@@ -44,7 +46,14 @@ export async function analyzeSiteNote(
     !("summary" in result) ||
     typeof result.summary !== "string" ||
     !("tasks" in result) ||
-    !Array.isArray(result.tasks)
+    !Array.isArray(result.tasks) ||
+    !("omittedTaskCount" in result) ||
+    typeof result.omittedTaskCount !== "number" ||
+    !Number.isSafeInteger(result.omittedTaskCount) ||
+    result.omittedTaskCount < 0 ||
+    !("proposalStatus" in result) ||
+    (result.proposalStatus !== "ready" &&
+      result.proposalStatus !== "unavailable")
   )
     throw new Error("failed");
   return result as SiteNoteAnalysis;

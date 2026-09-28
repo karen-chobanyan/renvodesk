@@ -2579,6 +2579,8 @@ test("owner reviews an AI voice-note proposal before creating a task", async ({
       json: {
         transcript: "Vérifier la fenêtre de la cuisine.",
         summary: "Une fenêtre doit être vérifiée.",
+        omittedTaskCount: 1,
+        proposalStatus: "ready",
         tasks: [
           {
             title: "Vérifier la fenêtre",
@@ -2597,6 +2599,9 @@ test("owner reviews an AI voice-note proposal before creating a task", async ({
   await expect(dialog).toBeVisible();
   await expect(
     dialog.getByText("Vérifier la fenêtre de la cuisine."),
+  ).toBeVisible();
+  await expect(
+    dialog.getByText(/Certaines suggestions n’ont pas été affichées/),
   ).toBeVisible();
   expect(analyzed).toBe(1);
   expect(savedTasks).toHaveLength(0);

@@ -63,7 +63,8 @@ Request path:
    calls use the caller's bearer token and the publishable key, so existing grants
    and RLS still enforce row access. The server has no privileged key.
 5. It returns only the bounded project fields above. Missing projects return 404;
-   denied access returns 403; upstream errors are hidden behind 503.
+   denied access returns 403. A 503 includes a bounded `reason` code without
+   exposing provider, database or storage response bodies.
 
 Fastify's route in `apps/api/src/app.ts` owns HTTP validation and status codes.
 `apps/api/src/supabase-gateway.ts` owns Auth and data access. The gateway takes a
@@ -90,7 +91,10 @@ one forced `propose_site_note` function call. The function is a constrained
 review proposal with a summary and up to five tasks, each with a title, notes
 and supporting text. The server parses and validates the function arguments;
 it does **not** execute a task write. Both requests run server-side. Responses
-use `Cache-Control: no-store`, and the text request sets `store: false`.
+use `Cache-Control: no-store`, and the text request sets `store: false`. The
+server omits invalid or excess task suggestions and reports how many it omitted.
+If the proposal is malformed, it returns the valid transcript with
+`proposalStatus: "unavailable"` rather than discarding the transcription.
 
 The owner starts analysis from a ready audio file in Project Documents, reads
 the transcript and suggestions, edits each proposed task, and clicks **Create
@@ -99,6 +103,16 @@ stable request UUID per suggestion. No task is created merely by transcribing,
 and the analysis is lost on reload. Repeating analysis makes another provider
 request and can incur another charge; durable result caching, rate limits and
 background processing are still required before production.
+
+For a local `service_unavailable` response, inspect its `reason` field. The
+codes identify the failed stage: `auth_upstream`, `data_upstream`,
+`storage_upstream`, `storage_size_mismatch`, `transcription_upstream`,
+`transcription_invalid`, `proposal_upstream`, `proposal_invalid`, or
+`internal_error`. A failed OpenAI HTTP request also includes its numeric
+`upstreamStatus`. These codes are for troubleshooting; they do not include the
+recording, transcript, token, signed URL or raw upstream error. If a request
+started before this diagnostic change, restart `pnpm dev:api` and retry once
+to get a reason. Each retry may incur another provider charge.
 
 No cross-origin access is enabled. Production Nginx does not proxy `/api` and
 the API is not deployed; configure and verify the loopback process, reverse

@@ -1,6 +1,9 @@
 import Fastify from "fastify";
 import type { ProjectContextGateway } from "./project-context.js";
-import type { SiteNoteAnalyzer } from "./site-note-analysis.js";
+import {
+  OpenAIRequestError,
+  type SiteNoteAnalyzer,
+} from "./site-note-analysis.js";
 
 const uuidPattern =
   "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$";
@@ -17,6 +20,33 @@ interface SiteNoteParams extends ProjectParams {
 function bearerToken(header: string | undefined): string | null {
   const match = /^Bearer ([^\s]+)$/.exec(header ?? "");
   return match?.[1] ?? null;
+}
+
+function unavailableReason(error: unknown) {
+  if (error instanceof OpenAIRequestError)
+    return {
+      reason:
+        error.step === "transcription"
+          ? "transcription_upstream"
+          : "proposal_upstream",
+      upstreamStatus: error.upstreamStatus,
+    };
+  if (!(error instanceof Error)) return { reason: "internal_error" };
+  const reason = {
+    "Supabase Auth request failed": "auth_upstream",
+    "Supabase Data API request failed": "data_upstream",
+    "Unexpected Supabase Data API response": "data_response_invalid",
+    "Unexpected Supabase project response": "project_response_invalid",
+    "Unexpected Supabase file response": "file_response_invalid",
+    "Supabase Storage download failed": "storage_upstream",
+    "Unexpected Supabase Storage object size": "storage_size_mismatch",
+    "Invalid AI transcription": "transcription_invalid",
+    "Invalid AI response": "proposal_invalid",
+    "Missing AI proposal tool call": "proposal_invalid",
+    "Invalid AI proposal": "proposal_invalid",
+    "Invalid AI task proposal": "proposal_invalid",
+  }[error.message];
+  return { reason: reason ?? "internal_error" };
 }
 
 export function buildApp(
@@ -37,7 +67,9 @@ export function buildApp(
     ) {
       return reply.code(400).send({ error: "invalid_request" });
     }
-    return reply.code(503).send({ error: "service_unavailable" });
+    return reply
+      .code(503)
+      .send({ error: "service_unavailable", ...unavailableReason(error) });
   });
 
   app.get("/api/health", async (_request, reply) => {

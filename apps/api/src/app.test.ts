@@ -4,7 +4,10 @@ import type {
   ProjectContextGateway,
   ProjectContextResult,
 } from "./project-context.js";
-import type { SiteNoteAnalyzer } from "./site-note-analysis.js";
+import {
+  OpenAIRequestError,
+  type SiteNoteAnalyzer,
+} from "./site-note-analysis.js";
 
 const organizationId = "11111111-1111-4111-8111-111111111111";
 const projectId = "22222222-2222-4222-8222-222222222222";
@@ -133,7 +136,64 @@ describe("API routes", () => {
       headers: { authorization: "Bearer valid-token" },
     });
     expect(response.statusCode).toBe(503);
-    expect(response.json()).toEqual({ error: "service_unavailable" });
+    expect(response.json()).toEqual({
+      error: "service_unavailable",
+      reason: "internal_error",
+    });
+  });
+
+  it("reports bounded AI failure stages without exposing provider details", async () => {
+    const project = {
+      id: projectId,
+      organizationId,
+      name: "Kitchen renovation",
+      clientName: "Client",
+      city: "Brussels",
+      address: null,
+      status: "active",
+      revision: 1,
+    };
+    const gw = gateway({ kind: "found", project });
+    vi.mocked(gw.readOwnerAudio).mockResolvedValue({
+      kind: "found",
+      audio: {
+        bytes: new Uint8Array([1, 2]),
+        filename: "site-note.webm",
+        mimeType: "audio/webm",
+      },
+    });
+    const url = `/api/v1/organizations/${organizationId}/projects/${projectId}/files/44444444-4444-4444-8444-444444444444/ai-analysis`;
+    const analyzer = { analyze: vi.fn() };
+    const app = appFor(gw, analyzer);
+
+    analyzer.analyze.mockRejectedValueOnce(
+      new OpenAIRequestError("transcription", 429),
+    );
+    const upstream = await app.inject({
+      method: "POST",
+      url,
+      headers: { authorization: "Bearer token" },
+    });
+    expect(upstream.statusCode).toBe(503);
+    expect(upstream.json()).toEqual({
+      error: "service_unavailable",
+      reason: "transcription_upstream",
+      upstreamStatus: 429,
+    });
+
+    analyzer.analyze.mockRejectedValueOnce(
+      new Error("Invalid AI task proposal"),
+    );
+    const invalid = await app.inject({
+      method: "POST",
+      url,
+      headers: { authorization: "Bearer token" },
+    });
+    expect(invalid.statusCode).toBe(503);
+    expect(invalid.json()).toEqual({
+      error: "service_unavailable",
+      reason: "proposal_invalid",
+    });
   });
 
   it("analyzes only an owner's ready project audio after authorization", async () => {
@@ -153,6 +213,8 @@ describe("API routes", () => {
       analyze: vi.fn(async () => ({
         transcript: "Vérifier la fenêtre.",
         summary: "Fenêtre à vérifier.",
+        omittedTaskCount: 0,
+        proposalStatus: "ready" as const,
         tasks: [
           {
             title: "Vérifier la fenêtre",

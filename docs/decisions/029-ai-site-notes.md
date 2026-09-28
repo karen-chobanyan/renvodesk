@@ -6,7 +6,7 @@ Date: 2026-09-26. Status: implemented locally behind a disabled-by-default UI fl
 
 An owner may request analysis of a saved, ready WebM or MP4/M4A voice note from a project’s Documents tab. The Fastify API authenticates the caller with Supabase Auth, checks owner membership and project scope, and downloads the private file using the caller’s token and existing Storage policy. The browser never receives the provider credential.
 
-The server uses `gpt-transcribe` for transcription and forces a `propose_site_note` function call from `gpt-6-luna`. It validates the returned structure and length limits and requires each cited evidence passage to occur verbatim in the transcript. The function call produces a review proposal; the server never executes a task write from model output. The owner sees the transcript and suggestions, can edit each task, and explicitly creates tasks through the existing task service. Each suggestion has one request UUID for safe retries.
+The server uses `gpt-transcribe` for transcription and forces a `propose_site_note` function call from `gpt-6-luna`. It validates the returned structure and length limits and requires each displayed evidence passage to occur verbatim in the transcript. Invalid task suggestions are omitted and the owner is told when this happens. If the proposal envelope cannot be validated, the owner still receives the transcript with a clear unavailable state for the summary and suggestions. The function call produces a review proposal; the server never executes a task write from model output. The owner sees the transcript and verified suggestions, can edit each task, and explicitly creates tasks through the existing task service. Each suggestion has one request UUID for safe retries.
 
 Analysis results are transient in the page. No database migration, transcript retention, background job, automatic task creation, or customer-facing acceptance is part of this milestone. Ogg attachments remain available for storage but cannot use this transcription route.
 
@@ -52,7 +52,7 @@ Fastify validates the UUID route parameters and bearer header. The API checks th
 
 The API makes two sequential provider requests while the browser waits. First, it sends the audio with a generic filename to `gpt-transcribe` and requires a nonempty transcript of at most 15,000 characters. Second, it sends the transcript plus the project's name and city to `gpt-6-luna`. It asks for exactly one `propose_site_note` function call. The second request sets `store: false`; that setting alone is not a complete provider retention or data-residency guarantee.
 
-Here **tool calling** means the model returns structured arguments for a proposal: one summary and up to five task suggestions, each with a title, notes and evidence. The tool does not write to the task database. The server requires one call with the expected name, validates the output shape and text lengths, and requires every cited evidence passage to occur verbatim in the transcript. The instructions ask the model not to invent dates, prices, measurements, commitments or customer decisions, but these checks cannot prove that a suggested task is a sound interpretation. Human review remains required.
+Here **tool calling** means the model returns structured arguments for a proposal: one summary and up to five task suggestions, each with a title, notes and evidence. The tool does not write to the task database. The server requires one call with the expected name, validates the output shape and text lengths, and displays only tasks whose cited evidence passage occurs verbatim in the transcript. It omits invalid or excess suggestions and signals that omission in the review. A malformed overall proposal yields a transcript-only review with an unavailable notice. The instructions ask the model not to invent dates, prices, measurements, commitments or customer decisions, but these checks cannot prove that a suggested task is a sound interpretation. Human review remains required.
 
 ### 4. Review and create tasks
 
@@ -69,7 +69,7 @@ Each suggestion has one request UUID. Once a valid save is attempted, its fields
 
 ### Failure and retry behavior
 
-Invalid or missing authentication returns 401; a non-owner returns 403. A missing project or ready file returns 404, and unsupported audio returns 415. If no provider key is configured, the API returns `ai_unavailable` with 503. Upstream and invalid provider responses are shown as analysis failures without exposing internal details. Repeating **analysis** makes new provider requests and may incur new charges. That is separate from retrying a task insert with its stable request UUID. There is no background job or durable analysis cache.
+Invalid or missing authentication returns 401; a non-owner returns 403. A missing project or ready file returns 404, and unsupported audio returns 415. If no provider key is configured, the API returns `ai_unavailable` with 503. Upstream failures return bounded 503 reason codes without exposing internal details. Invalid proposal content is handled as described above, so a valid transcription remains visible. Repeating **analysis** makes new provider requests and may incur new charges. That is separate from retrying a task insert with its stable request UUID. There is no background job or durable analysis cache.
 
 ## Rollout limits
 

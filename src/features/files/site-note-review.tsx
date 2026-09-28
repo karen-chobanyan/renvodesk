@@ -13,8 +13,12 @@ const copy = {
       "Relisez la transcription et chaque suggestion. Aucune tâche n’est créée automatiquement. Le résultat disparaît si vous rechargez la page.",
     transcript: "Transcription",
     summary: "Résumé proposé",
+    proposalUnavailable:
+      "La transcription est disponible, mais le résumé et les tâches proposés n’ont pas pu être vérifiés. Vous pouvez réessayer l’analyse, ce qui peut entraîner un nouveau coût.",
     tasks: "Tâches proposées",
-    empty: "Aucune tâche claire n’a été trouvée dans cette note.",
+    empty: "Aucune tâche vérifiable n’est disponible pour cette note.",
+    omitted:
+      "Certaines suggestions n’ont pas été affichées, car leur passage cité ne figure pas dans la transcription ou leur contenu est invalide.",
     titleField: "Titre de la tâche",
     notesField: "Notes",
     evidence: "Passage cité par l’IA",
@@ -31,8 +35,12 @@ const copy = {
       "Check the transcript and each suggestion. No task is created automatically. Results disappear if you reload the page.",
     transcript: "Transcript",
     summary: "Suggested summary",
+    proposalUnavailable:
+      "The transcript is available, but the suggested summary and tasks could not be verified. You can retry analysis, which may incur another charge.",
     tasks: "Suggested tasks",
-    empty: "No clear task was found in this note.",
+    empty: "No verified task is available for this note.",
+    omitted:
+      "Some suggestions were hidden because their cited passage was absent from the transcript or their content was invalid.",
     titleField: "Task title",
     notesField: "Notes",
     evidence: "Passage cited by AI",
@@ -143,57 +151,70 @@ export function SiteNoteReview({
             <h3>{c.transcript}</h3>
             <p className="site-note-transcript">{analysis.transcript}</p>
           </section>
-          <section>
-            <h3>{c.summary}</h3>
-            <p>{analysis.summary}</p>
-          </section>
-          <section>
-            <h3>{c.tasks}</h3>
-            {tasks.length === 0 && <p>{c.empty}</p>}
-            {tasks.map((task, index) => (
-              <div className="site-note-task" key={task.id}>
-                <label className="field">
-                  {c.titleField}
-                  <input
-                    className="input"
-                    maxLength={160}
-                    value={task.title}
-                    disabled={task.saved || task.attempted}
-                    onChange={(event) =>
-                      change(index, "title", event.target.value)
-                    }
-                  />
-                </label>
-                <label className="field">
-                  {c.notesField}
-                  <textarea
-                    className="input"
-                    maxLength={2000}
-                    value={task.notes}
-                    disabled={task.saved || task.attempted}
-                    onChange={(event) =>
-                      change(index, "notes", event.target.value)
-                    }
-                  />
-                </label>
-                <p className="helper-text">
-                  <strong>{c.evidence}:</strong> {task.evidence}
+          {analysis.proposalStatus === "unavailable" ? (
+            <p role="status" className="helper-text">
+              {c.proposalUnavailable}
+            </p>
+          ) : (
+            <section>
+              <h3>{c.summary}</h3>
+              <p>{analysis.summary}</p>
+            </section>
+          )}
+          {analysis.proposalStatus === "ready" && (
+            <section>
+              <h3>{c.tasks}</h3>
+              {analysis.omittedTaskCount > 0 && (
+                <p role="status" className="helper-text">
+                  {c.omitted}
                 </p>
-                {task.error && (
-                  <p role="alert" className="error-message">
-                    {c[task.error]}
+              )}
+              {tasks.length === 0 && <p>{c.empty}</p>}
+              {tasks.map((task, index) => (
+                <div className="site-note-task" key={task.id}>
+                  <label className="field">
+                    {c.titleField}
+                    <input
+                      className="input"
+                      maxLength={160}
+                      value={task.title}
+                      disabled={task.saved || task.attempted}
+                      onChange={(event) =>
+                        change(index, "title", event.target.value)
+                      }
+                    />
+                  </label>
+                  <label className="field">
+                    {c.notesField}
+                    <textarea
+                      className="input"
+                      maxLength={2000}
+                      value={task.notes}
+                      disabled={task.saved || task.attempted}
+                      onChange={(event) =>
+                        change(index, "notes", event.target.value)
+                      }
+                    />
+                  </label>
+                  <p className="helper-text">
+                    <strong>{c.evidence}:</strong> {task.evidence}
                   </p>
-                )}
-                {task.saved ? (
-                  <p role="status">{c.saved}</p>
-                ) : (
-                  <Button disabled={busy} onClick={() => void create(index)}>
-                    {c.create}
-                  </Button>
-                )}
-              </div>
-            ))}
-          </section>
+                  {task.error && (
+                    <p role="alert" className="error-message">
+                      {c[task.error]}
+                    </p>
+                  )}
+                  {task.saved ? (
+                    <p role="status">{c.saved}</p>
+                  ) : (
+                    <Button disabled={busy} onClick={() => void create(index)}>
+                      {c.create}
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </section>
+          )}
         </div>
         <div className="dialog-actions">
           <Button variant="outline" disabled={busy} onClick={close}>

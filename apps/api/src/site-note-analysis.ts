@@ -10,6 +10,8 @@ export interface SiteNoteAnalysis {
   transcript: string;
   summary: string;
   tasks: SiteNoteTaskProposal[];
+  omittedTaskCount: number;
+  proposalStatus: "ready" | "unavailable";
 }
 
 export interface SiteNoteAnalyzer {
@@ -19,6 +21,15 @@ export interface SiteNoteAnalyzer {
     mimeType: "audio/webm" | "audio/mp4";
     project: ProjectContext;
   }): Promise<SiteNoteAnalysis>;
+}
+
+export class OpenAIRequestError extends Error {
+  constructor(
+    readonly step: "transcription" | "proposal",
+    readonly upstreamStatus: number,
+  ) {
+    super("AI provider request failed");
+  }
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -34,15 +45,16 @@ function requiredText(value: unknown, max: number): value is string {
 export function validateProposal(
   value: unknown,
   transcript: string,
-): Pick<SiteNoteAnalysis, "summary" | "tasks"> {
+): Pick<SiteNoteAnalysis, "summary" | "tasks" | "omittedTaskCount"> {
   if (
     !isRecord(value) ||
     !requiredText(value.summary, 1000) ||
-    !Array.isArray(value.tasks) ||
-    value.tasks.length > 5
+    !Array.isArray(value.tasks)
   )
     throw new Error("Invalid AI proposal");
-  const tasks = value.tasks.map((task) => {
+  const tasks: SiteNoteTaskProposal[] = [];
+  let omittedTaskCount = 0;
+  for (const task of value.tasks) {
     if (
       !isRecord(task) ||
       !requiredText(task.title, 160) ||
@@ -50,15 +62,21 @@ export function validateProposal(
       task.notes.length > 2000 ||
       !requiredText(task.evidence, 500) ||
       !transcript.includes(task.evidence.trim())
-    )
-      throw new Error("Invalid AI task proposal");
-    return {
+    ) {
+      omittedTaskCount += 1;
+      continue;
+    }
+    if (tasks.length === 5) {
+      omittedTaskCount += 1;
+      continue;
+    }
+    tasks.push({
       title: task.title.trim(),
       notes: task.notes.trim(),
       evidence: task.evidence.trim(),
-    };
-  });
-  return { summary: value.summary.trim(), tasks };
+    });
+  }
+  return { summary: value.summary.trim(), tasks, omittedTaskCount };
 }
 
 export function createOpenAISiteNoteAnalyzer(
@@ -80,7 +98,11 @@ export function createOpenAISiteNoteAnalyzer(
       body,
       signal: AbortSignal.timeout(90_000),
     });
-    if (!response.ok) throw new Error("AI provider request failed");
+    if (!response.ok)
+      throw new OpenAIRequestError(
+        path === "audio/transcriptions" ? "transcription" : "proposal",
+        response.status,
+      );
     return (await response.json()) as unknown;
   }
 
@@ -141,23 +163,45 @@ export function createOpenAISiteNoteAnalyzer(
         }),
         "application/json",
       );
-      if (!isRecord(response) || !Array.isArray(response.output))
-        throw new Error("Invalid AI response");
-      const calls = response.output.filter(
-        (item): item is Record<string, unknown> =>
-          isRecord(item) && item.type === "function_call",
-      );
-      if (
-        calls.length !== 1 ||
-        calls[0].name !== "propose_site_note" ||
-        typeof calls[0].arguments !== "string"
-      )
-        throw new Error("Missing AI proposal tool call");
-      const proposal = validateProposal(
-        JSON.parse(calls[0].arguments),
-        transcript,
-      );
-      return { transcript, ...proposal };
+      try {
+        if (!isRecord(response) || !Array.isArray(response.output))
+          throw new Error("Invalid AI response");
+        const calls = response.output.filter(
+          (item): item is Record<string, unknown> =>
+            isRecord(item) && item.type === "function_call",
+        );
+        if (
+          calls.length !== 1 ||
+          calls[0].name !== "propose_site_note" ||
+          typeof calls[0].arguments !== "string"
+        )
+          throw new Error("Missing AI proposal tool call");
+        let argumentsValue: unknown;
+        try {
+          argumentsValue = JSON.parse(calls[0].arguments);
+        } catch {
+          throw new Error("Invalid AI proposal");
+        }
+        const proposal = validateProposal(argumentsValue, transcript);
+        return { transcript, ...proposal, proposalStatus: "ready" };
+      } catch (error) {
+        if (
+          !(error instanceof Error) ||
+          ![
+            "Invalid AI response",
+            "Missing AI proposal tool call",
+            "Invalid AI proposal",
+          ].includes(error.message)
+        )
+          throw error;
+        return {
+          transcript,
+          summary: "",
+          tasks: [],
+          omittedTaskCount: 0,
+          proposalStatus: "unavailable",
+        };
+      }
     },
   };
 }
