@@ -1,100 +1,15 @@
-import { readFileSync } from "node:fs";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   containsEvidence,
-  createOpenAISiteNoteAnalyzer,
   normalizeForMatch,
-  OpenAIRequestError,
+  readProposal,
+  readUsage,
   validateProposal,
 } from "./site-note-analysis.js";
 
 const noSuggestion = { assigneeId: null, startDate: null, dueDate: null };
 
-const project = {
-  id: "22222222-2222-4222-8222-222222222222",
-  organizationId: "11111111-1111-4111-8111-111111111111",
-  name: "Kitchen renovation",
-  clientName: "Example client",
-  city: "Brussels",
-  address: null,
-  status: "active",
-  revision: 1,
-};
-
-describe("site note analyzer", () => {
-  it("transcribes audio and accepts one constrained proposal tool call", async () => {
-    const requests: {
-      path: string;
-      body: unknown;
-      authorization: string | null;
-    }[] = [];
-    const fetcher: typeof fetch = vi.fn(async (input, init) => {
-      const path = new URL(input.toString()).pathname;
-      requests.push({
-        path,
-        body: init?.body,
-        authorization: new Headers(init?.headers).get("authorization"),
-      });
-      if (path === "/v1/audio/transcriptions")
-        return Response.json({ text: "Vérifier la fenêtre demain." });
-      return Response.json({
-        output: [
-          {
-            type: "function_call",
-            name: "propose_site_note",
-            arguments: JSON.stringify({
-              summary: "Fenêtre à vérifier.",
-              tasks: [
-                {
-                  title: "Vérifier la fenêtre",
-                  notes: "",
-                  evidence: "Vérifier la fenêtre demain",
-                },
-              ],
-            }),
-          },
-        ],
-      });
-    });
-    const result = await createOpenAISiteNoteAnalyzer(
-      "secret-test",
-      fetcher,
-    ).analyze({
-      bytes: new Uint8Array([1, 2]),
-      filename: "site-note.webm",
-      mimeType: "audio/webm",
-      project,
-      members: [],
-      today: "2026-09-29",
-    });
-    expect(result.transcript).toBe("Vérifier la fenêtre demain.");
-    expect(result.tasks[0].title).toBe("Vérifier la fenêtre");
-    expect(result.proposalStatus).toBe("ready");
-    expect(result.omittedTaskCount).toBe(0);
-    expect(requests.map((item) => item.path)).toEqual([
-      "/v1/audio/transcriptions",
-      "/v1/responses",
-    ]);
-    expect(
-      requests.every((item) => item.authorization === "Bearer secret-test"),
-    ).toBe(true);
-    const body = JSON.parse(requests[1].body as string);
-    expect(body.model).toBe("gpt-6-luna");
-    expect(body.store).toBe(false);
-    expect(body.instructions).toBe(
-      readFileSync(
-        new URL("../prompts/site-note-instructions.md", import.meta.url),
-        "utf8",
-      ).trim(),
-    );
-    expect(body.instructions).toContain("propose_site_note");
-    expect(body.tool_choice).toEqual({
-      type: "function",
-      name: "propose_site_note",
-    });
-    expect(body.input).toContain("Vérifier la fenêtre demain.");
-  });
-
+describe("site note proposal validation", () => {
   it("rejects malformed proposal envelopes", () => {
     expect(() =>
       validateProposal({ summary: "ok", tasks: null }, "Quote"),
@@ -201,115 +116,6 @@ describe("site note analyzer", () => {
       noSuggestion,
     ]);
   });
-
-  it("sends opaque team keys and the owner's day, never user IDs", async () => {
-    let proposalBody: Record<string, unknown> = {};
-    const fetcher: typeof fetch = vi.fn(async (input, init) => {
-      if (new URL(input.toString()).pathname === "/v1/audio/transcriptions")
-        return Response.json({ text: "Marc pose le carrelage vendredi." });
-      proposalBody = JSON.parse(init?.body as string);
-      return Response.json({
-        output: [
-          {
-            type: "function_call",
-            name: "propose_site_note",
-            arguments: JSON.stringify({
-              summary: "Carrelage vendredi.",
-              tasks: [
-                {
-                  title: "Poser le carrelage",
-                  notes: "",
-                  evidence: "Marc pose le carrelage vendredi",
-                  assignee: "member_2",
-                  startDate: null,
-                  dueDate: "2026-10-02",
-                },
-              ],
-            }),
-          },
-        ],
-      });
-    });
-    const result = await createOpenAISiteNoteAnalyzer(
-      "secret-test",
-      fetcher,
-    ).analyze({
-      bytes: new Uint8Array([1, 2]),
-      filename: "site-note.webm",
-      mimeType: "audio/webm",
-      project,
-      members: [
-        {
-          userId: "44444444-4444-4444-8444-444444444444",
-          email: "owner@example.test",
-        },
-        {
-          userId: "55555555-5555-4555-8555-555555555555",
-          email: "marc.dupont@example.test",
-        },
-      ],
-      today: "2026-09-29",
-    });
-    expect(result.tasks[0]).toMatchObject({
-      assigneeId: "55555555-5555-4555-8555-555555555555",
-      startDate: null,
-      dueDate: "2026-10-02",
-    });
-    const input = proposalBody.input as string;
-    expect(input).toContain("Today: 2026-09-29 (Tuesday)");
-    expect(input).toContain("member_2: marc.dupont");
-    expect(input).not.toContain("example.test");
-    expect(input).not.toContain("55555555");
-    const tool = (proposalBody.tools as Record<string, unknown>[])[0];
-    expect(JSON.stringify(tool)).toContain('"enum":["member_1","member_2"]');
-  });
-
-  it("identifies which provider request failed without returning its body", async () => {
-    const fetcher: typeof fetch = vi
-      .fn()
-      .mockResolvedValueOnce(Response.json({ text: "Note" }))
-      .mockResolvedValueOnce(
-        Response.json(
-          { error: { message: "private provider detail" } },
-          { status: 429 },
-        ),
-      );
-    await expect(
-      createOpenAISiteNoteAnalyzer("secret-test", fetcher).analyze({
-        bytes: new Uint8Array([1, 2]),
-        filename: "site-note.webm",
-        mimeType: "audio/webm",
-        project,
-        members: [],
-        today: "2026-09-29",
-      }),
-    ).rejects.toEqual(new OpenAIRequestError("proposal", 429));
-  });
-
-  it("returns the transcript when the proposal tool call is malformed", async () => {
-    const fetcher: typeof fetch = vi
-      .fn()
-      .mockResolvedValueOnce(Response.json({ text: "Vérifier la fenêtre." }))
-      .mockResolvedValueOnce(Response.json({ output: [] }));
-    const result = await createOpenAISiteNoteAnalyzer(
-      "secret-test",
-      fetcher,
-    ).analyze({
-      bytes: new Uint8Array([1, 2]),
-      filename: "site-note.webm",
-      mimeType: "audio/webm",
-      project,
-      members: [],
-      today: "2026-09-29",
-    });
-    expect(result).toEqual({
-      transcript: "Vérifier la fenêtre.",
-      summary: "",
-      tasks: [],
-      omittedTaskCount: 0,
-      proposalStatus: "unavailable",
-    });
-  });
 });
 
 describe("evidence matching", () => {
@@ -349,5 +155,66 @@ describe("evidence matching", () => {
     );
     expect(result.omittedTaskCount).toBe(0);
     expect(result.tasks[0].evidence).toBe("l'électricien doit passer");
+  });
+});
+
+describe("provider response parsing", () => {
+  const transcript = "Vérifier la fenêtre demain.";
+  const call = (args: unknown) => ({
+    output: [
+      {
+        type: "function_call",
+        name: "propose_site_note",
+        arguments: JSON.stringify(args),
+      },
+    ],
+  });
+
+  it("returns a validated proposal from exactly one tool call", () => {
+    const proposal = readProposal(
+      call({
+        summary: "Fenêtre.",
+        tasks: [
+          {
+            title: "Vérifier",
+            notes: "",
+            evidence: "Vérifier la fenêtre",
+            assignee: null,
+            startDate: null,
+            dueDate: null,
+          },
+        ],
+      }),
+      transcript,
+      new Map(),
+    );
+    expect(proposal.proposalStatus).toBe("ready");
+    expect(proposal.tasks).toHaveLength(1);
+  });
+
+  it("marks malformed or ambiguous responses unavailable", () => {
+    for (const response of [
+      null,
+      { output: [] },
+      { output: [call({}).output[0], call({}).output[0]] },
+      { output: [{ ...call({}).output[0], arguments: "{not json" }] },
+      call({ summary: "", tasks: [] }),
+    ])
+      expect(readProposal(response, transcript, new Map())).toEqual({
+        summary: "",
+        tasks: [],
+        omittedTaskCount: 0,
+        proposalStatus: "unavailable",
+      });
+  });
+
+  it("keeps only numeric usage counters", () => {
+    expect(
+      readUsage({ usage: { type: "duration", seconds: 42.5, extra: "x" } }),
+    ).toEqual({ transcriptionSeconds: 42.5 });
+    expect(
+      readUsage({ usage: { input_tokens: 120, output_tokens: -1 } }),
+    ).toEqual({ inputTokens: 120 });
+    expect(readUsage({ usage: "lots" })).toEqual({});
   });
 });

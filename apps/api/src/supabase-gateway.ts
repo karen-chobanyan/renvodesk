@@ -6,6 +6,7 @@ import type {
   ProjectContextGateway,
   ProjectContextResult,
 } from "./project-context.js";
+import { createSupabaseRest } from "./supabase-rest.js";
 
 interface AuthUser {
   id?: unknown;
@@ -79,35 +80,10 @@ function isMemberRow(
 }
 
 export function createSupabaseGateway(
-  config: ApiConfig,
+  config: Pick<ApiConfig, "supabaseUrl" | "supabasePublishableKey">,
   fetcher: typeof fetch = fetch,
 ): ProjectContextGateway {
-  async function request(path: string, accessToken: string, body?: unknown) {
-    return fetcher(new URL(path, config.supabaseUrl), {
-      ...(body === undefined
-        ? {}
-        : { method: "POST", body: JSON.stringify(body) }),
-      headers: {
-        apikey: config.supabasePublishableKey,
-        Authorization: `Bearer ${accessToken}`,
-        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
-      },
-      signal: AbortSignal.timeout(10_000),
-    });
-  }
-
-  async function readRows(
-    path: string,
-    accessToken: string,
-    payload?: unknown,
-  ): Promise<unknown[]> {
-    const response = await request(path, accessToken, payload);
-    if (!response.ok) throw new Error("Supabase Data API request failed");
-    const body: unknown = await response.json();
-    if (!Array.isArray(body))
-      throw new Error("Unexpected Supabase Data API response");
-    return body;
-  }
+  const { request, readRows } = createSupabaseRest(config, fetcher);
 
   return {
     async authenticate(accessToken): Promise<Caller | null> {

@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import type { AssignableMember, ProjectContext } from "./project-context.js";
 
@@ -18,15 +19,40 @@ export interface SiteNoteAnalysis {
   proposalStatus: "ready" | "unavailable";
 }
 
+export type SiteNoteProposal = Omit<SiteNoteAnalysis, "transcript">;
+
+export interface AnalysisUsage {
+  transcriptionSeconds?: number;
+  inputTokens?: number;
+  outputTokens?: number;
+}
+
+export interface AnalysisVersions {
+  promptVersion: string;
+  transcriptionModel: string;
+  proposalModel: string;
+}
+
+export interface ProposalInput {
+  transcript: string;
+  project: ProjectContext;
+  members: AssignableMember[];
+  today: string;
+}
+
+// Two steps so a job can record progress, and so a stored transcript can
+// later be re-proposed without paying for transcription again.
 export interface SiteNoteAnalyzer {
-  analyze(input: {
+  readonly versions: AnalysisVersions;
+  transcribe(input: {
     bytes: Uint8Array;
     filename: string;
     mimeType: "audio/webm" | "audio/mp4";
-    project: ProjectContext;
-    members: AssignableMember[];
-    today: string;
-  }): Promise<SiteNoteAnalysis>;
+    signal?: AbortSignal;
+  }): Promise<{ transcript: string; usage: AnalysisUsage }>;
+  propose(
+    input: ProposalInput & { signal?: AbortSignal },
+  ): Promise<SiteNoteProposal & { usage: AnalysisUsage }>;
 }
 
 export class OpenAIRequestError extends Error {
@@ -202,6 +228,12 @@ const instructions = readFileSync(
   "utf8",
 ).trim();
 
+// Stored with every analysis so results from an older prompt are not reused.
+export const promptVersion = createHash("sha256")
+  .update(instructions)
+  .digest("hex")
+  .slice(0, 12);
+
 function proposalInput(
   project: ProjectContext,
   today: string,
@@ -219,104 +251,88 @@ function proposalInput(
   return `Project: ${project.name}\nCity: ${project.city}\nToday: ${today} (${weekday})\nTeam (key: e-mail name):\n${team}\nTranscript:\n${transcript}`;
 }
 
-export function createOpenAISiteNoteAnalyzer(
-  apiKey: string,
-  fetcher: typeof fetch = fetch,
-  origin = "https://api.openai.com",
-): SiteNoteAnalyzer {
-  async function openAI(
-    path: string,
-    body: FormData | string,
-    contentType?: string,
-  ) {
-    const response = await fetcher(`${origin}/v1/${path}`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        ...(contentType ? { "Content-Type": contentType } : {}),
-      },
-      body,
-      signal: AbortSignal.timeout(90_000),
-    });
-    if (!response.ok)
-      throw new OpenAIRequestError(
-        path === "audio/transcriptions" ? "transcription" : "proposal",
-        response.status,
-      );
-    return (await response.json()) as unknown;
-  }
+export function proposalRequest(
+  model: string,
+  input: ProposalInput,
+): { body: string; assignees: ReadonlyMap<string, string> } {
+  const candidates = assigneeCandidates(input.members);
+  const body = JSON.stringify({
+    model,
+    reasoning: { effort: "low" },
+    store: false,
+    parallel_tool_calls: false,
+    instructions,
+    input: proposalInput(
+      input.project,
+      input.today,
+      candidates,
+      input.transcript,
+    ),
+    tools: [proposalTool(candidates.map((c) => c.key))],
+    tool_choice: { type: "function", name: "propose_site_note" },
+  });
+  return { body, assignees: new Map(candidates.map((c) => [c.key, c.userId])) };
+}
 
-  return {
-    async analyze({ bytes, filename, mimeType, project, members, today }) {
-      const form = new FormData();
-      form.append("model", "gpt-transcribe");
-      form.append(
-        "file",
-        new Blob([Buffer.from(bytes)], { type: mimeType }),
-        filename,
-      );
-      const transcription = await openAI("audio/transcriptions", form);
-      if (!isRecord(transcription) || !requiredText(transcription.text, 15000))
-        throw new Error("Invalid AI transcription");
-      const transcript = transcription.text.trim();
-      const candidates = assigneeCandidates(members);
-      const response = await openAI(
-        "responses",
-        JSON.stringify({
-          model: "gpt-6-luna",
-          reasoning: { effort: "low" },
-          store: false,
-          parallel_tool_calls: false,
-          instructions,
-          input: proposalInput(project, today, candidates, transcript),
-          tools: [proposalTool(candidates.map((c) => c.key))],
-          tool_choice: { type: "function", name: "propose_site_note" },
-        }),
-        "application/json",
-      );
-      try {
-        if (!isRecord(response) || !Array.isArray(response.output))
-          throw new Error("Invalid AI response");
-        const calls = response.output.filter(
-          (item): item is Record<string, unknown> =>
-            isRecord(item) && item.type === "function_call",
-        );
-        if (
-          calls.length !== 1 ||
-          calls[0].name !== "propose_site_note" ||
-          typeof calls[0].arguments !== "string"
-        )
-          throw new Error("Missing AI proposal tool call");
-        let argumentsValue: unknown;
-        try {
-          argumentsValue = JSON.parse(calls[0].arguments);
-        } catch {
-          throw new Error("Invalid AI proposal");
-        }
-        const proposal = validateProposal(
-          argumentsValue,
-          transcript,
-          new Map(candidates.map((c) => [c.key, c.userId])),
-        );
-        return { transcript, ...proposal, proposalStatus: "ready" };
-      } catch (error) {
-        if (
-          !(error instanceof Error) ||
-          ![
-            "Invalid AI response",
-            "Missing AI proposal tool call",
-            "Invalid AI proposal",
-          ].includes(error.message)
-        )
-          throw error;
-        return {
-          transcript,
-          summary: "",
-          tasks: [],
-          omittedTaskCount: 0,
-          proposalStatus: "unavailable",
-        };
-      }
-    },
+const unavailableProposal: SiteNoteProposal = {
+  summary: "",
+  tasks: [],
+  omittedTaskCount: 0,
+  proposalStatus: "unavailable",
+};
+
+// A malformed proposal must not discard a valid (and already paid) transcript.
+export function readProposal(
+  response: unknown,
+  transcript: string,
+  assignees: ReadonlyMap<string, string>,
+): SiteNoteProposal {
+  if (!isRecord(response) || !Array.isArray(response.output))
+    return unavailableProposal;
+  const calls = response.output.filter(
+    (item): item is Record<string, unknown> =>
+      isRecord(item) && item.type === "function_call",
+  );
+  if (
+    calls.length !== 1 ||
+    calls[0].name !== "propose_site_note" ||
+    typeof calls[0].arguments !== "string"
+  )
+    return unavailableProposal;
+  try {
+    const value: unknown = JSON.parse(calls[0].arguments);
+    return {
+      ...validateProposal(value, transcript, assignees),
+      proposalStatus: "ready",
+    };
+  } catch {
+    return unavailableProposal;
+  }
+}
+
+function count(value: unknown) {
+  return typeof value === "number" && Number.isFinite(value) && value >= 0
+    ? value
+    : undefined;
+}
+
+// Only numeric counters are kept; provider payloads are never stored.
+export function readUsage(response: unknown): AnalysisUsage {
+  if (!isRecord(response) || !isRecord(response.usage)) return {};
+  const usage = response.usage;
+  const entries = {
+    transcriptionSeconds:
+      usage.type === "duration" ? count(usage.seconds) : undefined,
+    inputTokens: count(usage.input_tokens),
+    outputTokens: count(usage.output_tokens),
   };
+  return Object.fromEntries(
+    Object.entries(entries).filter(([, v]) => v !== undefined),
+  ) as AnalysisUsage;
+}
+
+export function readTranscript(response: unknown) {
+  if (!isRecord(response) || !requiredText(response.text, 15000))
+    throw new Error("Invalid AI transcription");
+  return response.text.trim();
 }

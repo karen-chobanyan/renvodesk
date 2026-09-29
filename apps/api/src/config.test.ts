@@ -14,6 +14,11 @@ describe("API configuration", () => {
       supabasePublishableKey: "sb_publishable_test",
       port: 3001,
       openaiApiOrigin: "https://api.openai.com",
+      aiModels: {
+        transcriptionModel: "gpt-transcribe",
+        proposalModel: "gpt-6-luna",
+      },
+      aiMaxConcurrentJobs: 4,
     });
   });
 
@@ -33,5 +38,18 @@ describe("API configuration", () => {
     expect(() =>
       readConfig({ ...valid, OPENAI_API_ORIGIN: "https://example.com" }),
     ).toThrow();
+    expect(() =>
+      readConfig({ ...valid, AI_PROPOSAL_MODEL: "unreviewed-model" }),
+    ).toThrow();
+    expect(() =>
+      readConfig({ ...valid, AI_TRANSCRIPTION_MODEL: "gpt-6-luna" }),
+    ).toThrow();
+    for (const value of ["0", "17", "2.5", "x"])
+      expect(() =>
+        readConfig({ ...valid, AI_MAX_CONCURRENT_JOBS: value }),
+      ).toThrow();
+    expect(
+      readConfig({ ...valid, AI_MAX_CONCURRENT_JOBS: "2" }).aiMaxConcurrentJobs,
+    ).toBe(2);
   });
 });
