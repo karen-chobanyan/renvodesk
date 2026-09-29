@@ -1,0 +1,13 @@
+# Install as /etc/logrotate.d/renvodesk-api. Rotates only RenvoDesk API logs;
+# other PM2 apps on the host are unaffected. copytruncate keeps PM2's open
+# file handles valid without restarting the process.
+/var/log/renvodesk-api/*.log {
+    daily
+    rotate 14
+    maxsize 20M
+    missingok
+    notifempty
+    compress
+    delaycompress
+    copytruncate
+}

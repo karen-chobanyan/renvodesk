@@ -580,6 +580,9 @@ on the same HTTP/HTTPS ports. The installed HTTPS configuration was updated on
 2026-09-25 to serve the PDF.js `.mjs` worker as JavaScript, and a real saved PDF
 rendered in the production browser. See the production PDF worker plan. Review
 future VPS configuration changes separately from the repository template.
+The Fastify API runs under PM2 in root's shared daemon as the unprivileged
+`renvodesk-api` user on 127.0.0.1:3181, with exactly one instance; Nginx proxies
+`/api/`. See docs/API-DEPLOYMENT.md. Never run daemon-wide PM2 commands there.
 
 ## Project DXF previews
 

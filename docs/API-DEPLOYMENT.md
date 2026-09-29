@@ -35,14 +35,21 @@ Type `OPENAI_API_KEY` directly on the server. Never paste it into chat, tickets,
 shell history or git. Leaving it empty keeps AI unavailable while the rest of
 the API runs.
 
-Install the unit (`scp deploy/renvodesk-api.service` first). If `which node`
-is not `/usr/bin/node`, edit `ExecStart` accordingly.
+The API runs under **PM2** in root's existing daemon (`pm2-root.service`
+already restores processes on boot). PM2 starts it as the unprivileged
+`renvodesk-api` user, and Node reads `/etc/renvodesk/api.env` itself via
+`--env-file`, so secrets never enter PM2's saved process list. Copy
+`deploy/ecosystem.config.cjs` and `deploy/renvodesk-api.logrotate` to the server:
 
 ```sh
-sudo cp ~/renvodesk-api.service /etc/systemd/system/renvodesk-api.service
-sudo systemctl daemon-reload
-sudo systemctl enable renvodesk-api
+sudo install -d -m 0755 /var/log/renvodesk-api
+sudo install -m 0644 ~/ecosystem.config.cjs /opt/renvodesk-api/ecosystem.config.cjs
+sudo install -m 0644 ~/renvodesk-api.logrotate /etc/logrotate.d/renvodesk-api
 ```
+
+The PM2 daemon is shared with other applications. Do not run `pm2 update`,
+`pm2 kill`, `pm2 restart all` or install PM2 modules for RenvoDesk: those
+affect every app. Always address the process by name.
 
 ## 2. Publish an API release
 
@@ -64,8 +71,10 @@ sudo tar -xzf ~/renvodesk-api.tgz -C "$release"
 sudo chown -R root:root "$release" && sudo chmod -R a+rX,go-w "$release"
 sudo ln -sfn "$release" /opt/renvodesk-api/current.next
 sudo mv -Tf /opt/renvodesk-api/current.next /opt/renvodesk-api/current
-sudo systemctl restart renvodesk-api
-systemctl status renvodesk-api --no-pager
+# First release only: start it, then save the process list for reboots.
+#   sudo pm2 start /opt/renvodesk-api/ecosystem.config.cjs && sudo pm2 save
+sudo pm2 restart renvodesk-api
+sudo pm2 describe renvodesk-api | grep -E "status|user|restarts"
 curl -s http://127.0.0.1:3181/api/health   # {"status":"ok"}
 ```
 
@@ -103,7 +112,7 @@ curl -s -o /dev/null -w '%{http_code}\n' https://renvodesk.com/api/other   # 404
 - Landing pages, login, a workspace deep link and a PDF preview still work.
 - As an owner of a company that is **not** enabled: Documents shows no AI
   action or AI notice.
-- `journalctl -u renvodesk-api --since "10 min ago"` shows only start-up lines
+- `sudo tail -n 50 /var/log/renvodesk-api/out.log` shows only start-up lines
   and `site_note_job_*` events — no URLs, transcripts or tokens.
 
 To try AI on your own company with a synthetic recording, enable it in the
@@ -121,9 +130,11 @@ progress, the review dialog, task creation, and a free reopen on a second click.
 ## Rollback and kill switches
 
 - Web: point `/var/www/renvodesk/current` back to the previous release.
-- API: point `/opt/renvodesk-api/current` to the previous release and restart.
+- API: point `/opt/renvodesk-api/current` to the previous release and
+  `sudo pm2 restart renvodesk-api`. To stop it: `sudo pm2 stop renvodesk-api`.
 - Turn AI off for everyone immediately: empty `OPENAI_API_KEY` in
-  `/etc/renvodesk/api.env` and restart — the UI hides the action.
+  `/etc/renvodesk/api.env` and `sudo pm2 restart renvodesk-api` — the UI hides
+  the action.
 - Turn AI off for one company: `update private.ai_site_note_entitlements set
   enabled = false where organization_id = '<company id>';`
 - Nginx: restore the backup copy, `nginx -t`, reload.
