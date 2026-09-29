@@ -12,6 +12,7 @@ import {
 const organizationId = "11111111-1111-4111-8111-111111111111";
 const projectId = "22222222-2222-4222-8222-222222222222";
 const path = `/api/v1/organizations/${organizationId}/projects/${projectId}/ai-context`;
+const today = new Date().toISOString().slice(0, 10);
 
 function gateway(result: ProjectContextResult): ProjectContextGateway {
   return {
@@ -21,6 +22,12 @@ function gateway(result: ProjectContextResult): ProjectContextGateway {
     })),
     readOwnerProject: vi.fn(async () => result),
     readOwnerAudio: vi.fn(async () => ({ kind: "not_found" as const })),
+    readAssignableMembers: vi.fn(async () => [
+      {
+        userId: "55555555-5555-4555-8555-555555555555",
+        email: "marc@example.test",
+      },
+    ]),
   };
 }
 
@@ -172,6 +179,7 @@ describe("API routes", () => {
     const upstream = await app.inject({
       method: "POST",
       url,
+      payload: { today },
       headers: { authorization: "Bearer token" },
     });
     expect(upstream.statusCode).toBe(503);
@@ -187,6 +195,7 @@ describe("API routes", () => {
     const invalid = await app.inject({
       method: "POST",
       url,
+      payload: { today },
       headers: { authorization: "Bearer token" },
     });
     expect(invalid.statusCode).toBe(503);
@@ -228,6 +237,7 @@ describe("API routes", () => {
     const deniedResponse = await appFor(denied, analyzer).inject({
       method: "POST",
       url,
+      payload: { today },
       headers: { authorization: "Bearer token" },
     });
     expect(deniedResponse.statusCode).toBe(403);
@@ -246,6 +256,7 @@ describe("API routes", () => {
     const response = await appFor(allowed, analyzer).inject({
       method: "POST",
       url,
+      payload: { today },
       headers: { authorization: "Bearer token" },
     });
     expect(response.statusCode).toBe(200);
@@ -255,7 +266,42 @@ describe("API routes", () => {
       filename: "site-note.webm",
       mimeType: "audio/webm",
       project,
+      members: [
+        {
+          userId: "55555555-5555-4555-8555-555555555555",
+          email: "marc@example.test",
+        },
+      ],
+      today,
     });
+    expect(allowed.readAssignableMembers).toHaveBeenCalledWith(
+      expect.objectContaining({ accessToken: "token" }),
+      organizationId,
+    );
+  });
+
+  it("rejects a missing or implausible local date before authentication", async () => {
+    const gw = gateway({ kind: "forbidden" });
+    const analyzer = { analyze: vi.fn() };
+    const app = appFor(gw, analyzer);
+    const url = `/api/v1/organizations/${organizationId}/projects/${projectId}/files/44444444-4444-4444-8444-444444444444/ai-analysis`;
+    for (const payload of [
+      undefined,
+      {},
+      { today: "2026-02-30" },
+      { today: "1999-01-01" },
+    ]) {
+      const response = await app.inject({
+        method: "POST",
+        url,
+        payload,
+        headers: { authorization: "Bearer token" },
+      });
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toEqual({ error: "invalid_request" });
+    }
+    expect(gw.authenticate).not.toHaveBeenCalled();
+    expect(analyzer.analyze).not.toHaveBeenCalled();
   });
 
   it("rejects unavailable, missing, and unsupported audio before calling the provider", async () => {
@@ -275,6 +321,7 @@ describe("API routes", () => {
     const unavailable = await appFor(allowed).inject({
       method: "POST",
       url,
+      payload: { today },
       headers: { authorization: "Bearer token" },
     });
     expect(unavailable.statusCode).toBe(503);
@@ -284,6 +331,7 @@ describe("API routes", () => {
     const missing = await appFor(allowed, analyzer).inject({
       method: "POST",
       url,
+      payload: { today },
       headers: { authorization: "Bearer token" },
     });
     expect(missing.statusCode).toBe(404);
@@ -293,6 +341,7 @@ describe("API routes", () => {
     const unsupported = await appFor(allowed, analyzer).inject({
       method: "POST",
       url,
+      payload: { today },
       headers: { authorization: "Bearer token" },
     });
     expect(unsupported.statusCode).toBe(415);

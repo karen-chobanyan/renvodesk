@@ -2572,9 +2572,16 @@ test("owner reviews an AI voice-note proposal before creating a task", async ({
       await route.fulfill({ json: savedTasks.at(-1) });
     } else await route.fulfill({ json: savedTasks });
   });
+  const teammate = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+  await page.route("**/rest/v1/rpc/team_members", (route) =>
+    route.fulfill({
+      json: [{ user_id: teammate, email: "marc@example.test", role: "member" }],
+    }),
+  );
   await page.route("**/api/v1/**/ai-analysis", (route) => {
     analyzed++;
     expect(route.request().headers().authorization).toMatch(/^Bearer /);
+    expect(route.request().postDataJSON().today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     return route.fulfill({
       json: {
         transcript: "Vérifier la fenêtre de la cuisine.",
@@ -2586,6 +2593,9 @@ test("owner reviews an AI voice-note proposal before creating a task", async ({
             title: "Vérifier la fenêtre",
             notes: "Cuisine",
             evidence: "Vérifier la fenêtre de la cuisine",
+            assigneeId: teammate,
+            startDate: null,
+            dueDate: "2026-10-02",
           },
         ],
       },
@@ -2605,6 +2615,10 @@ test("owner reviews an AI voice-note proposal before creating a task", async ({
   ).toBeVisible();
   expect(analyzed).toBe(1);
   expect(savedTasks).toHaveLength(0);
+  await expect(dialog.getByLabel("Responsable")).toHaveValue(teammate);
+  await expect(dialog.getByLabel("Date de début")).toHaveValue("");
+  await expect(dialog.getByLabel("Date limite")).toHaveValue("2026-10-02");
+  await dialog.getByLabel("Date de début").fill("2026-10-01");
   await dialog
     .getByLabel("Titre de la tâche")
     .fill("Contrôler la fenêtre de la cuisine");
@@ -2612,6 +2626,13 @@ test("owner reviews an AI voice-note proposal before creating a task", async ({
   await expect(dialog.getByText("Tâche créée")).toBeVisible();
   expect(savedTasks).toHaveLength(1);
   expect(savedTasks[0].title).toBe("Contrôler la fenêtre de la cuisine");
+  expect(savedTasks[0]).toMatchObject({
+    assignee_id: teammate,
+    start_date: "2026-10-01",
+    due_date: "2026-10-02",
+    status: "todo",
+  });
+  await expect(dialog.getByLabel("Responsable")).toBeDisabled();
   await dialog.getByRole("button", { name: "Fermer" }).last().click();
   await page
     .locator(".project-tabs")

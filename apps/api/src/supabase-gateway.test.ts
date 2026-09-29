@@ -233,4 +233,42 @@ describe("Supabase project context gateway", () => {
     ).toEqual({ kind: "unsupported" });
     expect(paths).toEqual(["/rest/v1/project_files", "/rest/v1/project_files"]);
   });
+
+  it("reads assignable team members through the RPC with the caller token", async () => {
+    const calls: { url: string; init?: RequestInit }[] = [];
+    let rows: unknown = [
+      {
+        user_id: "55555555-5555-4555-8555-555555555555",
+        email: "marc@example.test",
+        role: "member",
+      },
+    ];
+    const fetcher: typeof fetch = vi.fn(async (input, init) => {
+      calls.push({ url: input.toString(), init });
+      return json(rows);
+    });
+    const gateway = createSupabaseGateway(config, fetcher);
+    const caller = { userId, accessToken: "user-access-token" };
+    expect(await gateway.readAssignableMembers(caller, organizationId)).toEqual(
+      [
+        {
+          userId: "55555555-5555-4555-8555-555555555555",
+          email: "marc@example.test",
+        },
+      ],
+    );
+    expect(new URL(calls[0].url).pathname).toBe("/rest/v1/rpc/team_members");
+    expect(calls[0].init?.method).toBe("POST");
+    expect(JSON.parse(calls[0].init?.body as string)).toEqual({
+      p_org: organizationId,
+      p_offset: 0,
+    });
+    const headers = new Headers(calls[0].init?.headers);
+    expect(headers.get("authorization")).toBe("Bearer user-access-token");
+    expect(headers.get("content-type")).toBe("application/json");
+    rows = [{ user_id: 1, email: null }];
+    await expect(
+      gateway.readAssignableMembers(caller, organizationId),
+    ).rejects.toThrow("Unexpected Supabase team response");
+  });
 });

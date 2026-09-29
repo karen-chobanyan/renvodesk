@@ -3,6 +3,7 @@ import type { ProjectContextGateway } from "./project-context.js";
 import {
   OpenAIRequestError,
   type SiteNoteAnalyzer,
+  validCalendarDate,
 } from "./site-note-analysis.js";
 
 const uuidPattern =
@@ -15,6 +16,20 @@ interface ProjectParams {
 
 interface SiteNoteParams extends ProjectParams {
   fileId: string;
+}
+
+interface SiteNoteBody {
+  today: string;
+}
+
+const dayMs = 24 * 60 * 60 * 1000;
+
+// The browser sends its local calendar day so "tomorrow" means the owner's
+// tomorrow. Time zones differ from UTC by less than a day in either direction.
+function plausibleLocalToday(value: string, now = Date.now()) {
+  if (!validCalendarDate(value)) return false;
+  const noon = new Date(`${value}T12:00:00Z`).getTime();
+  return Math.abs(noon - now) <= dayMs + 12 * 60 * 60 * 1000;
 }
 
 function bearerToken(header: string | undefined): string | null {
@@ -38,6 +53,7 @@ function unavailableReason(error: unknown) {
     "Unexpected Supabase Data API response": "data_response_invalid",
     "Unexpected Supabase project response": "project_response_invalid",
     "Unexpected Supabase file response": "file_response_invalid",
+    "Unexpected Supabase team response": "team_response_invalid",
     "Supabase Storage download failed": "storage_upstream",
     "Unexpected Supabase Storage object size": "storage_size_mismatch",
     "Invalid AI transcription": "transcription_invalid",
@@ -147,7 +163,7 @@ export function buildApp(
     },
   );
 
-  app.post<{ Params: SiteNoteParams }>(
+  app.post<{ Params: SiteNoteParams; Body: SiteNoteBody }>(
     "/api/v1/organizations/:organizationId/projects/:projectId/files/:fileId/ai-analysis",
     {
       schema: {
@@ -161,10 +177,20 @@ export function buildApp(
             fileId: { type: "string", pattern: uuidPattern },
           },
         },
+        body: {
+          type: "object",
+          required: ["today"],
+          additionalProperties: false,
+          properties: {
+            today: { type: "string", pattern: "^\\d{4}-\\d{2}-\\d{2}$" },
+          },
+        },
       },
     },
     async (request, reply) => {
       reply.header("Cache-Control", "no-store");
+      if (!plausibleLocalToday(request.body.today))
+        return reply.code(400).send({ error: "invalid_request" });
       const token = bearerToken(request.headers.authorization);
       if (!token) return reply.code(401).send({ error: "unauthorized" });
       const caller = await gateway.authenticate(token);
@@ -190,7 +216,16 @@ export function buildApp(
         return reply.code(404).send({ error: "not_found" });
       if (file.kind === "unsupported")
         return reply.code(415).send({ error: "unsupported_audio" });
-      return analyzer.analyze({ ...file.audio, project: project.project });
+      const members = await gateway.readAssignableMembers(
+        caller,
+        organizationId,
+      );
+      return analyzer.analyze({
+        ...file.audio,
+        project: project.project,
+        members,
+        today: request.body.today,
+      });
     },
   );
 

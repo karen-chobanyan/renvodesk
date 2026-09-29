@@ -1,10 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { validTask } from "@/features/tasks/task-model";
+import { type TaskInput, validTask } from "@/features/tasks/task-model";
 import { createTask } from "@/features/tasks/task-service";
+import { listTeam, type TeamMember } from "@/features/team/team-service";
 import { useLocale } from "@/lib/i18n";
 import type { SiteNoteAnalysis } from "./site-note-ai-service";
+import {
+  type EditableField,
+  SiteNoteTaskFields,
+  type TeamState,
+} from "./site-note-task-fields";
 
 const copy = {
   fr: {
@@ -16,6 +22,8 @@ const copy = {
     proposalUnavailable:
       "La transcription est disponible, mais le résumé et les tâches proposés n’ont pas pu être vérifiés. Vous pouvez réessayer l’analyse, ce qui peut entraîner un nouveau coût.",
     tasks: "Tâches proposées",
+    suggestedFields:
+      "Le responsable et les dates sont préremplis uniquement lorsque la note les mentionne. Vérifiez-les avant de créer la tâche.",
     empty: "Aucune tâche vérifiable n’est disponible pour cette note.",
     omitted:
       "Certaines suggestions n’ont pas été affichées, car leur passage cité ne figure pas dans la transcription ou leur contenu est invalide.",
@@ -24,7 +32,8 @@ const copy = {
     evidence: "Passage cité par l’IA",
     create: "Créer cette tâche",
     saved: "Tâche créée",
-    invalid: "Corrigez le titre ou les notes avant de créer la tâche.",
+    invalid:
+      "Vérifiez le titre, les notes et les dates (1900–2100). La date limite doit être égale ou postérieure au début.",
     failed:
       "La création n’a pas été confirmée. Réessayez pour vérifier le même identifiant.",
     close: "Fermer",
@@ -38,6 +47,8 @@ const copy = {
     proposalUnavailable:
       "The transcript is available, but the suggested summary and tasks could not be verified. You can retry analysis, which may incur another charge.",
     tasks: "Suggested tasks",
+    suggestedFields:
+      "Assignee and dates are prefilled only when the note mentions them. Check them before creating the task.",
     empty: "No verified task is available for this note.",
     omitted:
       "Some suggestions were hidden because their cited passage was absent from the transcript or their content was invalid.",
@@ -46,7 +57,8 @@ const copy = {
     evidence: "Passage cited by AI",
     create: "Create this task",
     saved: "Task created",
-    invalid: "Correct the title or notes before creating the task.",
+    invalid:
+      "Check the title, notes and dates (1900–2100). Due date must be on or after the start.",
     failed:
       "Task creation was not confirmed. Retry to check the same request ID.",
     close: "Close",
@@ -60,6 +72,44 @@ type ReviewTask = SiteNoteAnalysis["tasks"][number] & {
   attempted: boolean;
   error: "invalid" | "failed" | null;
 };
+
+function taskInput(task: ReviewTask): TaskInput {
+  return {
+    assignee_id: task.assigneeId || null,
+    title: task.title.trim(),
+    notes: task.notes.trim(),
+    status: "todo",
+    start_date: task.startDate || null,
+    due_date: task.dueDate || null,
+  };
+}
+
+function useTeam(organizationId: string): TeamState {
+  const [rows, setRows] = useState<TeamMember[]>([]),
+    [loading, setLoading] = useState(true),
+    [failed, setFailed] = useState(false),
+    [reload, setReload] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: retry reloads available assignees
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    setFailed(false);
+    void listTeam(organizationId)
+      .then((data) => {
+        if (active) setRows(data);
+      })
+      .catch(() => {
+        if (active) setFailed(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [organizationId, reload]);
+  return { rows, loading, failed, retry: () => setReload((n) => n + 1) };
+}
 
 export function SiteNoteReview({
   analysis,
@@ -76,6 +126,7 @@ export function SiteNoteReview({
 }) {
   const { locale } = useLocale();
   const c = copy[locale];
+  const team = useTeam(organizationId);
   const [tasks, setTasks] = useState<ReviewTask[]>(() =>
     analysis.tasks.map((task) => ({
       ...task,
@@ -87,23 +138,18 @@ export function SiteNoteReview({
     })),
   );
   const busy = tasks.some((task) => task.busy);
-  function change(index: number, field: "title" | "notes", value: string) {
+  function change(index: number, field: EditableField, value: string) {
+    const next = field === "title" || field === "notes" ? value : value || null;
     setTasks((old) =>
       old.map((task, i) =>
-        i === index ? { ...task, [field]: value, error: null } : task,
+        i === index ? { ...task, [field]: next, error: null } : task,
       ),
     );
   }
   async function create(index: number) {
     const task = tasks[index];
     if (!task || task.saved || busy) return;
-    const input = {
-      title: task.title.trim(),
-      notes: task.notes.trim(),
-      status: "todo" as const,
-      start_date: null,
-      due_date: null,
-    };
+    const input = taskInput(task);
     if (!validTask(input)) {
       setTasks((old) =>
         old.map((row, i) => (i === index ? { ...row, error: "invalid" } : row)),
@@ -164,6 +210,9 @@ export function SiteNoteReview({
           {analysis.proposalStatus === "ready" && (
             <section>
               <h3>{c.tasks}</h3>
+              {tasks.length > 0 && (
+                <p className="helper-text">{c.suggestedFields}</p>
+              )}
               {analysis.omittedTaskCount > 0 && (
                 <p role="status" className="helper-text">
                   {c.omitted}
@@ -172,30 +221,14 @@ export function SiteNoteReview({
               {tasks.length === 0 && <p>{c.empty}</p>}
               {tasks.map((task, index) => (
                 <div className="site-note-task" key={task.id}>
-                  <label className="field">
-                    {c.titleField}
-                    <input
-                      className="input"
-                      maxLength={160}
-                      value={task.title}
-                      disabled={task.saved || task.attempted}
-                      onChange={(event) =>
-                        change(index, "title", event.target.value)
-                      }
-                    />
-                  </label>
-                  <label className="field">
-                    {c.notesField}
-                    <textarea
-                      className="input"
-                      maxLength={2000}
-                      value={task.notes}
-                      disabled={task.saved || task.attempted}
-                      onChange={(event) =>
-                        change(index, "notes", event.target.value)
-                      }
-                    />
-                  </label>
+                  <SiteNoteTaskFields
+                    id={`site-note-task-${index}`}
+                    task={task}
+                    locked={task.saved || task.attempted}
+                    team={team}
+                    labels={{ title: c.titleField, notes: c.notesField }}
+                    change={(field, value) => change(index, field, value)}
+                  />
                   <p className="helper-text">
                     <strong>{c.evidence}:</strong> {task.evidence}
                   </p>

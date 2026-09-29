@@ -86,10 +86,21 @@ this transcription route. The gateway downloads the private object through
 Supabase Storage with the same token and verifies its byte count. It never
 trusts an object path supplied by the browser.
 
+The model instructions live in `apps/api/prompts/site-note-instructions.md`.
+The API reads that file once at startup, so restart `pnpm dev:api` after
+editing it, and deploy the `prompts/` folder next to `dist/`.
+
 The server sends the audio to `gpt-transcribe`. It then asks `gpt-6-luna` for
 one forced `propose_site_note` function call. The function is a constrained
-review proposal with a summary and up to five tasks, each with a title, notes
-and supporting text. The server parses and validates the function arguments;
+review proposal with a summary and up to five tasks, each with a title, notes,
+supporting text, and an optional assignee and start/due dates. The browser
+sends its local calendar day as `{ "today": "YYYY-MM-DD" }`; the server rejects
+a date more than about a day away from its clock with 400. The gateway reads
+the first 50 team members through the `team_members` RPC with the caller token;
+the model sees opaque `member_N` keys and e-mail local parts only, and the server
+maps keys back to user IDs. Unknown keys and invalid or reversed dates are
+dropped rather than trusted. A malformed team response returns
+`team_response_invalid`. The server parses and validates the function arguments;
 it does **not** execute a task write. Both requests run server-side. Responses
 use `Cache-Control: no-store`, and the text request sets `store: false`. The
 server omits invalid or excess task suggestions and reports how many it omitted.

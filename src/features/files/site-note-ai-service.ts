@@ -1,12 +1,42 @@
+import { today, validDate } from "@/features/tasks/task-model";
 import { requireSupabase } from "@/lib/supabase/client";
+
+export type SiteNoteTaskSuggestion = {
+  title: string;
+  notes: string;
+  evidence: string;
+  assigneeId: string | null;
+  startDate: string | null;
+  dueDate: string | null;
+};
 
 export type SiteNoteAnalysis = {
   transcript: string;
   summary: string;
-  tasks: { title: string; notes: string; evidence: string }[];
+  tasks: SiteNoteTaskSuggestion[];
   omittedTaskCount: number;
   proposalStatus: "ready" | "unavailable";
 };
+
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function nullableDate(value: unknown) {
+  return value === null || (typeof value === "string" && validDate(value));
+}
+
+function isSuggestion(value: unknown): value is SiteNoteTaskSuggestion {
+  if (!value || typeof value !== "object") return false;
+  const task = value as Record<string, unknown>;
+  return (
+    typeof task.title === "string" &&
+    typeof task.notes === "string" &&
+    typeof task.evidence === "string" &&
+    (task.assigneeId === null ||
+      (typeof task.assigneeId === "string" && uuid.test(task.assigneeId))) &&
+    nullableDate(task.startDate) &&
+    nullableDate(task.dueDate)
+  );
+}
 
 export async function analyzeSiteNote(
   organizationId: string,
@@ -19,7 +49,12 @@ export async function analyzeSiteNote(
     `/api/v1/organizations/${organizationId}/projects/${projectId}/files/${fileId}/ai-analysis`,
     {
       method: "POST",
-      headers: { Authorization: `Bearer ${data.session.access_token}` },
+      headers: {
+        Authorization: `Bearer ${data.session.access_token}`,
+        "Content-Type": "application/json",
+      },
+      // The local calendar day lets the server resolve "tomorrow" or "Friday".
+      body: JSON.stringify({ today: today() }),
       cache: "no-store",
     },
   );
@@ -47,6 +82,7 @@ export async function analyzeSiteNote(
     typeof result.summary !== "string" ||
     !("tasks" in result) ||
     !Array.isArray(result.tasks) ||
+    !result.tasks.every(isSuggestion) ||
     !("omittedTaskCount" in result) ||
     typeof result.omittedTaskCount !== "number" ||
     !Number.isSafeInteger(result.omittedTaskCount) ||

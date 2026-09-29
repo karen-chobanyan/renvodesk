@@ -1,5 +1,6 @@
 import type { ApiConfig } from "./config.js";
 import type {
+  AssignableMember,
   Caller,
   ProjectAudioResult,
   ProjectContextGateway,
@@ -69,15 +70,27 @@ function isProjectRow(value: unknown): value is ProjectRow {
   );
 }
 
+function isMemberRow(
+  value: unknown,
+): value is { user_id: string; email: string } {
+  if (!value || typeof value !== "object") return false;
+  const row = value as Record<string, unknown>;
+  return typeof row.user_id === "string" && typeof row.email === "string";
+}
+
 export function createSupabaseGateway(
   config: ApiConfig,
   fetcher: typeof fetch = fetch,
 ): ProjectContextGateway {
-  async function request(path: string, accessToken: string) {
+  async function request(path: string, accessToken: string, body?: unknown) {
     return fetcher(new URL(path, config.supabaseUrl), {
+      ...(body === undefined
+        ? {}
+        : { method: "POST", body: JSON.stringify(body) }),
       headers: {
         apikey: config.supabasePublishableKey,
         Authorization: `Bearer ${accessToken}`,
+        ...(body === undefined ? {} : { "Content-Type": "application/json" }),
       },
       signal: AbortSignal.timeout(10_000),
     });
@@ -86,8 +99,9 @@ export function createSupabaseGateway(
   async function readRows(
     path: string,
     accessToken: string,
+    payload?: unknown,
   ): Promise<unknown[]> {
-    const response = await request(path, accessToken);
+    const response = await request(path, accessToken, payload);
     if (!response.ok) throw new Error("Supabase Data API request failed");
     const body: unknown = await response.json();
     if (!Array.isArray(body))
@@ -213,6 +227,22 @@ export function createSupabaseGateway(
           mimeType: file.mime_type as "audio/webm" | "audio/mp4",
         },
       };
+    },
+
+    // First page of the company team (the RPC returns at most 50 rows). The
+    // RPC enforces membership itself; the caller token keeps RLS in force.
+    async readAssignableMembers(
+      caller,
+      organizationId,
+    ): Promise<AssignableMember[]> {
+      const rows = await readRows(
+        "/rest/v1/rpc/team_members",
+        caller.accessToken,
+        { p_org: organizationId, p_offset: 0 },
+      );
+      if (!rows.every(isMemberRow))
+        throw new Error("Unexpected Supabase team response");
+      return rows.map((row) => ({ userId: row.user_id, email: row.email }));
     },
   };
 }

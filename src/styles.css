@@ -1924,6 +1924,17 @@ th.numeric {
   min-height: 84px;
   resize: vertical;
 }
+.site-note-task-dates {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+@media (max-width: 540px) {
+  .site-note-task-dates {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+}
 
 .dialog-content.file-viewer-dialog {
   width: calc(100vw - 48px);

@@ -31,6 +31,11 @@ export type ProjectAudioResult =
   | { kind: "not_found" }
   | { kind: "unsupported" };
 
+export interface AssignableMember {
+  userId: string;
+  email: string;
+}
+
 export interface ProjectContextGateway {
   authenticate(accessToken: string): Promise<Caller | null>;
   readOwnerProject(
@@ -44,4 +49,8 @@ export interface ProjectContextGateway {
     projectId: string,
     fileId: string,
   ): Promise<ProjectAudioResult>;
+  readAssignableMembers(
+    caller: Caller,
+    organizationId: string,
+  ): Promise<AssignableMember[]>;
 }
