@@ -1,6 +1,6 @@
 # 030 — AI site-note hardening: retention, execution, limits and names
 
-Date: 2026-09-29. Status: accepted; not implemented. Implementation follows
+Date: 2026-09-29. Status: D1–D4 implemented (Phase 1): migration 20260929125009 is applied to the development project and its rollback test passes there; the API and browser use durable jobs. D5 is pending (Phase 2). Implementation follows
 [the hardening plan](../plans/2026-09-29-ai-site-notes-hardening.md).
 Extends [decision 029](029-ai-site-notes.md).
 

@@ -48,7 +48,7 @@ Prerequisite: commit the current uncommitted assignee/date suggestions and
 Implements D1–D4 from decision 030.
 
 ### Schema (`supabase/migrations/<ts>_site_note_analyses.sql`)
-- [ ] `public.site_note_analyses`: `organization_id`, `id`, `project_id`,
+- [x] `public.site_note_analyses`: `organization_id`, `id`, `project_id`,
       `file_id`, `request_id` (unique per organization), `requested_by`,
       `status` (`queued` → `transcribing` → `proposing` → `ready` | `failed`),
       `failure_reason`, `transcription_model`, `proposal_model`,
@@ -56,16 +56,16 @@ Implements D1–D4 from decision 030.
       `omitted_task_count`, `audio_bytes`, usage columns (tokens, audio
       seconds when reported), `lease_expires_at`, `created_at`,
       `completed_at`, `expires_at` (completion + 30 days), `purged_at`.
-- [ ] D1 purge: enable `pg_cron`; a daily private function clears content
+- [x] D1 purge: enable `pg_cron`; a daily private function clears content
       past `expires_at` and sets `purged_at`. Extend the private
       `project_files` lifecycle path so a move to `deleting` clears the
       content of analyses for that file in the same transaction.
       PK `(organization_id, id)`; FK `(organization_id, file_id)` →
       `project_files`; FK `(organization_id, project_id)` → `projects`, plus a
       check that the file belongs to the project inside the RPC.
-- [ ] RLS: owners of the organization can select unexpired rows. No direct
+- [x] RLS: owners of the organization can select unexpired rows. No direct
       insert/update/delete grants.
-- [ ] Private SECURITY DEFINER functions with public SECURITY INVOKER wrappers
+- [x] Private SECURITY DEFINER functions with public SECURITY INVOKER wrappers
       (existing onboarding pattern), each checking owner membership and exact
       scope, with an empty `search_path`:
       - `begin_site_note_analysis(org, project, file, request_id,
@@ -77,52 +77,60 @@ Implements D1–D4 from decision 030.
         `complete_site_note_analysis(org, id, result…)`,
         `fail_site_note_analysis(org, id, reason)`: legal transitions only;
         terminal rows are immutable.
-- [ ] Private quota tables (D4): per-company daily counter (Europe/Brussels
+- [x] Private quota tables (D4): per-company daily counter (Europe/Brussels
       day), global monthly counter, `private.ai_site_note_settings`
       (defaults 30/day, 2,000/month) and `private.ai_site_note_entitlements`
       (enabled flag and optional daily override; operator-managed, no client
       grants). `begin…` also rejects a second queued/running job per user.
-- [ ] `site_note_ai_status(org)` read RPC: enabled flag and remaining daily
+- [x] `site_note_ai_status(org)` read RPC: enabled flag and remaining daily
       quota for the owner UI.
-- [ ] Rollback SQL test `supabase/tests/site_note_analyses.sql`: owner
+- [x] Rollback SQL test `supabase/tests/site_note_analyses.sql`: owner
       read/write via RPCs; member and other-company denial; cross-project
       file rejected; idempotent begin; illegal transitions rejected; each
       limit exhausted; disabled company; reuse not counted; expired content
       hidden and purged; file deletion clears content. Regenerate database types.
 
 ### API
-- [ ] `POST …/files/:fileId/ai-analysis` takes `{ requestId }`, calls
+- [x] `POST …/files/:fileId/ai-analysis` takes `{ requestId }`, calls
       `begin…`, returns `200` with a reused ready result or `202 { id }`.
       `GET …/ai-analyses/:id` returns status or result.
-- [ ] `apps/api/src/site-note-jobs.ts`: in-process runner with a global
+- [x] `apps/api/src/site-note-jobs.ts`: in-process runner with a global
       semaphore (env `AI_MAX_CONCURRENT_JOBS`), per-step `AbortSignal`
       timeouts, an overall job deadline shorter than the lease, and status
       advances between steps. On restart, expired leases read as `failed`
       (`lease_expired`) and can be retried with a new request ID.
-- [ ] Model IDs and the global switch come from config (`AI_TRANSCRIPTION_MODEL`,
+- [x] Model IDs and the global switch come from config (`AI_TRANSCRIPTION_MODEL`,
       `AI_PROPOSAL_MODEL`, allowlisted). `prompt_version` = first 12 hex
       characters of the SHA-256 of the prompt file, computed at startup.
-- [ ] #4 Logging: enable the Fastify/pino logger with redaction of
+- [x] #4 Logging: enable the Fastify/pino logger with redaction of
       `authorization`, bodies and query strings. Per job, log request ID,
       analysis ID, reason code, step durations, usage, models and
       prompt version; never transcripts, audio, emails, tokens or URLs.
 
 ### Browser
-- [ ] `site-note-ai-service.ts`: stable request UUID per click-through (kept
+- [x] `site-note-ai-service.ts`: stable request UUID per click-through (kept
       across retries), post, then poll with backoff until
       `ready`/`failed`, abortable on unmount.
-- [ ] `project-files.tsx`: show progress by status, the remaining quota, and
+- [x] `project-files.tsx`: show progress by status, the remaining quota, and
       "Open saved analysis" for files with a ready result (no new charge).
       Hide the action when the company is not enabled.
 - [ ] Decision 029, `docs/API.md` and AGENTS.md updated; retention stated
       in the privacy page copy.
 
 ### Verification
-- [ ] API unit tests (Fastify `inject`) for 200/202/polling, reuse, quota
+- [x] API unit tests (Fastify `inject`) for 200/202/polling, reuse, quota
       exhaustion (429), disabled company, lease expiry and log redaction.
-- [ ] SQL rollback tests pass against the development project only.
+- [x] SQL rollback tests pass against the development project only.
 - [ ] Playwright: queued → ready, reopen saved analysis without a new
       request, failure and retry, quota message. Desktop and mobile.
+
+Phase 1 notes (2026-09-29): a repeat click on an analyzed note reopens the saved
+result through the same button (`200 reused`, no charge) instead of a separate
+"Open saved analysis" action. Reuse is covered by API and SQL tests; the browser
+tests cover queued → ready, retries, limits and a disabled company. The privacy
+page retention text stays with the compliance track. Live provider calls and the
+deployed API remain unverified. #11 is done: the analyzer has `transcribe` and
+`propose` steps; re-proposing a stored transcript is not wired yet.
 
 ## Phase 2: suggestion quality (#7–#12)
 
@@ -133,7 +141,7 @@ Implements D1–D4 from decision 030.
       step against the real provider when explicitly invoked with a key; not
       in CI. Report task recall, assignee exact match, date exact match and
       invented-field rate. Record a baseline before changing prompts.
-- [ ] **#11 Split the analyzer** into `Transcriber` and `TaskProposer`
+- [x] **#11 Split the analyzer** into `Transcriber` and `TaskProposer`
       interfaces. The job runner can then rerun only the proposal for a
       stored transcript when `prompt_version` changes.
 - [ ] **#7 + #8 Per-field evidence and server-side name matching (D5).**

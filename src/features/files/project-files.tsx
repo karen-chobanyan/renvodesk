@@ -19,7 +19,10 @@ import {
 } from "./file-service";
 
 import { MediaCapture } from "./media-capture";
-import { analyzeSiteNote, type SiteNoteAnalysis } from "./site-note-ai-service";
+import {
+  SiteNoteAnalysisNotices,
+  useSiteNoteAnalysis,
+} from "./site-note-analysis-state";
 import { SiteNoteReview } from "./site-note-review";
 
 const DxfPreview = lazy(() => import("../cad/dxf-preview"));
@@ -67,16 +70,10 @@ export function ProjectFiles({
     ),
     [expired, setExpired] = useState(false);
   const [capture, setCapture] = useState<"photo" | "voice" | null>(null);
-  const [analyzing, setAnalyzing] = useState<string | null>(null);
-  const [analysisError, setAnalysisError] = useState<
-    "failed" | "unavailable" | null
-  >(null);
-  const [review, setReview] = useState<{
-    key: string;
-    analysis: SiteNoteAnalysis;
-  } | null>(null);
-  const canAnalyze =
+  const aiFlag =
     canManage && import.meta.env.VITE_AI_SITE_NOTES_ENABLED === "true";
+  const ai = useSiteNoteAnalysis(organizationId, projectId, aiFlag);
+  const canAnalyze = aiFlag && ai.available;
   useEffect(() => {
     if (!canManage || !voiceNoteRequested) return;
     setCapture("voice");
@@ -126,27 +123,6 @@ export function ProjectFiles({
     const problem = file ? validateFile(file) : null;
     setError(problem);
     setSelected(problem ? null : file);
-  }
-  async function analyze(file: ProjectFile) {
-    if (!canAnalyze || analyzing || busy) return;
-    setAnalyzing(file.id);
-    setAnalysisError(null);
-    try {
-      const analysis = await analyzeSiteNote(
-        organizationId,
-        projectId,
-        file.id,
-      );
-      setReview({ key: crypto.randomUUID(), analysis });
-    } catch (error) {
-      setAnalysisError(
-        error instanceof Error && error.message === "unavailable"
-          ? "unavailable"
-          : "failed",
-      );
-    } finally {
-      setAnalyzing(null);
-    }
   }
   async function upload() {
     if (!selected || busy) return;
@@ -332,12 +308,7 @@ export function ProjectFiles({
         </div>
       )}
       {notice && <p role="status">{c[notice]}</p>}
-      {analyzing && <p role="status">{c.analyzing}</p>}
-      {analysisError && (
-        <p role="alert" className="error-message">
-          {c[analysisError === "unavailable" ? "aiUnavailable" : "aiFailed"]}
-        </p>
-      )}
+      {aiFlag && <SiteNoteAnalysisNotices state={ai} />}
       {error && (
         <p role="alert" className="error-message">
           {c[error]}
@@ -427,8 +398,8 @@ export function ProjectFiles({
                             ) && (
                               <Button
                                 variant="outline"
-                                disabled={busy || !!analyzing}
-                                onClick={() => void analyze(file)}
+                                disabled={busy || !!ai.running}
+                                onClick={() => void ai.analyze(file.id)}
                               >
                                 <Sparkles size={16} aria-hidden="true" />
                                 {c.analyze}
@@ -527,13 +498,13 @@ export function ProjectFiles({
           {error && <p role="alert">{c[error]}</p>}
         </DialogContent>
       </Dialog>
-      {review && (
+      {ai.review && (
         <SiteNoteReview
-          key={review.key}
-          analysis={review.analysis}
+          key={ai.review.key}
+          analysis={ai.review.analysis}
           organizationId={organizationId}
           projectId={projectId}
-          close={() => setReview(null)}
+          close={ai.closeReview}
           onTaskCreated={onTaskCreated}
         />
       )}

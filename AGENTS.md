@@ -96,9 +96,11 @@ and automatic quantity takeoff unless explicitly requested.
   owner-authorized project context read and a feature-flagged site-note AI
   route. The route transcribes a ready project voice note and validates a
   task-proposal function call; it never writes tasks. The owner review UI uses
-  existing task creation. No AI output is persisted, no AI database migration
-  exists and the API is not deployed. Supabase remains Auth, Postgres, RLS and
-  Storage. See docs/API.md and decisions 022 and 029. Explain new backend code
+  existing task creation. Analyses run as in-process jobs recorded in
+  `site_note_analyses` (owner-only reads, writes only through constrained RPCs,
+  30-day content retention, per-company opt-in and limits); the API is not
+  deployed. Supabase remains Auth, Postgres, RLS and Storage. See docs/API.md
+  and decisions 022, 029 and 030. Explain new backend code
   in detail so the user can learn Fastify.
 
 ### Existing code map
@@ -520,7 +522,7 @@ counts into aggregate claims. Project editing uses the shared dialog, revision
 checks, and an unsaved-close warning. See the project-view-layout plan.
 
 - Project files support camera JPEG capture and MediaRecorder voice notes (WebM, MP4/M4A, Ogg). Review before upload; existing owner-only writes and member reads apply. Capture must release tracks on close/unmount; recording is capped at five minutes / 10 MiB. Audio MIME allowlists are in the project_voice_notes migration; do not broaden them to arbitrary video.
-- The project overview's owner-only recording shortcut uses the Documents capture and upload flow. With the public AI flag and server key configured, owners may analyze a ready WebM or MP4/M4A note. The server rereads the scoped file using the caller token, sends it to `gpt-transcribe`, and validates one `gpt-6-luna` proposal tool call. Suggestions, including an optional assignee (mapped from opaque team keys) and dates resolved against the owner's local day, are review-only until the owner explicitly creates a task. Ogg audio remains an attachment without AI analysis. No live provider call, EU residency eligibility, production rollout or durable AI result cache is verified.
+- The project overview's owner-only recording shortcut uses the Documents capture and upload flow. With the public AI flag and server key configured, owners may analyze a ready WebM or MP4/M4A note. The server rereads the scoped file using the caller token, sends it to `gpt-transcribe`, and validates one `gpt-6-luna` proposal tool call. Suggestions, including an optional assignee (mapped from opaque team keys) and dates resolved against the owner's local day, are review-only until the owner explicitly creates a task. Ogg audio remains an attachment without AI analysis. Jobs: POST returns 202 and the browser polls; the same request ID never starts a second job, and a saved result for the same file, prompt version and models is reused free. Never add a client-callable quota refund or direct write grant on `site_note_analyses`; never store content before `complete_site_note_analysis`, and keep logs free of transcripts, audio, e-mails, tokens and URLs. No live provider call, EU residency eligibility or production rollout is verified.
 
 ## Project activity journal
 

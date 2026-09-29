@@ -2510,9 +2510,7 @@ test("member edits only assigned tasks and sees no owner controls", async ({
   ).toBeVisible();
 });
 
-test("owner reviews an AI voice-note proposal before creating a task", async ({
-  page,
-}) => {
+async function mockVoiceNoteProject(page: Page) {
   await mockApi(page);
   const projectId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
   const fileId = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
@@ -2527,7 +2525,6 @@ test("owner reviews an AI voice-note proposal before creating a task", async ({
     revision: 1,
   };
   const savedTasks: Record<string, unknown>[] = [];
-  let analyzed = 0;
   await page.route("**/rest/v1/organization_memberships**", (route) =>
     route.fulfill({
       json: [
@@ -2578,33 +2575,66 @@ test("owner reviews an AI voice-note proposal before creating a task", async ({
       json: [{ user_id: teammate, email: "marc@example.test", role: "member" }],
     }),
   );
+  return { projectId, savedTasks, teammate };
+}
+
+test("owner reviews an AI voice-note proposal before creating a task", async ({
+  page,
+}) => {
+  const { projectId, savedTasks, teammate } = await mockVoiceNoteProject(page);
+  const analysisId = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+  let analyzed = 0;
+  let polls = 0;
+  await page.route("**/api/v1/organizations/*/ai-status", (route) =>
+    route.fulfill({ json: { configured: true, enabled: true, remaining: 7 } }),
+  );
   await page.route("**/api/v1/**/ai-analysis", (route) => {
     analyzed++;
     expect(route.request().headers().authorization).toMatch(/^Bearer /);
-    expect(route.request().postDataJSON().today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    const body = route.request().postDataJSON();
+    expect(body.today).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(body.requestId).toMatch(/^[0-9a-f-]{36}$/);
     return route.fulfill({
-      json: {
-        transcript: "Vérifier la fenêtre de la cuisine.",
-        summary: "Une fenêtre doit être vérifiée.",
-        omittedTaskCount: 1,
-        proposalStatus: "ready",
-        tasks: [
-          {
-            title: "Vérifier la fenêtre",
-            notes: "Cuisine",
-            evidence: "Vérifier la fenêtre de la cuisine",
-            assigneeId: teammate,
-            startDate: null,
-            dueDate: "2026-10-02",
-          },
-        ],
-      },
+      status: 202,
+      json: { analysisId, status: "queued" },
+    });
+  });
+  await page.route(`**/api/v1/**/ai-analyses/${analysisId}`, (route) => {
+    polls++;
+    return route.fulfill({
+      json:
+        polls === 1
+          ? { id: analysisId, status: "transcribing" }
+          : {
+              id: analysisId,
+              status: "ready",
+              result: {
+                transcript: "Vérifier la fenêtre de la cuisine.",
+                summary: "Une fenêtre doit être vérifiée.",
+                omittedTaskCount: 1,
+                proposalStatus: "ready",
+                tasks: [
+                  {
+                    title: "Vérifier la fenêtre",
+                    notes: "Cuisine",
+                    evidence: "Vérifier la fenêtre de la cuisine",
+                    assigneeId: teammate,
+                    startDate: null,
+                    dueDate: "2026-10-02",
+                  },
+                ],
+              },
+            },
     });
   });
   await login(page, true);
   await expect(page).toHaveURL(/\/workspace/);
   await page.goto(`/workspace/${org}/projects/${projectId}?tab=documents`);
+  await expect(
+    page.getByText("Analyses restantes aujourd’hui : 7"),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Transcrire avec l’IA" }).click();
+  await expect(page.getByText("Transcription en cours…")).toBeVisible();
   const dialog = page.getByRole("dialog", { name: "Analyser la note vocale" });
   await expect(dialog).toBeVisible();
   await expect(
@@ -2650,6 +2680,50 @@ test("owner reviews an AI voice-note proposal before creating a task", async ({
   await expect(
     page.getByText("Contrôler la fenêtre de la cuisine"),
   ).toBeVisible();
+});
+
+test("AI analysis retries keep the request ID and explain limits", async ({
+  page,
+}) => {
+  const { projectId } = await mockVoiceNoteProject(page);
+  const requestIds: string[] = [];
+  const replies = [
+    {
+      status: 503,
+      json: { error: "service_unavailable", reason: "data_upstream" },
+    },
+    { status: 429, json: { error: "limit_reached", limit: "company_daily" } },
+    { status: 429, json: { error: "limit_reached", limit: "user_running" } },
+  ];
+  let enabled = true;
+  await page.route("**/api/v1/organizations/*/ai-status", (route) =>
+    route.fulfill({ json: { configured: true, enabled, remaining: 0 } }),
+  );
+  await page.route("**/api/v1/**/ai-analysis", (route) => {
+    requestIds.push(route.request().postDataJSON().requestId);
+    return route.fulfill(replies[requestIds.length - 1]);
+  });
+  await login(page, true);
+  await expect(page).toHaveURL(/\/workspace/);
+  await page.goto(`/workspace/${org}/projects/${projectId}?tab=documents`);
+  const analyze = page.getByRole("button", { name: "Transcrire avec l’IA" });
+  await analyze.click();
+  await expect(page.getByText(/la même demande sera reprise/)).toBeVisible();
+  await analyze.click();
+  await expect(page.getByText(/limite quotidienne/)).toBeVisible();
+  // An unknown outcome reuses the request ID; a refusal starts a new one.
+  expect(requestIds[1]).toBe(requestIds[0]);
+  await analyze.click();
+  await expect(
+    page.getByText(/Une autre analyse est déjà en cours/),
+  ).toBeVisible();
+  expect(requestIds[2]).not.toBe(requestIds[1]);
+  enabled = false;
+  await page.reload();
+  await expect(
+    page.getByText("L’analyse IA n’est pas activée pour cette entreprise."),
+  ).toBeVisible();
+  await expect(analyze).toHaveCount(0);
 });
 
 test("project overview navigation, retained drafts, isolated failures and legacy links", async ({

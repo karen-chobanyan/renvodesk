@@ -2,6 +2,8 @@
 
 Date: 2026-09-26. Status: implemented locally behind a disabled-by-default UI flag; production rollout pending.
 
+> Updated by [decision 030](030-ai-site-note-hardening.md): analyses now run as durable background jobs, results are stored for 30 days and reused at no cost, and per-company opt-in and usage limits apply. Where this record says results are transient or that analysis is a single synchronous request, decision 030 takes precedence.
+
 ## Decision
 
 An owner may request analysis of a saved, ready WebM or MP4/M4A voice note from a project’s Documents tab. The Fastify API authenticates the caller with Supabase Auth, checks owner membership and project scope, and downloads the private file using the caller’s token and existing Storage policy. The browser never receives the provider credential.

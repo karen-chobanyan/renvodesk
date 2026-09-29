@@ -7,9 +7,28 @@ export const fileCopy = {
     voice: "Note vocale",
     analyze: "Transcrire avec l’IA",
     aiDisclosure:
-      "La transcription envoie cette note vocale à OpenAI. Vérifiez les suggestions avant de créer des tâches.",
-    analyzing: "Transcription et suggestions en cours…",
-    aiFailed: "La note n’a pas pu être analysée. Réessayez plus tard.",
+      "La transcription envoie cette note vocale à OpenAI. Le résultat est conservé 30 jours ; relancer l’analyse d’une même note le rouvre sans nouveau coût. Vérifiez les suggestions avant de créer des tâches.",
+    aiStarting: "Démarrage de l’analyse…",
+    aiQueued: "Analyse en attente de traitement…",
+    aiTranscribing: "Transcription en cours…",
+    aiProposing: "Préparation des suggestions…",
+    aiRemaining: "Analyses restantes aujourd’hui : {count}",
+    aiDisabled: "L’analyse IA n’est pas activée pour cette entreprise.",
+    aiLimitRunning:
+      "Une autre analyse est déjà en cours. Attendez qu’elle se termine.",
+    aiLimitCompany:
+      "La limite quotidienne d’analyses de l’entreprise est atteinte. Réessayez demain.",
+    aiLimitGlobal:
+      "Le service d’analyse a atteint sa limite ce mois-ci. Réessayez plus tard.",
+    aiUnsupported: "Ce format audio ne peut pas être analysé.",
+    aiNotFound: "Cette note vocale n’est plus disponible.",
+    aiJobFailed:
+      "L’analyse a échoué. Vous pouvez réessayer ; une nouvelle analyse compte dans la limite du jour.",
+    aiPurged: "Le résultat a été supprimé avec la note vocale.",
+    aiTimeout:
+      "L’analyse prend plus de temps que prévu. Elle continue : réessayez dans quelques minutes pour ouvrir le résultat.",
+    aiFailed:
+      "La note n’a pas pu être analysée. Réessayez ; la même demande sera reprise.",
     aiUnavailable: "L’analyse IA n’est pas configurée sur le serveur.",
     name: "Nom",
     type: "Type",
@@ -62,9 +81,28 @@ export const fileCopy = {
     voice: "Voice note",
     analyze: "Transcribe with AI",
     aiDisclosure:
-      "Transcription sends this voice note to OpenAI. Review suggestions before creating tasks.",
-    analyzing: "Transcribing and preparing suggestions…",
-    aiFailed: "The note could not be analyzed. Try again later.",
+      "Transcription sends this voice note to OpenAI. The result is kept for 30 days; analyzing the same note again reopens it at no extra cost. Review suggestions before creating tasks.",
+    aiStarting: "Starting analysis…",
+    aiQueued: "Analysis waiting to start…",
+    aiTranscribing: "Transcribing…",
+    aiProposing: "Preparing suggestions…",
+    aiRemaining: "Analyses left today: {count}",
+    aiDisabled: "AI analysis is not enabled for this company.",
+    aiLimitRunning:
+      "Another analysis is already running. Wait for it to finish.",
+    aiLimitCompany:
+      "The company's daily analysis limit has been reached. Try again tomorrow.",
+    aiLimitGlobal:
+      "The analysis service has reached its limit this month. Try again later.",
+    aiUnsupported: "This audio format cannot be analyzed.",
+    aiNotFound: "This voice note is no longer available.",
+    aiJobFailed:
+      "The analysis failed. You can retry; a new analysis counts toward today's limit.",
+    aiPurged: "The result was deleted together with the voice note.",
+    aiTimeout:
+      "The analysis is taking longer than expected. It continues: try again in a few minutes to open the result.",
+    aiFailed:
+      "The note could not be analyzed. Retry; the same request will be resumed.",
     aiUnavailable: "AI analysis is not configured on the server.",
     name: "Name",
     type: "Type",
