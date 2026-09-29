@@ -36,8 +36,9 @@ shell history or git. Leaving it empty keeps AI unavailable while the rest of
 the API runs.
 
 The API runs under **PM2** in root's existing daemon (`pm2-root.service`
-already restores processes on boot). PM2 starts it as the unprivileged
-`renvodesk-api` user, and Node reads `/etc/renvodesk/api.env` itself via
+already restores processes on boot). PM2 starts `setpriv`, which switches to the
+unprivileged `renvodesk-api` user and then runs Node (PM2's own `uid` option
+fails here because the daemon lives under `/root/.nvm`). Node reads `/etc/renvodesk/api.env` itself via
 `--env-file`, so secrets never enter PM2's saved process list. Copy
 `deploy/ecosystem.config.cjs` and `deploy/renvodesk-api.logrotate` to the server:
 

@@ -1,19 +1,31 @@
 // PM2 definition for the RenvoDesk API (docs/API-DEPLOYMENT.md). Copy to
 // /opt/renvodesk-api/ecosystem.config.cjs and start it from root's PM2 daemon.
+//
+// PM2's own `uid` option cannot be used on this host: the daemon is installed
+// under /root/.nvm, and its fork wrapper is unreadable to other users. Instead
+// PM2 runs `setpriv` as root, which drops to the unprivileged user and then
+// execs Node — the PID stays the same, so PM2 signals and monitors Node.
 module.exports = {
   apps: [
     {
       name: "renvodesk-api",
       // A symlink to the active release; restarts pick up a switched target.
       cwd: "/opt/renvodesk-api/current",
-      script: "dist/server.js",
-      interpreter: "/usr/bin/node",
-      // Node loads the secrets itself, so they never enter PM2's saved dump.
-      node_args: ["--env-file=/etc/renvodesk/api.env"],
+      script: "/usr/bin/setpriv",
+      interpreter: "none",
+      args: [
+        "--reuid=renvodesk-api",
+        "--regid=renvodesk-api",
+        "--init-groups",
+        "--no-new-privs",
+        "--",
+        "/usr/bin/node",
+        // Node reads secrets itself (after dropping privileges), so they never
+        // enter PM2's saved dump.
+        "--env-file=/etc/renvodesk/api.env",
+        "dist/server.js",
+      ],
       env: { NODE_ENV: "production" },
-      // Root's daemon starts the process as this unprivileged user.
-      uid: "renvodesk-api",
-      gid: "renvodesk-api",
       // Exactly one process: AI jobs run in-process (decision 030, D2).
       exec_mode: "fork",
       instances: 1,

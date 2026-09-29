@@ -17,5 +17,6 @@ rm -f "$out/pnpm-lock.yaml"
 node -e 'process.exit(require(process.argv[1]).dependencies.fastify ? 0 : 1)' "$root/$out/package.json"
 test -f "$out/dist/server.js" && test -f "$out/prompts/site-note-instructions.md"
 git rev-parse --short HEAD > "$out/REVISION"
-tar -C "$out" -czf "$out.tgz" .
+# COPYFILE_DISABLE stops macOS tar from adding AppleDouble ._* files.
+COPYFILE_DISABLE=1 tar -C "$out" -czf "$out.tgz" .
 echo "API release: $out.tgz ($(du -h "$out.tgz" | cut -f1), revision $(cat "$out/REVISION"))"
