@@ -652,6 +652,103 @@ export type Database = {
           },
         ];
       };
+      site_note_analyses: {
+        Row: {
+          completed_at: string | null;
+          created_at: string;
+          expires_at: string | null;
+          failure_reason: string | null;
+          file_id: string;
+          id: string;
+          lease_expires_at: string;
+          omitted_task_count: number | null;
+          organization_id: string;
+          project_id: string;
+          prompt_version: string;
+          proposal: Json | null;
+          proposal_model: string;
+          proposal_status: string | null;
+          purged_at: string | null;
+          request_id: string;
+          requested_by: string;
+          status: string;
+          summary: string | null;
+          transcript: string | null;
+          transcription_model: string;
+          usage: Json;
+        };
+        Insert: {
+          completed_at?: string | null;
+          created_at?: string;
+          expires_at?: string | null;
+          failure_reason?: string | null;
+          file_id: string;
+          id?: string;
+          lease_expires_at: string;
+          omitted_task_count?: number | null;
+          organization_id: string;
+          project_id: string;
+          prompt_version: string;
+          proposal?: Json | null;
+          proposal_model: string;
+          proposal_status?: string | null;
+          purged_at?: string | null;
+          request_id: string;
+          requested_by: string;
+          status?: string;
+          summary?: string | null;
+          transcript?: string | null;
+          transcription_model: string;
+          usage?: Json;
+        };
+        Update: {
+          completed_at?: string | null;
+          created_at?: string;
+          expires_at?: string | null;
+          failure_reason?: string | null;
+          file_id?: string;
+          id?: string;
+          lease_expires_at?: string;
+          omitted_task_count?: number | null;
+          organization_id?: string;
+          project_id?: string;
+          prompt_version?: string;
+          proposal?: Json | null;
+          proposal_model?: string;
+          proposal_status?: string | null;
+          purged_at?: string | null;
+          request_id?: string;
+          requested_by?: string;
+          status?: string;
+          summary?: string | null;
+          transcript?: string | null;
+          transcription_model?: string;
+          usage?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "site_note_analyses_organization_id_file_id_fkey";
+            columns: ["organization_id", "file_id"];
+            isOneToOne: false;
+            referencedRelation: "project_files";
+            referencedColumns: ["organization_id", "id"];
+          },
+          {
+            foreignKeyName: "site_note_analyses_organization_id_fkey";
+            columns: ["organization_id"];
+            isOneToOne: false;
+            referencedRelation: "organizations";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "site_note_analyses_organization_id_project_id_fkey";
+            columns: ["organization_id", "project_id"];
+            isOneToOne: false;
+            referencedRelation: "projects";
+            referencedColumns: ["organization_id", "id"];
+          },
+        ];
+      };
       sketch_saves: {
         Row: {
           base_revision: number;
@@ -781,13 +878,49 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      advance_site_note_analysis: {
+        Args: { p_id: string; p_org: string; p_status: string };
+        Returns: boolean;
+      };
+      begin_site_note_analysis: {
+        Args: {
+          p_file: string;
+          p_org: string;
+          p_project: string;
+          p_prompt_version: string;
+          p_proposal_model: string;
+          p_request: string;
+          p_transcription_model: string;
+        };
+        Returns: {
+          analysis_id: string;
+          outcome: string;
+        }[];
+      };
       cancel_sketch_save: {
         Args: { p_org: string; p_save: string };
         Returns: undefined;
       };
+      complete_site_note_analysis: {
+        Args: {
+          p_id: string;
+          p_omitted: number;
+          p_org: string;
+          p_proposal: Json;
+          p_proposal_status: string;
+          p_summary: string;
+          p_transcript: string;
+          p_usage: Json;
+        };
+        Returns: boolean;
+      };
       create_organization: {
         Args: { p_country: string; p_name: string; p_request_id: string };
         Returns: string;
+      };
+      fail_site_note_analysis: {
+        Args: { p_id: string; p_org: string; p_reason: string };
+        Returns: boolean;
       };
       finalize_sketch_cancellation: {
         Args: { p_org: string; p_save: string };
@@ -849,6 +982,13 @@ export type Database = {
           isOneToOne: true;
           isSetofReturn: false;
         };
+      };
+      site_note_ai_status: {
+        Args: { p_org: string };
+        Returns: {
+          enabled: boolean;
+          remaining: number;
+        }[];
       };
       team_invitation: {
         Args: { p_accept?: boolean; p_id: string };
