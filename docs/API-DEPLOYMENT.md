@@ -2,7 +2,7 @@
 
 First release of the Fastify API next to the static site from
 [NGINX-DEPLOYMENT.md](NGINX-DEPLOYMENT.md). The API listens on
-`127.0.0.1:3001` only; Nginx forwards `/api/health` and `/api/v1/` to it.
+`127.0.0.1:3181` only (production; 3001 is the local development port); Nginx forwards `/api/health` and `/api/v1/` to it.
 Supabase stays the database, Auth and Storage (decisions 022, 029, 030).
 
 Order matters: **API → Nginx → web build**. A web build with AI enabled calls
@@ -66,7 +66,7 @@ sudo ln -sfn "$release" /opt/renvodesk-api/current.next
 sudo mv -Tf /opt/renvodesk-api/current.next /opt/renvodesk-api/current
 sudo systemctl restart renvodesk-api
 systemctl status renvodesk-api --no-pager
-curl -s http://127.0.0.1:3001/api/health   # {"status":"ok"}
+curl -s http://127.0.0.1:3181/api/health   # {"status":"ok"}
 ```
 
 Restarting stops running AI jobs; their lease expires within five minutes and
@@ -79,13 +79,13 @@ sudo cp ~/nginx-api-limits.conf /etc/nginx/conf.d/renvodesk-api-limits.conf
 ```
 
 Then add the `location ^~ /api/ { … }` block from `deploy/nginx.conf` to the
-**installed** site, inside the `server` block that listens on 443 (Certbot
+**installed** site (on the current VPS: `/etc/nginx/sites-available/renvo.conf`, enabled by symlink), inside the `server` block that listens on 443 (Certbot
 manages it). Do not overwrite the installed file with the template: that would
 remove Certbot's TLS directives. Back it up first:
 
 ```sh
-sudo cp /etc/nginx/sites-available/renvodesk ~/renvodesk.nginx.bak.$(date -u +%Y%m%d%H%M%S)
-sudoedit /etc/nginx/sites-available/renvodesk
+sudo cp /etc/nginx/sites-available/renvo.conf ~/renvodesk.nginx.bak.$(date -u +%Y%m%d%H%M%S)
+sudoedit /etc/nginx/sites-available/renvo.conf
 sudo nginx -t && sudo systemctl reload nginx
 curl -s https://renvodesk.com/api/health
 curl -s -o /dev/null -w '%{http_code}\n' https://renvodesk.com/api/v1/organizations/00000000-0000-4000-8000-000000000000/ai-status   # 401
@@ -130,3 +130,13 @@ progress, the review dialog, task creation, and a free reopen on a second click.
 
 The database migration is additive and unused by older builds; it does not
 need rolling back.
+
+## Current VPS notes (checked 2026-09-29)
+
+- Shared host: other sites (atero, dev-gp, kd, zevolvia) use the same Nginx.
+  Port 3001 belongs to a Docker service, hence `API_PORT=3181`. Keep
+  `limit_req_status` inside RenvoDesk's location, never in the http context.
+- `/var/www/renvodesk/current` was a real directory, not a release symlink.
+  The first web release copies it to `releases/<timestamp>-initial` and then
+  replaces it with a symlink by two renames (`current` → `current.old`,
+  `current.next` → `current`); remove `current.old` after verification.
