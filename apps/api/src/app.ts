@@ -1,4 +1,4 @@
-import Fastify, { type FastifyServerOptions } from "fastify";
+import Fastify, { type FastifyServerOptions, LogController } from "fastify";
 import type { AnalysisStore } from "./analysis-store.js";
 import { failureReason } from "./failure-reason.js";
 import { authenticate, ownerProject, uuid } from "./http.js";
@@ -30,7 +30,7 @@ export function buildApp(
 ) {
   const app = Fastify({
     logger: options.logger ?? false,
-    disableRequestLogging: true,
+    logController: new LogController({ disableRequestLogging: true }),
     bodyLimit: 64 * 1024,
   });
 

@@ -12,6 +12,7 @@
     "dev:api": "pnpm --filter @renvodesk/api dev",
     "build": "node scripts/copy-excalidraw-fonts.mjs && tsc --noEmit && vite build && node scripts/prerender-landing.mjs && pnpm --filter @renvodesk/api build",
     "build:production": "node scripts/check-production-config.mjs && pnpm build",
+    "package:api": "scripts/package-api.sh",
     "preview": "vite preview --host 127.0.0.1",
     "typecheck": "tsc --noEmit && pnpm --filter @renvodesk/api typecheck",
     "lint": "biome check .",

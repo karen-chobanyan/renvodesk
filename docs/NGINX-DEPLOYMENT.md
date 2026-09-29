@@ -1,7 +1,8 @@
 # Ubuntu VPS with Nginx — renvodesk.com
 
 Nginx currently serves the compiled static application. Supabase remains the
-deployed backend; the local Fastify API package is not deployed or proxied here.
+deployed backend; the Fastify API is deployed separately and proxied under `/api/`; see
+[API-DEPLOYMENT.md](API-DEPLOYMENT.md).
 No Docker, PM2 or reverse proxy to Vite is needed for the current static site.
 Nginx is the current preferred option; the Caddy configuration remains an
 alternative, not a second server to run on the same ports.

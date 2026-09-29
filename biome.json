@@ -5,6 +5,7 @@
       "**",
       "!dist",
       "!apps/api/dist",
+      "!release",
       "!.cache",
       "!.vscode",
       "!node_modules",

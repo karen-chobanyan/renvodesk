@@ -1,3 +1,6 @@
 packages:
   - .
   - apps/*
+
+# Lets `pnpm --filter @renvodesk/api deploy` build a self-contained API release.
+injectWorkspacePackages: true

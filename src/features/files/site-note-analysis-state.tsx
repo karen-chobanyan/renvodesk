@@ -149,9 +149,6 @@ export function SiteNoteAnalysisNotices({
           }
         </p>
       )}
-      {status?.configured && !status.enabled && (
-        <p className="helper-text">{c.aiDisabled}</p>
-      )}
       {status?.configured && status.enabled && (
         <p className="helper-text">
           {c.aiRemaining.replace("{count}", String(status.remaining))}

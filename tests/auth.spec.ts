@@ -2720,10 +2720,11 @@ test("AI analysis retries keep the request ID and explain limits", async ({
   expect(requestIds[2]).not.toBe(requestIds[1]);
   enabled = false;
   await page.reload();
-  await expect(
-    page.getByText("L’analyse IA n’est pas activée pour cette entreprise."),
-  ).toBeVisible();
+  // Disabled companies see no AI action or notice at all.
+  await expect(page.getByText("site-note.webm")).toBeVisible();
   await expect(analyze).toHaveCount(0);
+  await expect(page.getByText(/Analyses restantes/)).toHaveCount(0);
+  await expect(page.getByText(/pas activée/)).toHaveCount(0);
 });
 
 test("project overview navigation, retained drafts, isolated failures and legacy links", async ({

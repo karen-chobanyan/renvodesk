@@ -1,0 +1,46 @@
+# Install as /etc/systemd/system/renvodesk-api.service (docs/API-DEPLOYMENT.md).
+# Runs the Fastify API on 127.0.0.1 only; Nginx forwards /api/ to it.
+[Unit]
+Description=RenvoDesk API (Fastify, loopback only)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=renvodesk-api
+Group=renvodesk-api
+WorkingDirectory=/opt/renvodesk-api/current
+EnvironmentFile=/etc/renvodesk/api.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node dist/server.js
+Restart=on-failure
+RestartSec=5
+# In-flight AI jobs stop with the process; their database lease then expires
+# and the owner sees "lease_expired" and can retry (decision 030, D2).
+TimeoutStopSec=30
+
+# Hardening: no privileges, read-only system, no home directories.
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+UMask=0077
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target

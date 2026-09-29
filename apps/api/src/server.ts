@@ -26,6 +26,13 @@ const app = buildApp(
   },
 );
 
+// Stop accepting requests on shutdown. Running AI jobs cannot be resumed by
+// another process; their database lease expires and owners may retry.
+for (const signal of ["SIGTERM", "SIGINT"] as const)
+  process.once(signal, () => {
+    void app.close();
+  });
+
 try {
   await app.listen({ host: "127.0.0.1", port: config.port });
   process.stdout.write(`RenvoDesk API listening on 127.0.0.1:${config.port}\n`);
