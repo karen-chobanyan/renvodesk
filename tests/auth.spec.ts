@@ -2619,6 +2619,15 @@ test("owner reviews an AI voice-note proposal before creating a task", async ({
   await expect(dialog.getByLabel("Date de début")).toHaveValue("");
   await expect(dialog.getByLabel("Date limite")).toHaveValue("2026-10-02");
   await dialog.getByLabel("Date de début").fill("2026-10-01");
+  let warning = "";
+  page.once("dialog", (prompt) => {
+    warning = prompt.message();
+    void prompt.dismiss();
+  });
+  await page.keyboard.press("Escape");
+  await expect.poll(() => warning).toMatch(/pas été créées/);
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByLabel("Date de début")).toHaveValue("2026-10-01");
   await dialog
     .getByLabel("Titre de la tâche")
     .fill("Contrôler la fenêtre de la cuisine");

@@ -28,19 +28,19 @@ checks; nothing here is implemented yet.
 Prerequisite: commit the current uncommitted assignee/date suggestions and
 `apps/api/prompts/site-note-instructions.md` extraction as their own change.
 
-- [ ] **#6 Tolerant evidence matching.** Add `normalizeForMatch` in
+- [x] **#6 Tolerant evidence matching.** Add `normalizeForMatch` in
       `apps/api/src/site-note-analysis.ts`: NFC, curly→straight quotes and
       apostrophes, collapse whitespace, lower-case (`toLocaleLowerCase`), trim
       trailing punctuation. Compare normalized evidence to the normalized
       transcript, but return the model's original evidence text.
       Tests: `’` vs `'`, double spaces, case, line breaks, a real mismatch
       still omitted.
-- [ ] **#15 Close guard.** In `site-note-review.tsx`, when any suggestion is
+- [x] **#15 Close guard.** In `site-note-review.tsx`, when any suggestion is
       unsaved and not yet attempted, closing (button, Escape, overlay) asks
       for confirmation in FR/EN, matching the task editor's unsaved warning.
       Playwright: close with pending suggestions → confirm dialog; cancel keeps
       the review; confirm closes it.
-- [ ] Verify: `pnpm lint`, `pnpm typecheck`, `pnpm test`, targeted Playwright
+- [x] Verify: `pnpm lint`, `pnpm typecheck`, `pnpm test`, targeted Playwright
       AI test (desktop and mobile).
 
 ## Phase 1: production readiness (#1–#4, #12 versioning)

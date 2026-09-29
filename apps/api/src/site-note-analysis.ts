@@ -48,6 +48,23 @@ function requiredText(value: unknown, max: number): value is string {
   );
 }
 
+// Evidence must quote the transcript, but models often retype apostrophes,
+// quotes, spacing or case. Compare a typographically normalized form only.
+export function normalizeForMatch(text: string) {
+  return text
+    .normalize("NFC")
+    .replace(/[‘’ʼ`´]/g, "'")
+    .replace(/[“”«»„]/g, '"')
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .replace(/^[\s.,;:!?…]+|[\s.,;:!?…]+$/g, "");
+}
+
+export function containsEvidence(transcript: string, evidence: string) {
+  const needle = normalizeForMatch(evidence);
+  return needle.length > 0 && normalizeForMatch(transcript).includes(needle);
+}
+
 // Same calendar-date rule as project tasks: real YYYY-MM-DD between 1900 and 2100.
 export function validCalendarDate(value: unknown): value is string {
   if (
@@ -100,7 +117,7 @@ export function validateProposal(
       typeof task.notes !== "string" ||
       task.notes.length > 2000 ||
       !requiredText(task.evidence, 500) ||
-      !transcript.includes(task.evidence.trim())
+      !containsEvidence(transcript, task.evidence)
     ) {
       omittedTaskCount += 1;
       continue;

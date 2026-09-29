@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import {
+  containsEvidence,
   createOpenAISiteNoteAnalyzer,
+  normalizeForMatch,
   OpenAIRequestError,
   validateProposal,
 } from "./site-note-analysis.js";
@@ -307,5 +309,45 @@ describe("site note analyzer", () => {
       omittedTaskCount: 0,
       proposalStatus: "unavailable",
     });
+  });
+});
+
+describe("evidence matching", () => {
+  it("normalizes quotes, whitespace, case, composition and edge punctuation", () => {
+    expect(normalizeForMatch("  L’Électricien   doit\n VENIR. ")).toBe(
+      "l'électricien doit venir",
+    );
+    expect(normalizeForMatch("«Poser» “le” carrelage…")).toBe(
+      '"poser" "le" carrelage',
+    );
+    expect(normalizeForMatch("Café")).toBe(normalizeForMatch("Café"));
+  });
+
+  it("accepts formatting differences but rejects different words", () => {
+    const transcript = "L’électricien doit  passer\nvendredi matin.";
+    expect(containsEvidence(transcript, "l'électricien doit passer")).toBe(
+      true,
+    );
+    expect(containsEvidence(transcript, "Passer vendredi matin")).toBe(true);
+    expect(containsEvidence(transcript, "Le plombier doit passer")).toBe(false);
+    expect(containsEvidence(transcript, " … ")).toBe(false);
+  });
+
+  it("keeps tasks whose evidence differs only by typography", () => {
+    const result = validateProposal(
+      {
+        summary: "ok",
+        tasks: [
+          {
+            title: "Appeler l’électricien",
+            notes: "",
+            evidence: "l'électricien doit passer",
+          },
+        ],
+      },
+      "L’électricien doit passer vendredi.",
+    );
+    expect(result.omittedTaskCount).toBe(0);
+    expect(result.tasks[0].evidence).toBe("l'électricien doit passer");
   });
 });

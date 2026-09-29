@@ -36,6 +36,8 @@ const copy = {
       "Vérifiez le titre, les notes et les dates (1900–2100). La date limite doit être égale ou postérieure au début.",
     failed:
       "La création n’a pas été confirmée. Réessayez pour vérifier le même identifiant.",
+    leave:
+      "Des tâches proposées n’ont pas été créées. Elles seront perdues si vous fermez. Fermer quand même ?",
     close: "Fermer",
   },
   en: {
@@ -61,6 +63,8 @@ const copy = {
       "Check the title, notes and dates (1900–2100). Due date must be on or after the start.",
     failed:
       "Task creation was not confirmed. Retry to check the same request ID.",
+    leave:
+      "Some suggested tasks have not been created. They will be lost if you close. Close anyway?",
     close: "Close",
   },
 };
@@ -138,6 +142,12 @@ export function SiteNoteReview({
     })),
   );
   const busy = tasks.some((task) => task.busy);
+  // Results are not stored yet, so closing discards uncreated suggestions.
+  function requestClose() {
+    if (busy) return;
+    if (tasks.some((task) => !task.saved) && !window.confirm(c.leave)) return;
+    close();
+  }
   function change(index: number, field: EditableField, value: string) {
     const next = field === "title" || field === "notes" ? value : value || null;
     setTasks((old) =>
@@ -183,7 +193,7 @@ export function SiteNoteReview({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open && !busy) close();
+        if (!open) requestClose();
       }}
     >
       <DialogContent
@@ -250,7 +260,7 @@ export function SiteNoteReview({
           )}
         </div>
         <div className="dialog-actions">
-          <Button variant="outline" disabled={busy} onClick={close}>
+          <Button variant="outline" disabled={busy} onClick={requestClose}>
             {c.close}
           </Button>
         </div>
