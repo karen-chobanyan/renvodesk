@@ -4,6 +4,8 @@ import { legalCopy } from "./legal-copy";
 import { LegalPage } from "./legal-page";
 import "@fontsource-variable/inter";
 import "./landing.css";
+import "./landing-case.css";
+import "./landing-plans.css";
 import { landingCopy } from "./landing-copy";
 import { LandingPage } from "./landing-page";
 

@@ -1,14 +1,9 @@
-import {
-  ArrowDown,
-  ArrowRight,
-  ArrowUpRight,
-  ChevronDown,
-  FileText,
-} from "lucide-react";
+import { ArrowRight, ArrowUpRight, ChevronDown, FileText } from "lucide-react";
+import { LandingCase } from "./landing-case";
 import { type LandingLocale, landingCopy } from "./landing-copy";
 import { LandingFooter } from "./landing-footer";
 import { LandingHeader } from "./landing-header";
-import { ProjectModel } from "./project-model";
+import { LandingPlans } from "./landing-plans";
 
 export function LandingPage({ locale }: { locale: LandingLocale }) {
   const c = landingCopy[locale];
@@ -74,33 +69,8 @@ export function LandingPage({ locale }: { locale: LandingLocale }) {
             ))}
           </div>
         </section>
-        <section
-          className="landing-process landing-section"
-          id="workflow"
-          aria-labelledby="workflow-title"
-        >
-          <div className="landing-process-heading">
-            <p className="landing-eyebrow">{c.processEyebrow}</p>
-            <h2 id="workflow-title">{c.processTitle}</h2>
-            <a className="landing-text-link" href="/projects">
-              {c.demo}
-              <ArrowUpRight size={18} />
-            </a>
-            <ProjectModel locale={locale} />
-          </div>
-          <ol>
-            {c.steps.map((step) => (
-              <li key={step.number}>
-                <span>{step.number}</span>
-                <div>
-                  <h3>{step.title}</h3>
-                  <p>{step.text}</p>
-                </div>
-                <ArrowDown size={18} aria-hidden="true" />
-              </li>
-            ))}
-          </ol>
-        </section>
+        <LandingPlans locale={locale} />
+        <LandingCase locale={locale} />
         <section className="landing-site" aria-labelledby="site-title">
           <div className="landing-site-visual">
             <img

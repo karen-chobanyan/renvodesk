@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 for (const locale of ["fr", "en"] as const) {
-  test(`public landing ${locale}: navigation, model, FAQ and conversion`, async ({
+  test(`public landing ${locale}: navigation, kitchen walkthrough, FAQ and conversion`, async ({
     page,
   }, testInfo) => {
     const errors: string[] = [],
@@ -25,7 +25,6 @@ for (const locale of ["fr", "en"] as const) {
       await screenshot.scrollIntoViewIfNeeded();
       await expect(screenshot).toHaveJSProperty("naturalWidth", 1440);
     }
-    await expect(page.locator(".cad-drawing")).toBeVisible();
     await expect(
       hero.getByRole("link", {
         name: locale === "fr" ? "Créer mon espace" : "Create your workspace",
@@ -36,20 +35,53 @@ for (const locale of ["fr", "en"] as const) {
         name: locale === "fr" ? "Explorer la démo" : "Explore the demo",
       }),
     ).toHaveAttribute("href", "/projects");
-    const model = page.getByRole("button", {
-      name: locale === "fr" ? "Explorer les détails" : "Explore the details",
-    });
-    await model.click();
     await expect(
-      page.getByRole("button", {
-        name: locale === "fr" ? "Recomposer le projet" : "Bring it together",
+      page.getByRole("img", {
+        name:
+          locale === "fr"
+            ? /Plan illustratif/
+            : /Illustrative ground-floor plan/,
       }),
-    ).toHaveAttribute("aria-pressed", "true");
-    await page
-      .getByRole("button", {
-        name: locale === "fr" ? "Recomposer le projet" : "Bring it together",
-      })
-      .click();
+    ).toBeVisible();
+    const markup = page.getByRole("button", {
+      name: locale === "fr" ? "Annotations" : "Markup",
+    });
+    await expect(markup).toHaveAttribute("aria-pressed", "true");
+    await markup.click();
+    await expect(markup).toHaveAttribute("aria-pressed", "false");
+    await expect(page.locator(".plan-notes")).toHaveAttribute(
+      "data-visible",
+      "false",
+    );
+    const stages = page.getByRole("tablist", {
+      name: locale === "fr" ? "Étapes du chantier" : "Project stages",
+    });
+    const panel = page.getByRole("tabpanel");
+    await expect(panel).toContainText(
+      locale === "fr" ? /9\s260,00\s€/ : "€9,260.00",
+    );
+    const tasksTab = stages.getByRole("tab", {
+      name: locale === "fr" ? /Coordonnez/ : /Coordinate/,
+    });
+    await tasksTab.click();
+    await expect(tasksTab).toHaveAttribute("aria-selected", "true");
+    await expect(panel).toContainText(
+      locale === "fr" ? "Plomberie" : "Plumbing",
+    );
+    await tasksTab.press("ArrowDown");
+    const costsTab = stages.getByRole("tab", {
+      name: locale === "fr" ? /Contrôlez/ : /Keep spending/,
+    });
+    await expect(costsTab).toBeFocused();
+    await expect(costsTab).toHaveAttribute("aria-selected", "true");
+    await expect(panel).toContainText(
+      locale === "fr" ? /2\s070,00\s€/ : "€2,070.00",
+    );
+    await costsTab.press("Home");
+    await expect(stages.getByRole("tab").first()).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
     if (testInfo.project.name === "mobile") {
       await page
         .getByRole("button", { name: "Navigation", exact: true })
@@ -104,7 +136,7 @@ for (const locale of ["fr", "en"] as const) {
     ).toBeVisible();
   });
 }
-test("reduced motion keeps the page readable and model controls usable", async ({
+test("reduced motion keeps the page readable and walkthrough tabs usable", async ({
   page,
 }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
@@ -115,13 +147,12 @@ test("reduced motion keeps the page readable and model controls usable", async (
       .locator(".landing-hero-copy")
       .evaluate((el) => getComputedStyle(el).animationName),
   ).toBe("none");
-  await page.getByRole("button", { name: "Explorer les détails" }).click();
+  const costsTab = page.getByRole("tab", { name: /Contrôlez/ });
+  await costsTab.click();
+  await expect(costsTab).toHaveAttribute("aria-selected", "true");
   expect(
     await page
-      .locator(".model-roof")
-      .evaluate((el) => getComputedStyle(el).transitionDuration),
-  ).toBe("0s");
-  await expect(
-    page.getByRole("button", { name: "Recomposer le projet" }),
-  ).toHaveAttribute("aria-pressed", "true");
+      .locator(".landing-case-view")
+      .evaluate((el) => getComputedStyle(el).animationName),
+  ).toBe("none");
 });

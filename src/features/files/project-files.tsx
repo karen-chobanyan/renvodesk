@@ -1,9 +1,10 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { Camera, FileText, Mic, Sparkles, Upload } from "lucide-react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { useAuth } from "@/features/auth/auth-provider";
 import { quotaErrorCode } from "@/features/storage-usage/storage-model";
-import { StorageUsage } from "@/features/storage-usage/storage-usage";
 import { useLocale } from "@/lib/i18n";
 import { fileCopy } from "./file-copy";
 import { canPreview, PREVIEW_URL_SECONDS, validateFile } from "./file-model";
@@ -94,6 +95,18 @@ export function ProjectFiles({
     );
     return () => clearTimeout(timer);
   }, [preview]);
+  const { session } = useAuth(),
+    userId = session?.user.id ?? "",
+    queryClient = useQueryClient();
+  // Account usage spans every company, so refresh all cached storage readings.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: upload/deletion completion refreshes Settings usage
+  useEffect(() => {
+    if (!reload) return;
+    void queryClient.invalidateQueries({
+      queryKey: ["workspace", userId],
+      predicate: (query) => query.queryKey[3] === "storage",
+    });
+  }, [reload]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: reload refreshes metadata after upload or deletion
   useEffect(() => {
     let active = true;
@@ -191,9 +204,6 @@ export function ProjectFiles({
           </Button>
         )}
       </header>
-      {canManage && (
-        <StorageUsage organizationId={organizationId} refreshKey={reload} />
-      )}
       {canManage && (
         <fieldset
           aria-label={c.choose}

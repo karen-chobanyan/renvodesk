@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/auth-provider";
 import { workspaceKeys } from "@/features/organizations/workspace-context";
@@ -89,22 +88,12 @@ function useStorageUsage(organizationId: string) {
   });
 }
 
-export function StorageUsage({
-  organizationId,
-  refreshKey = 0,
-}: {
-  organizationId: string;
-  refreshKey?: number;
-}) {
+export function StorageUsage({ organizationId }: { organizationId: string }) {
   const { locale } = useLocale();
   const c = copy[locale];
   const query = useStorageUsage(organizationId);
   const usage = query.data ?? null;
   const failed = query.isError && !usage;
-  // biome-ignore lint/correctness/useExhaustiveDependencies: upload/deletion completion explicitly refreshes usage
-  useEffect(() => {
-    if (refreshKey) void query.refetch();
-  }, [refreshKey]);
   return (
     <section className="storage-usage" aria-label={c.title}>
       <h2>{c.title}</h2>

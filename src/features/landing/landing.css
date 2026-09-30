@@ -195,8 +195,22 @@ body:has(.landing) {
   display: none;
 }
 .landing-hero {
+  position: relative;
+  isolation: isolate;
   width: 100%;
   overflow: clip;
+}
+/* Faint drafting grid that fades out below the hero copy. */
+.landing-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image:
+    linear-gradient(#274c620b 1px, transparent 1px),
+    linear-gradient(90deg, #274c620b 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(to bottom, #000 0%, #000 45%, transparent 95%);
 }
 .landing-hero-inner {
   width: min(calc(100% - 112px), var(--lp-width));
@@ -555,55 +569,6 @@ body:has(.landing) {
   font-size: 10px;
   color: var(--lp-muted);
 }
-.landing-process {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 100px;
-  border-top: 1px solid var(--lp-line);
-}
-.landing-process-heading .landing-text-link {
-  margin-top: 28px;
-}
-.landing-process ol {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-}
-.landing-process li {
-  display: grid;
-  grid-template-columns: 36px 1fr 20px;
-  gap: 20px;
-  padding: 27px 0;
-  border-top: 1px solid var(--lp-line);
-}
-.landing-process li:first-child {
-  padding-top: 0;
-  border: 0;
-}
-.landing-process li > span {
-  font-size: 11px;
-  color: #8b9685;
-  padding-top: 5px;
-}
-.landing-process li > svg {
-  color: #8b9685;
-  margin-top: 6px;
-}
-.landing-process li:last-child > svg {
-  display: none;
-}
-.landing-process h3 {
-  font-size: 23px;
-  font-weight: 500;
-  letter-spacing: -0.7px;
-}
-.landing-process li p {
-  max-width: 320px;
-  font-size: 13px;
-  color: var(--lp-muted);
-  line-height: 1.8;
-  margin-top: 8px;
-}
 .landing-site {
   background: #e8eddf;
   display: grid;
@@ -925,103 +890,6 @@ body:has(.landing) {
   align-items: center;
   gap: 8px;
 }
-/* Lightweight vector drafting illustration with an exploded roof layer. */
-.landing-model {
-  min-width: 0;
-}
-.cad-surface {
-  --tilt-x: 0deg;
-  --tilt-y: 0deg;
-  margin-top: 30px;
-  border: 1px solid var(--lp-line);
-  background-color: #f0f3ef;
-  background-image:
-    linear-gradient(#274c6208 1px, transparent 1px),
-    linear-gradient(90deg, #274c6208 1px, transparent 1px);
-  background-size: 20px 20px;
-  color: #274c62;
-  overflow: hidden;
-}
-.cad-toolbar {
-  display: flex;
-  justify-content: space-between;
-  padding: 14px 16px;
-  border-bottom: 1px solid var(--lp-line);
-  font-size: 8px;
-  letter-spacing: 0.1em;
-}
-.cad-drawing {
-  display: block;
-  width: 100%;
-  height: auto;
-  stroke: currentColor;
-  stroke-width: 1.1;
-  transform: perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));
-}
-.cad-guides {
-  stroke: #7892a0;
-  stroke-width: 0.6;
-  stroke-dasharray: 4 4;
-}
-.cad-slab {
-  fill: #e9eeeb;
-  stroke-width: 1.6;
-}
-.cad-walls {
-  fill: #f4f7f3cc;
-  stroke-width: 1.2;
-}
-.cad-plan {
-  stroke-width: 0.8;
-}
-.cad-roof {
-  stroke: #78958a;
-  stroke-dasharray: 4 2;
-  transform: translateY(0);
-  transition: transform 0.7s ease;
-}
-.model-expanded .cad-roof {
-  transform: translateY(-40px);
-}
-.cad-labels {
-  font-size: 9px;
-  letter-spacing: 0.08em;
-}
-.cad-axis {
-  font-size: 8px;
-  stroke-width: 0.7;
-}
-.cad-axis text {
-  fill: currentColor;
-  stroke: none;
-}
-.landing-cad figcaption {
-  margin-top: 12px;
-}
-.landing-model figcaption {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: center;
-  color: var(--lp-muted);
-  font-size: 10px;
-  position: relative;
-}
-.landing-model-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 44px;
-  color: var(--lp-text);
-  background: transparent;
-  padding: 8px 12px;
-  border: 0;
-  border-radius: 4px;
-  font-size: 11px;
-}
-.landing-model-toggle:hover {
-  background: #e6ebdf;
-}
 @keyframes landing-enter {
   from {
     opacity: 0;
@@ -1057,16 +925,6 @@ body:has(.landing) {
   .landing-hero h1 {
     font-size: 55px;
   }
-  .model-perspective {
-    scale: 0.85;
-  }
-  .model-orbit {
-    scale: 0.8;
-  }
-  .model-note {
-    right: 0;
-    top: 25px;
-  }
   .landing-site {
     padding: 65px 32px;
     gap: 8%;
@@ -1074,7 +932,6 @@ body:has(.landing) {
   .landing-cta {
     padding-inline: 32px;
   }
-  .landing-process,
   .landing-faq {
     gap: 50px;
   }
@@ -1174,44 +1031,6 @@ body:has(.landing) {
   .landing-demo-note {
     font-size: 10px;
     max-width: 300px;
-  }
-  .landing-model {
-    margin-top: 12px;
-  }
-  .model-surface {
-    height: 310px;
-  }
-  .model-perspective {
-    top: 34px;
-    scale: 0.73;
-  }
-  .model-orbit {
-    scale: 0.68;
-    top: -55px;
-  }
-  .orbit-two {
-    top: 5px;
-  }
-  .model-ground-shadow {
-    top: 180px;
-    width: 230px;
-    height: 90px;
-    left: calc(50% - 115px);
-  }
-  .model-note {
-    top: 20px;
-    right: 0;
-    font-size: 9px;
-    padding: 7px 10px;
-  }
-  .model-coordinate {
-    top: 18px;
-    left: 0;
-    font-size: 7px;
-  }
-  .landing-model figcaption {
-    gap: 2px;
-    font-size: 9px;
   }
   .landing-hero-baseline {
     padding: 21px 0;
@@ -1330,20 +1149,6 @@ body:has(.landing) {
     grid-column: 2;
     margin-top: 6px;
   }
-  .landing-process {
-    grid-template-columns: 1fr;
-    gap: 38px;
-  }
-  .landing-process-heading .landing-text-link {
-    margin-top: 16px;
-  }
-  .landing-process li {
-    gap: 10px;
-    padding: 20px 0;
-  }
-  .landing-process h3 {
-    font-size: 22px;
-  }
   .landing-site {
     grid-template-columns: 1fr;
     gap: 45px;
@@ -1422,9 +1227,6 @@ body:has(.landing) {
     animation: none;
     transition: none;
   }
-  .model-perspective {
-    transform: none;
-  }
   .landing-product-preview:hover .product-window {
     transform: none;
   }
@@ -1499,9 +1301,6 @@ body:has(.landing) {
   font-size: 14px;
   margin-top: 20px;
 }
-.landing-process ol {
-  align-self: center;
-}
 @media (max-width: 1100px) {
   .landing-hero-inner {
     gap: 28px;
@@ -1539,16 +1338,11 @@ body:has(.landing) {
   .landing-feature-copy .landing-eyebrow {
     margin-bottom: 15px;
   }
-  .landing-process {
-    gap: 35px;
-  }
 }
 @media (prefers-reduced-motion: reduce) {
-  .cad-roof,
   .landing-app-shot a {
     transition: none;
   }
-  .cad-drawing,
   .landing-hero .landing-app-shot,
   .landing-app-shot a:hover {
     transform: none;

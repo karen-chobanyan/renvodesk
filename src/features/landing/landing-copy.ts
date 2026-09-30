@@ -20,10 +20,6 @@ export const landingCopy = {
       "RenvoDesk réunit vos devis, tâches, dépenses et documents de chantier. Un logiciel pour les artisans et entreprises de rénovation, au bureau comme sur le terrain.",
     demoNote: "Découvrez le produit avec des données de démonstration.",
     heroTag: "Chaque détail à sa place.",
-    heroModel: "Dessin architectural axonométrique avec calques éclatés",
-    explode: "Explorer les détails",
-    assemble: "Recomposer le projet",
-    modelCaption: "Étude de rénovation illustrative · pas un outil de CAO",
     scope: "Pensé pour les entreprises de rénovation",
     regions: "Belgique · France · Pays-Bas",
     devices: "Au bureau comme sur le chantier",
@@ -88,25 +84,6 @@ export const landingCopy = {
       estimate: "Devis de rénovation",
       decision: "Acceptation enregistrée",
     },
-    processEyebrow: "DU CONCRET, SUR VOS CHANTIERS",
-    processTitle: "Une cuisine à remplacer.\nUn chantier à coordonner.",
-    steps: [
-      {
-        number: "01",
-        title: "Avant les travaux : chiffrez une cuisine",
-        text: "Regroupez la dépose, les matériaux et la pose dans un devis. Exportez le PDF pour le partager avec votre client.",
-      },
-      {
-        number: "02",
-        title: "Pendant les travaux : coordonnez les corps de métier",
-        text: "Attribuez les tâches de plomberie, de plâtrerie et de peinture. Retrouvez les échéances et les documents du chantier.",
-      },
-      {
-        number: "03",
-        title: "Au fil des achats : contrôlez les dépenses",
-        text: "Enregistrez les matériaux, la main-d’œuvre et la sous-traitance. Comparez les dépenses au budget de coûts prévu.",
-      },
-    ],
     siteEyebrow: "LE CHANTIER NE TIENT PAS DERRIÈRE UN BUREAU",
     siteTitle: "Une photo. Une note.\nEt rien ne se perd.",
     siteText:
@@ -177,10 +154,6 @@ export const landingCopy = {
       "RenvoDesk brings your estimates, site tasks, expenses and project documents into one place. Built for renovation contractors, in the office and on site.",
     demoNote: "Get to know the product with fictional demo projects.",
     heroTag: "Every detail in its place.",
-    heroModel: "Architectural axonometric drawing with exploded layers",
-    explode: "Explore the details",
-    assemble: "Bring it together",
-    modelCaption: "Illustrative renovation study · not a CAD tool",
     scope: "Made for renovation companies",
     regions: "Belgium · France · The Netherlands",
     devices: "From the office to the job site",
@@ -248,25 +221,6 @@ export const landingCopy = {
       estimate: "Renovation estimate",
       decision: "Acceptance recorded",
     },
-    processEyebrow: "BUILT AROUND REAL RENOVATION WORK",
-    processTitle: "A kitchen to replace.\nA renovation to coordinate.",
-    steps: [
-      {
-        number: "01",
-        title: "Before work: price a kitchen renovation",
-        text: "Put demolition, materials and installation into an itemised estimate. Export the PDF to share with your client.",
-      },
-      {
-        number: "02",
-        title: "During work: coordinate the trades",
-        text: "Assign plumbing, plastering and painting tasks. Keep due dates and site documents together for your team.",
-      },
-      {
-        number: "03",
-        title: "As you buy: keep track of project spending",
-        text: "Record materials, labour and subcontractor expenses. Compare recorded spending with the cost budget you set.",
-      },
-    ],
     siteEyebrow: "GOOD WORK DOESN’T STAY BEHIND A DESK",
     siteTitle: "A photo. A note.\nNothing lost along the way.",
     siteText:
