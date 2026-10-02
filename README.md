@@ -21,10 +21,10 @@ and host routing; see [publishing instructions](docs/LANDING-PUBLISHING.md).
 | Authentication | Email/password signup, login, logout, confirmation callback and password recovery UI | Real email delivery still needs dashboard/SMTP configuration and verification |
 | Companies | Create and select companies; users can belong to several organizations | Optional document address/email/phone; owner/member roles and invitation links; no automated invitation emails |
 | Saved projects | Create, list, open and edit company projects; status changes, pagination and stale-edit protection | Cost budgets and expense tracking; no project deletion |
-| Project demo | Search, status filters, create dialog and financial overview | Fictional data held in memory; edits reset on reload |
+| Fictional demo | Every workspace screen: project register and tabs (overview, tasks, budget, estimates, documents, activity), estimates, schedule, clients, team, settings and account | Data held in memory and dated relative to today; edits reset on reload; no uploads, emails or provider calls |
 | Saved estimates | Project-linked drafts, editable lines, atomic saves, server-calculated totals and conflict protection | EUR excluding tax; up to 100 lines; owner-recorded decisions; no email delivery, customer signature or invoicing |
 | Draft PDF export | French/English downloads with contacts, client/site details, line items, exact cents and page numbers | Saved drafts only; no VAT calculation or issued-document snapshot |
-| Estimate demo | Editable lines, decimal-safe totals and session-only saving | No database persistence, PDF export, acceptance or invoicing |
+| Estimate demo | Several estimates per project, editable drafts, recorded sent/accepted/declined states and in-browser PDF | Session-only; no database persistence, email delivery or invoicing |
 | Design foundation | Responsive layouts, French/English, reusable primitives and component showcase | Demo thumbnails are illustrative; saved projects have editable sketches |
 
 Saved projects capture a name, client name, city and optional site address. The
@@ -69,8 +69,9 @@ and recovery email flows verified.
 | `/workspace` | Authenticated company selection, onboarding and persisted project register |
 | `/workspace/:organizationId/projects/:id` | Saved project details, editing, status changes and estimates |
 | `/workspace/:organizationId/projects/:id/estimates/:estimateId` | Persistent draft estimate editor |
-| `/projects`, `/projects/:id` | Separate fictional project demo |
-| `/estimates/:id` | Separate fictional estimate editor |
+| `/projects`, `/projects/:id?tab=…` | Fictional project register and project tabs |
+| `/estimates`, `/estimates/:id` | Fictional estimate register and editor (old `/estimates/:projectId` links redirect) |
+| `/schedule`, `/clients`, `/team`, `/settings`, `/account` | Fictional counterparts of the live company screens |
 | `/design-system` | Shared design/component reference |
 
 Demo records do not become company records after signing in. Do not enter customer
@@ -138,6 +139,7 @@ protection disabled in Auth; no estimate-schema findings were reported. This is 
 - `src/features/projects`: demo screens plus `saved-projects.tsx` and `project-service.ts` for live data.
 - `src/features/estimates`: shared line editor, calculations, live draft services/screens and separate demo.
 - `src/lib/i18n.tsx`, `src/lib/demo-store.tsx`: localization and separate demo state.
+- `src/features/demo`: fictional demo data and screens mirroring the live workspace.
 - `src/lib/supabase`: browser client and generated database types.
 - `supabase/migrations`, `supabase/tests`: schema history and SQL isolation tests.
 - `tests`: Playwright flows; unit tests live beside their source.

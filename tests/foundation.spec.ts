@@ -56,17 +56,24 @@ test("create demo project and open detail", async ({ page }) => {
 test("edit estimate, validate and preserve across navigation", async ({
   page,
 }) => {
+  // Legacy project-slug links redirect to that project's first estimate.
   await page.goto("/estimates/maison-ixelles");
+  await page.getByRole("button", { name: "Tout refuser", exact: true }).click();
+  await expect(page).toHaveURL(/\/estimates\/ixelles-interieur$/);
   await page
     .getByRole("textbox", { name: "Prix unitaire HT 1", exact: true })
     .fill("30");
   await expect(page.getByTestId("estimate-total")).toContainText("9");
+  await expect(page.getByTestId("estimate-total")).toContainText("550");
   await page.getByRole("button", { name: "Enregistrer le brouillon" }).click();
   await expect(page.getByRole("status")).toContainText("Brouillon enregistré");
   await page
     .getByRole("link", { name: "Maison des Tilleuls", exact: true })
     .click();
   await page.getByRole("link", { name: "Devis du projet" }).click();
+  await page
+    .getByRole("link", { name: "Rénovation intérieure", exact: true })
+    .click();
   await expect(
     page.getByRole("textbox", { name: "Prix unitaire HT 1", exact: true }),
   ).toHaveValue("30");

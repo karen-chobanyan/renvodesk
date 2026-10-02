@@ -131,8 +131,3 @@ export function filterProjects(
       normalize(`${p.name} ${p.client} ${p.city}`).includes(q),
   );
 }
-export function forecastMargin(project: Project) {
-  return (
-    project.budget - project.actual - project.committed - project.remaining
-  );
-}

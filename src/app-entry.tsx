@@ -23,16 +23,22 @@ import { AccountSettingsPage } from "./features/auth/account-settings-page";
 import { AuthCallback, AuthPage } from "./features/auth/auth-page";
 import { AuthProvider, RequireAuth } from "./features/auth/auth-provider";
 import { ClientsPage } from "./features/clients/clients-page";
+import { DemoAccountPage } from "./features/demo/demo-account-page";
+import { DemoClientsPage } from "./features/demo/demo-clients-page";
+import { DemoEstimatePage } from "./features/demo/demo-estimate-page";
+import { DemoEstimatesPage } from "./features/demo/demo-estimates";
+import { DemoProjectPage } from "./features/demo/demo-project-page";
+import { DemoSchedulePage } from "./features/demo/demo-schedule-page";
+import { DemoSettingsPage } from "./features/demo/demo-settings-page";
+import { DemoTeamPage } from "./features/demo/demo-team-page";
 import { DesignPage } from "./features/design/design-page";
 import { CompanyEstimatesPage } from "./features/estimates/company-estimates-page";
-import { EstimatePage } from "./features/estimates/estimate-page";
 import { SavedEstimatePage } from "./features/estimates/saved-estimate-page";
 import {
   SessionQueryProvider,
   WorkspaceDataRoute,
 } from "./features/organizations/workspace-data";
 import { WorkspacePage } from "./features/organizations/workspace-page";
-import { ProjectPage } from "./features/projects/project-page";
 import { ProjectsPage } from "./features/projects/projects-page";
 import { SavedProjectPage } from "./features/projects/saved-project-page";
 import { SchedulePage } from "./features/tasks/schedule-page";
@@ -173,8 +179,14 @@ function Application() {
 
                 <Route element={<AppShell />}>
                   <Route path="projects" element={<ProjectsPage />} />
-                  <Route path="projects/:id" element={<ProjectPage />} />
-                  <Route path="estimates/:id" element={<EstimatePage />} />
+                  <Route path="projects/:id" element={<DemoProjectPage />} />
+                  <Route path="estimates" element={<DemoEstimatesPage />} />
+                  <Route path="estimates/:id" element={<DemoEstimatePage />} />
+                  <Route path="schedule" element={<DemoSchedulePage />} />
+                  <Route path="clients" element={<DemoClientsPage />} />
+                  <Route path="team" element={<DemoTeamPage />} />
+                  <Route path="settings" element={<DemoSettingsPage />} />
+                  <Route path="account" element={<DemoAccountPage />} />
                   <Route path="design-system" element={<DesignPage />} />
                   <Route path="*" element={<NotFound />} />
                 </Route>

@@ -28,14 +28,14 @@ renvodesk.com {
 	handle @public {
 		file_server
 	}
-	@assets path /assets/* /fonts/* /images/* /excalidraw/* /favicon.svg /robots.txt /sitemap.xml
+	@assets path /assets/* /fonts/* /images/* /excalidraw/* /demo/* /favicon.svg /robots.txt /sitemap.xml
 	handle @assets {
 		@hashed path /assets/*
 		header @hashed Cache-Control "public, max-age=31536000, immutable"
 		file_server
 	}
 	# Restrict the SPA fallback to actual routes; unknown URLs return HTTP 404.
-	@app path_regexp app ^/(login|signup|auth/(forgot|reset|callback)|invite/[^/]+|workspace|workspace/[^/]+/(team|clients|estimates|settings|schedule)|workspace/[^/]+/projects/[^/]+(/(sketches|estimates)/[^/]+)?|projects(/[^/]+)?|estimates/[^/]+|design-system)/?$
+	@app path_regexp app ^/(login|signup|auth/(forgot|reset|callback)|invite/[^/]+|workspace|workspace/account|workspace/[^/]+/(team|clients|estimates|settings|schedule)|workspace/[^/]+/projects/[^/]+(/(sketches|estimates)/[^/]+)?|projects(/[^/]+)?|estimates(/[^/]+)?|schedule|clients|team|settings|account|design-system)/?$
 	handle @app {
 		header X-Robots-Tag "noindex, nofollow"
 		rewrite * /app.html

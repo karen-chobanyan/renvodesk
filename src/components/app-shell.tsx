@@ -5,12 +5,15 @@ import {
   FolderKanban,
   Menu,
   PanelsTopLeft,
+  Settings,
+  UserRound,
   Users,
   X,
 } from "lucide-react";
 import { type ReactNode, useState, useSyncExternalStore } from "react";
 import { NavLink, Outlet, useParams, useSearchParams } from "react-router";
 import { useAuthCopy } from "@/features/auth/copy";
+import { useDemoCopy } from "@/features/demo/demo-copy";
 import {
   AccountControls,
   CompanyNavigation,
@@ -56,7 +59,9 @@ export function AppShell({
   const { t, locale, setLocale } = useLocale();
   const { projects } = useDemo();
   const authText = useAuthCopy();
+  const demoText = useDemoCopy();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const close = () => setMobileOpen(false);
   const isMobile = useSyncExternalStore(
     subscribeMobile,
     () => window.matchMedia("(max-width: 760px)").matches,
@@ -121,9 +126,15 @@ export function AppShell({
             Clients
           </NavLink>
         )}
-        {live && activeOrg && (
+        {!live && (
+          <NavLink to="/clients" onClick={close}>
+            <Users size={18} />
+            {demoText.clients}
+          </NavLink>
+        )}
+        {(!live || activeOrg) && (
           <NavLink
-            to={`/workspace/${activeOrg}/schedule`}
+            to={live ? `/workspace/${activeOrg}/schedule` : "/schedule"}
             onClick={() => setMobileOpen(false)}
           >
             <CalendarDays size={18} />
@@ -137,13 +148,25 @@ export function AppShell({
                 ? activeOrg
                   ? `/workspace/${activeOrg}/estimates`
                   : home
-                : "/estimates/maison-ixelles"
+                : "/estimates"
             }
             onClick={() => setMobileOpen(false)}
           >
             <FileText size={18} />
             {t("estimates")}{" "}
           </NavLink>
+        )}
+        {!live && (
+          <>
+            <NavLink to="/team" onClick={close}>
+              <UserRound size={18} />
+              {demoText.team}
+            </NavLink>
+            <NavLink to="/settings" onClick={close}>
+              <Settings size={18} />
+              {demoText.settings}
+            </NavLink>
+          </>
         )}
       </nav>
       {!live && (
@@ -170,13 +193,13 @@ export function AppShell({
           </>
         )}
         {!live && (
-          <div className="profile">
+          <NavLink className="profile" to="/account" onClick={close}>
             <span className="profile-avatar">AM</span>
             <div>
               <strong>Alex Morgan</strong>
-              <small>{t("sample")}</small>
+              <small>{demoText.account}</small>
             </div>
-          </div>
+          </NavLink>
         )}
       </div>
     </aside>
@@ -186,7 +209,7 @@ export function AppShell({
       open={isMobile && mobileOpen}
       onOpenChange={setMobileOpen}
     >
-      <div className={`app-shell ${live ? "live-shell" : ""}`}>
+      <div className={`app-shell live-shell${live ? "" : " demo-shell"}`}>
         <a className="skip-link" href="#main">
           {t("overview")}
         </a>

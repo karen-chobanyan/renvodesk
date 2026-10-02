@@ -331,7 +331,7 @@ export function ProjectsPage() {
                   key={p.id}
                   to={
                     p.next === "reviewEstimate"
-                      ? `/estimates/${p.id}`
+                      ? `/projects/${p.id}?tab=estimates`
                       : `/projects/${p.id}`
                   }
                 >

@@ -39,8 +39,10 @@ Current implementation:
   and owner-recorded sent/accepted/declined states. EUR excluding tax; at most 100 lines.
 - Persisted project tasks with notes, optional dates, statuses, revision-safe edits,
   confirmed deletion and a company weekly/overdue/undated schedule.
-- Separate fictional `/projects`, `/projects/:id` and `/estimates/:id` demos.
-  Their records remain in memory and reset on reload, even when signed in.
+- A separate fictional demo mirrors every live workspace screen: `/projects`,
+  `/projects/:id?tab=…`, `/estimates`, `/estimates/:id`, `/schedule`, `/clients`,
+  `/team`, `/settings` and `/account`. Records stay in memory, are dated relative
+  to today and reset on reload, even when signed in. See decision 031.
 - French/English UI, responsive layouts and `/design-system` component reference.
 
 Agreed direction:
@@ -115,6 +117,9 @@ and automatic quantity takeoff unless explicitly requested.
   implement live drafts. estimate-lines is shared with the separate demo editor.
   draft-model handles persisted line serialization; model owns decimal calculations.
 - `src/lib/demo-store.tsx`: in-memory demo state; never silently mix with live data.
+- `src/features/demo`: fictional data (`demo-work`, `demo-directory`, `demo-activity`)
+  and demo screens. They reuse live copy, models and CSS classes, never live services.
+  When a live screen changes, update its demo counterpart and `tests/demo.spec.ts`.
 - `src/lib/i18n.tsx`: shared FR/EN copy and formatting; auth and saved projects also
   own domain copy. Keep both languages complete when adding or changing text.
 - `src/components/ui`, `src/components/shared.tsx`: reusable primitives/patterns.

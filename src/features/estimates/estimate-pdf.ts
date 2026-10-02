@@ -216,13 +216,20 @@ export function buildEstimatePdf(
   }
   return doc;
 }
-export async function downloadEstimatePdf(data: PdfEstimate, locale: Locale) {
+async function loadPdfFont() {
   const response = await fetch("/fonts/NotoSans-Regular.ttf");
   if (!response.ok) throw new Error("Font unavailable");
   const bytes = new Uint8Array(await response.arrayBuffer());
   let raw = "";
   for (const byte of bytes) raw += String.fromCharCode(byte);
-  const doc = buildEstimatePdf(data, locale, btoa(raw));
+  return btoa(raw);
+}
+export async function estimatePdfBlob(data: PdfEstimate, locale: Locale) {
+  const doc = buildEstimatePdf(data, locale, await loadPdfFont());
+  return doc.output("blob");
+}
+export async function downloadEstimatePdf(data: PdfEstimate, locale: Locale) {
+  const doc = buildEstimatePdf(data, locale, await loadPdfFont());
   const name =
     data.title
       .normalize("NFKD")

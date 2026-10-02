@@ -71,6 +71,14 @@ try {
     "/auth/callback?code=secret",
     "/workspace/org/projects/project?tab=activity",
     "/workspace/org/projects/project/estimates/estimate",
+    "/workspace/account",
+    "/projects/maison-ixelles?tab=documents",
+    "/estimates",
+    "/schedule",
+    "/clients",
+    "/team",
+    "/settings",
+    "/account",
   ]) {
     const response = await fetch(`http://127.0.0.1:4187${route}`);
     assert.equal(response.status, 200, route);
