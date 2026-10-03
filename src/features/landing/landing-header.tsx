@@ -2,6 +2,7 @@ import { ArrowUpRight, Menu, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Brand } from "./landing-brand";
 import { type LandingLocale, landingCopy } from "./landing-copy";
+import { rememberLandingLocale } from "./locale-redirect";
 
 export function LandingHeader({
   locale,
@@ -41,6 +42,7 @@ export function LandingHeader({
           className="landing-language"
           href={alternateHref ?? (locale === "fr" ? "/en/" : "/")}
           hrefLang={locale === "fr" ? "en" : "fr"}
+          onClick={() => rememberLandingLocale(locale === "fr" ? "en" : "fr")}
           aria-label={c.language}
         >
           {locale === "fr" ? "EN" : "FR"}

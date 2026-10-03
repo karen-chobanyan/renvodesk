@@ -71,8 +71,13 @@ try {
       if (message.type() === "error") errors.push(message.text());
     });
     await hydrated.goto(base + route);
-    await hydrated.locator('[aria-pressed="false"]').click();
-    assert.equal(await hydrated.locator('[aria-pressed="true"]').count(), 1);
+    // Plan layer toggles start pressed; a working click proves hydration.
+    const toggle = hydrated.locator("[aria-pressed]").first();
+    assert.equal(await toggle.getAttribute("aria-pressed"), "true");
+    await toggle.click();
+    await hydrated
+      .locator('[aria-pressed="false"]')
+      .waitFor({ state: "attached" });
     assert.deepEqual(errors, []);
     await hydrated.close();
   }
@@ -103,6 +108,35 @@ try {
       await hydrated.close();
     }
   }
+  // The inline head script sends a first visit to the browser's language.
+  for (const [locale, from, to] of [
+    ["en-GB", "/", "/en/"],
+    ["fr-BE", "/en/", "/"],
+  ]) {
+    const html = await readFile(
+      `dist${from === "/" ? "/" : "/en/"}index.html`,
+      "utf8",
+    );
+    assert.ok(
+      html.indexOf("renvodesk-landing-entry") <
+        html.indexOf('rel="stylesheet"'),
+    );
+    const context = await browser.newContext({
+      locale,
+      userAgent: "Mozilla/5.0 Chrome/130.0.0.0 Safari/537.36",
+    });
+    await context.addInitScript(() =>
+      Object.defineProperty(Navigator.prototype, "webdriver", {
+        get: () => false,
+      }),
+    );
+    const page = await context.newPage();
+    await page.goto(`${base}${from}?ref=1`);
+    await page.waitForURL(`${base}${to}?ref=1`);
+    await page.goto(base + from);
+    assert.equal(new URL(page.url()).pathname, from);
+    await context.close();
+  }
   const shell = await readFile("dist/app.html", "utf8");
   assert.match(shell, /noindex, nofollow/);
   assert.ok(!shell.includes("<h1"));
@@ -112,7 +146,7 @@ try {
     assert.ok(sitemap.includes(`${process.env.SITE_URL}/en/`));
   }
   console.log(
-    "FR/EN static content, no-JavaScript FAQ, metadata, hydration and private shell passed.",
+    "FR/EN static content, no-JavaScript FAQ, metadata, hydration, language redirect and private shell passed.",
   );
 } finally {
   await browser.close();

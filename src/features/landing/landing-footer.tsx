@@ -2,6 +2,7 @@ import { ArrowUpRight } from "lucide-react";
 import { ConsentControls } from "../../lib/telemetry/consent-controls";
 import { Brand } from "./landing-brand";
 import { type LandingLocale, landingCopy } from "./landing-copy";
+import { rememberLandingLocale } from "./locale-redirect";
 
 export function LandingFooter({
   locale,
@@ -34,6 +35,7 @@ export function LandingFooter({
         <a
           href={alternateHref ?? (locale === "fr" ? "/en/" : "/")}
           hrefLang={locale === "fr" ? "en" : "fr"}
+          onClick={() => rememberLandingLocale(locale === "fr" ? "en" : "fr")}
         >
           {locale === "fr" ? "English" : "Français"}
         </a>

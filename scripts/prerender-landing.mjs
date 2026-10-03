@@ -22,6 +22,7 @@ try {
     legalCopy,
     escapeHtml,
     landingHead,
+    localeRedirectScript,
     siteOrigin,
     sitemap,
   } = await import(pathToFileURL(path.join(temporary, "render.mjs")).href);
@@ -58,6 +59,11 @@ try {
       .replace('<html lang="fr">', `<html lang="${locale}">`)
       .replace(/<title>[^<]*<\/title>/, "")
       .replace(/<meta name="(?:description|robots)"[^>]*\/>/g, "")
+      // Runs before stylesheets block parsing, so the wrong language never paints.
+      .replace(
+        /<meta charset="[^"]*"\s*\/?>/,
+        (charset) => `${charset}${localeRedirectScript()}`,
+      )
       .replace("</head>", `${landingHead(locale, origin)}\n${cssHead}\n</head>`)
       .replace(
         '<div id="root"></div>',
@@ -65,6 +71,8 @@ try {
       );
     if (!output.includes(`data-prerendered="${locale}"`))
       throw new Error("Prerender root not found");
+    if (!output.includes(localeRedirectScript()))
+      throw new Error("Locale redirect script was not inserted");
     const file = locale === "fr" ? "dist/index.html" : "dist/en/index.html";
     await mkdir(path.dirname(file), { recursive: true });
     await writeFile(file, output);

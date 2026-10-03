@@ -4,6 +4,7 @@ import { LandingPage } from "./landing-page";
 import type { LegalKind } from "./legal-copy";
 import { LegalPage } from "./legal-page";
 
+export { localeRedirectScript } from "./locale-redirect";
 export { escapeHtml, landingHead, sitemap, siteOrigin } from "./seo";
 export function renderLanding(locale: LandingLocale) {
   return renderToString(<LandingPage locale={locale} />);

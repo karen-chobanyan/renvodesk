@@ -26,6 +26,14 @@ Configure the chosen host in this order:
 4. Return HTTP 404 for unknown routes and missing assets. Keep private application
    pages noindex; authentication and database RLS remain the access controls.
 
+## Language redirect
+
+A first visit to `/` or `/en/` in a tab is sent to the browser's preferred
+language by an inline head script (decision 032): an explicit language choice,
+then browser languages, then the time zone, otherwise English. Later pages in the
+tab, crawlers and automation are never redirected, and the static HTML for both
+locales is unchanged, so no host configuration or `Vary` header is needed.
+
 ## Verification and discovery
 
 Run `node scripts/check-landing-build.mjs` after a preview build. For a production

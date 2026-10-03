@@ -9,6 +9,9 @@ motion, FR/EN copy and truthful feature boundaries. `SITE_URL` controls producti
 canonical/hreflang/sitemap metadata; unset builds are noindex previews. Deploy the
 public HTML before the noindex `app.html` fallback. See docs/LANDING-PUBLISHING.md
 and decision 016. Hosting and domain ownership remain unverified.
+A first landing visit per tab redirects to the browser's language (explicit
+choice → browser languages → time zone → English); crawlers and automation are
+exempt. Keep `locale-redirect.ts` self-contained: it is inlined. See decision 032.
 
 ## Product
 
