@@ -245,3 +245,25 @@ form two columns to keep all statuses visible. Empty/error/loading feedback stay
 inside the register. Creating a project clears previous filters so it is visible.
 Demo data remains fictional and separate; its financial figures stay on project
 and estimate screens rather than the register.
+
+Team uses the compact register header, an Invite teammate action, structured
+member rows and loaded counts. Pending invitations are visible first; completed,
+revoked and expired invitations sit in an expandable history. Invitation creation
+and link retrieval share a focused dialog with keyboard focus restoration, guarded
+closing, stable request recovery and manual-copy fallback. Member and invitation
+reads recover independently. Demo and live Team screens share these components.
+
+Estimate editors share a contextual header linking the estimate register and its
+project, a recorded-status badge and revision, and sticky save/status/PDF actions.
+Draft project context uses the existing scoped project read; frozen estimates use
+the sent snapshot's project name. Descriptions wrap in textareas. On phones each
+line stacks labeled fields with the line total and remove action; no horizontal
+scroll is needed. Tracking and decision history remain separate from editing.
+Existing revision checks, decimal totals, PDF snapshots and transition rules stay
+in place. Reloading over unsaved conflict fields requires confirmation.
+
+Unsaved estimate edits use native `beforeunload` plus the browser Navigation API
+for cancelable same-document navigation (including Back/Forward), without replacing
+BrowserRouter. Browsers without this API retain link-click and unload prompts;
+SPA history traversal protection requires Navigation API support. Inputs remain
+memory-only. The demo retains dirty inputs when its language changes.

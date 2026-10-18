@@ -1,12 +1,18 @@
-import { Check, Plus } from "lucide-react";
-import { useState } from "react";
+import { Plus } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useParams } from "react-router";
 import { EmptyState } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { draftCopy } from "@/features/estimates/draft-copy";
+import { editorCopy } from "@/features/estimates/editor-copy";
+import {
+  EstimateEditorActions,
+  EstimateEditorHeader,
+} from "@/features/estimates/estimate-editor-layout";
 import { EstimateLines } from "@/features/estimates/estimate-lines";
 import { type EstimateLine, estimateTotal } from "@/features/estimates/model";
+import { useEstimateLeaveGuard } from "@/features/estimates/use-estimate-leave-guard";
 import { workflowCopy } from "@/features/estimates/workflow-copy";
 import { useDemo } from "@/lib/demo-store";
 import { formatMoney, useLocale } from "@/lib/i18n";
@@ -18,7 +24,7 @@ import { type DemoEstimate, say, tx } from "./demo-types";
 export function DemoEstimatePage() {
   const { id = "" } = useParams();
   const { estimates } = useDemo();
-  const { locale, t } = useLocale();
+  const { t } = useLocale();
   const d = useDemoCopy();
   const estimate = estimates.find((row) => row.id === id);
   if (!estimate) {
@@ -37,14 +43,13 @@ export function DemoEstimatePage() {
       />
     );
   }
-  return (
-    <DemoEstimateEditor key={`${estimate.id}:${locale}`} estimate={estimate} />
-  );
+  return <DemoEstimateEditor key={estimate.id} estimate={estimate} />;
 }
 
 function DemoEstimateEditor({ estimate }: { estimate: DemoEstimate }) {
   const { locale, t } = useLocale(),
     c = draftCopy[locale],
+    e = editorCopy[locale],
     w = workflowCopy[locale],
     d = useDemoCopy();
   const { projects, saveEstimate, company } = useDemo();
@@ -57,6 +62,13 @@ function DemoEstimateEditor({ estimate }: { estimate: DemoEstimate }) {
     [pdfBusy, setPdfBusy] = useState(false),
     [pdfFailed, setPdfFailed] = useState(false);
   const frozen = current.status !== "draft";
+  useEstimateLeaveGuard(dirty, e.leave);
+  useEffect(() => {
+    if (!dirty) {
+      setTitle(say(current.title, locale));
+      setLines(editorLines(current.lines, locale));
+    }
+  }, [locale, current, dirty]);
   const total = estimateTotal(lines);
   function changed() {
     setDirty(true);
@@ -104,38 +116,56 @@ function DemoEstimateEditor({ estimate }: { estimate: DemoEstimate }) {
     total === null || lines.some((l) => !l.customDescription?.trim());
   return (
     <section className="connected-workspace live-estimate">
-      <Link
-        className="back-link"
-        to={`/projects/${current.projectId}?tab=estimates`}
+      <EstimateEditorHeader
+        title={say(current.title, locale)}
+        status={current.status}
+        revision={current.revision}
+        estimatesHref="/estimates"
+        projectHref={`/projects/${current.projectId}?tab=estimates`}
+        projectName={project?.name}
+        notice={frozen ? w.frozen : c.notice}
+      />
+      <EstimateEditorActions
+        message={
+          frozen
+            ? e.frozen
+            : saved
+              ? t("saved")
+              : dirty
+                ? t("unsaved")
+                : e.saved
+        }
       >
-        {project?.name ?? c.back}
-      </Link>
-      <p className="eyebrow">{w[current.status]}</p>
-      <h1>{say(current.title, locale)}</h1>
-      <p className="page-description">{frozen ? w.frozen : c.notice}</p>
-      <div className="estimate-export">
-        <Button
-          variant="outline"
-          disabled={pdfBusy || dirty || !project}
-          onClick={() => void downloadPdf()}
-        >
-          {pdfBusy
-            ? locale === "fr"
-              ? "Préparation du PDF…"
-              : "Preparing PDF…"
-            : locale === "fr"
-              ? "Télécharger le PDF"
-              : "Download PDF"}
-        </Button>
-        <p className="helper-text">{d.pdfDemo}</p>
-        {pdfFailed && (
-          <p role="alert" className="error-message">
-            {locale === "fr"
-              ? "Impossible de générer le PDF. Réessayez."
-              : "Could not generate the PDF. Try again."}
-          </p>
+        <div className="estimate-export">
+          <Button
+            variant="outline"
+            disabled={pdfBusy || dirty || !project}
+            onClick={() => void downloadPdf()}
+          >
+            {pdfBusy
+              ? locale === "fr"
+                ? "Préparation du PDF…"
+                : "Preparing PDF…"
+              : locale === "fr"
+                ? "Télécharger le PDF"
+                : "Download PDF"}
+          </Button>
+          {pdfFailed && (
+            <p role="alert" className="error-message">
+              {locale === "fr"
+                ? "Impossible de générer le PDF. Réessayez."
+                : "Could not generate the PDF. Try again."}
+            </p>
+          )}
+        </div>
+        {!frozen && (
+          <Button disabled={!title.trim() || invalid || !dirty} onClick={save}>
+            {t("save")}
+          </Button>
         )}
-      </div>
+      </EstimateEditorActions>
+      <p className="helper-text demo-pdf-note">{d.pdfDemo}</p>
+      <h2 className="estimate-section-title">{e.document}</h2>
       <fieldset className="project-fields" disabled={frozen}>
         <label className="field" htmlFor="estimate-title">
           {c.title}
@@ -152,12 +182,14 @@ function DemoEstimateEditor({ estimate }: { estimate: DemoEstimate }) {
         <div className="estimate-paper">
           <EstimateLines
             lines={lines}
+            frozen={frozen}
             update={update}
             remove={(id) => {
               setLines((old) => old.filter((l) => l.id !== id));
               changed();
             }}
           />
+          {!lines.length && <p className="estimate-lines-empty">{e.empty}</p>}
           {!frozen && (
             <div className="estimate-add">
               <Button
@@ -198,19 +230,8 @@ function DemoEstimateEditor({ estimate }: { estimate: DemoEstimate }) {
             {c.invalid}
           </p>
         )}
-        {!frozen && (
-          <div className="dialog-actions">
-            <Button
-              disabled={!title.trim() || invalid || !dirty}
-              onClick={save}
-            >
-              <Check size={16} />
-              {t("save")}
-            </Button>
-          </div>
-        )}
       </fieldset>
-      <p role="status">{saved ? t("saved") : dirty ? t("unsaved") : ""}</p>
+
       <DemoEstimateWorkflow
         estimate={current}
         dirty={dirty}

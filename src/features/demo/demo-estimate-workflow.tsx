@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { editorCopy } from "@/features/estimates/editor-copy";
 import {
   type EstimateStatus,
   workflowCopy,
@@ -35,10 +36,9 @@ export function DemoEstimateWorkflow({
   }
   const blocked = dirty || !note.trim();
   return (
-    <section className="company-form estimate-workflow">
+    <section className="estimate-workflow">
       <h2>{c.heading}</h2>
       <p>{c.hint}</p>
-      {status !== "draft" && <p>{c.frozen}</p>}
       {(status === "draft" || status === "sent") && (
         <>
           <label className="field" htmlFor="decision-note">
@@ -52,7 +52,8 @@ export function DemoEstimateWorkflow({
               onChange={(e) => setNote(e.target.value)}
             />
           </label>
-          {dirty && <p>{c.dirty}</p>}
+          <p className="helper-text">{editorCopy[locale].reference}</p>
+          {dirty && <p className="helper-text">{c.dirty}</p>}
           {status === "draft" && empty && <p>{c.empty}</p>}
           <div className="task-actions">
             {status === "draft" ? (
@@ -80,26 +81,31 @@ export function DemoEstimateWorkflow({
         </>
       )}
       {notice && <p role="status">{d.recorded}</p>}
-      <h3>{c.history}</h3>
-      {estimate.events.length === 0 ? (
-        <p>{c.noEvents}</p>
-      ) : (
-        <ol className="estimate-event-list">
-          {[...estimate.events].reverse().map((event) => (
-            <li key={event.id}>
-              <strong>{c[event.status]}</strong>
-              <p>{say(event.note, locale)}</p>
-              <small>
-                {c.recorded}{" "}
-                {new Intl.DateTimeFormat(locale === "fr" ? "fr-BE" : "en-GB", {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                }).format(new Date(event.at))}
-              </small>
-            </li>
-          ))}
-        </ol>
-      )}
+      <section className="estimate-history" aria-label={c.history}>
+        <h3>{c.history}</h3>
+        {estimate.events.length === 0 ? (
+          <p>{c.noEvents}</p>
+        ) : (
+          <ol className="estimate-event-list">
+            {[...estimate.events].reverse().map((event) => (
+              <li key={event.id}>
+                <strong>{c[event.status]}</strong>
+                <p>{say(event.note, locale)}</p>
+                <small>
+                  {c.recorded}{" "}
+                  {new Intl.DateTimeFormat(
+                    locale === "fr" ? "fr-BE" : "en-GB",
+                    {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    },
+                  ).format(new Date(event.at))}
+                </small>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
     </section>
   );
 }

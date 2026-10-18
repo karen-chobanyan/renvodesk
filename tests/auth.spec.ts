@@ -1035,6 +1035,7 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     .click();
   await expect(page.getByRole("alert")).toContainText("Ce devis a changé");
   await expect(page.getByLabel("Quantité 1", { exact: true })).toHaveValue("2");
+  page.once("dialog", (prompt) => prompt.accept());
   await page
     .getByRole("button", { name: "Recharger et remplacer mes champs" })
     .click();
@@ -1064,7 +1065,10 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await download.saveAs(
     `/private/tmp/renvo-browser-${test.info().project.name}.pdf`,
   );
-  await page.getByRole("link", { name: "Back to project" }).click();
+  await page
+    .locator(".estimate-breadcrumbs")
+    .getByRole("link", { name: "Reconciled project", exact: true })
+    .click();
   await page
     .locator(".project-tabs")
     .getByRole("link", { name: "Estimates", exact: true })
@@ -1252,6 +1256,7 @@ test("live pages share the shell content bounds", async ({
     [`/workspace/${org}/clients`, ".clients-register"],
     [`/workspace/${org}/schedule`, ".schedule-workspace"],
     [`/workspace/${org}/estimates`, ".estimates-register"],
+    [`/workspace/${org}/team`, ".team-directory"],
     [`/workspace/${org}/projects/${projectId}`, ".project-detail-workspace"],
     [
       `/workspace/${org}/projects/${projectId}/estimates/${projectId}`,
@@ -2441,16 +2446,26 @@ test("owner invites with recovery, revokes and removes a teammate", async ({
     await page.getByRole("button", { name: "Navigation", exact: true }).click();
   await page.locator(".company-menu > summary").click();
   await page.getByRole("link", { name: "Équipe", exact: true }).click();
+  await page.getByRole("button", { name: "Inviter un coéquipier" }).click();
+  await expect(page.getByLabel("E-mail du coéquipier")).toBeFocused();
   await page.getByLabel("E-mail du coéquipier").fill("invited@example.test");
   await page.getByRole("button", { name: "Créer une invitation" }).click();
   await expect(page.getByRole("alert")).toContainText("Action non confirmée");
   await page.getByRole("button", { name: "Créer une invitation" }).click();
   expect(invitations).toHaveLength(1);
   await expect(
-    page.getByLabel("Lien d’invitation", { exact: true }),
+    page.getByRole("textbox", { name: "Lien d’invitation", exact: true }),
   ).toHaveValue(new RegExp(`/invite/${invitations[0].id}$`));
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#team-invite")).toBeFocused();
+  await page
+    .getByRole("button", { name: "Lien d’invitation", exact: true })
+    .click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Révoquer", exact: true }).click();
-  await expect(page.getByText(/Révoquée ·/)).toBeVisible();
+  await page.locator(".team-history summary").click();
+  await expect(page.getByText("Révoquée", { exact: true })).toBeVisible();
   await page
     .getByRole("button", { name: "Retirer le membre", exact: true })
     .click();
@@ -2458,6 +2473,9 @@ test("owner invites with recovery, revokes and removes a teammate", async ({
     .getByRole("dialog")
     .getByRole("button", { name: "Annuler", exact: true })
     .click();
+  await expect(
+    page.getByRole("button", { name: "Retirer le membre", exact: true }),
+  ).toBeFocused();
   await expect(
     page.getByText("teammate@example.test", { exact: true }),
   ).toBeVisible();
@@ -3151,4 +3169,67 @@ test("project overview navigation, retained drafts, isolated failures and legacy
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+});
+
+test("team lists recover independently and preserve invitation pagination", async ({
+  page,
+}) => {
+  await mockApi(page);
+  const rows = Array.from({ length: 21 }, (_, i) => ({
+    id: `invitation-${i}`,
+    organization_id: org,
+    email: `invite-${i}@example.test`,
+    role: "member",
+    created_at: "2026-01-01T00:00:00Z",
+    expires_at: i === 20 ? "2099-01-08T00:00:00Z" : "2026-01-08T00:00:00Z",
+    accepted_at: null,
+    revoked_at: null,
+  }));
+  let fail = true;
+  await page.route("**/rest/v1/rpc/team_members", (route) =>
+    route.fulfill({
+      json: [{ user_id: id, email: user.email, role: "owner" }],
+    }),
+  );
+  await page.route("**/rest/v1/team_invitations**", (route) => {
+    const params = new URL(route.request().url()).searchParams;
+    expect(params.get("organization_id")).toBe(`eq.${org}`);
+    if (fail)
+      return route.fulfill({ status: 400, json: { message: "Unavailable" } });
+    const offset = Number(params.get("offset") ?? 0);
+    return route.fulfill({ json: rows.slice(offset, offset + 20) });
+  });
+  await login(page);
+  await page.getByLabel("Nom de l’entreprise").fill("Atelier des Pins");
+  await page.getByRole("button", { name: "Créer mon entreprise" }).click();
+  await page.goto(`/workspace/${org}/team`);
+  const members = page.getByRole("region", { name: "Membres", exact: true });
+  const invitations = page.getByRole("region", {
+    name: "Invitations",
+    exact: true,
+  });
+  await expect(members.getByText(user.email, { exact: true })).toBeVisible();
+  await expect(invitations.getByRole("alert")).toBeVisible();
+  fail = false;
+  await invitations.getByRole("button", { name: "Réessayer" }).click();
+  await expect(invitations.getByText("Chargés: 20")).toBeVisible();
+  await expect(
+    invitations.getByText(
+      "Aucune invitation en attente parmi les invitations chargées.",
+    ),
+  ).toBeVisible();
+  await invitations.locator("summary").click();
+  await expect(invitations.getByText(/Expirée le:/).first()).toBeVisible();
+  fail = true;
+  await invitations.getByRole("button", { name: "Charger plus" }).click();
+  await expect(invitations.getByRole("alert")).toBeVisible();
+  await expect(
+    invitations.getByText("invite-0@example.test", { exact: true }),
+  ).toBeVisible();
+  fail = false;
+  await invitations.getByRole("button", { name: "Réessayer" }).click();
+  await expect(invitations.getByText("Chargés: 21")).toBeVisible();
+  await expect(
+    invitations.getByText("invite-20@example.test", { exact: true }),
+  ).toBeVisible();
 });

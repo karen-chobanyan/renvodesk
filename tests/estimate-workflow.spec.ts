@@ -161,7 +161,7 @@ for (const decision of ["accepted", "declined"] as const)
       page.getByLabel("Titre du devis", { exact: true }),
     ).toBeDisabled();
     await page.getByRole("button", { name: "Réessayer", exact: true }).click();
-    await expect(page.locator(".eyebrow").last()).toHaveText(
+    await expect(page.getByTestId("estimate-status")).toHaveText(
       "Envoi enregistré",
     );
     expect(events).toHaveLength(1);
@@ -177,7 +177,7 @@ for (const decision of ["accepted", "declined"] as const)
         exact: true,
       })
       .click();
-    await expect(page.locator(".eyebrow").last()).toHaveText(
+    await expect(page.getByTestId("estimate-status")).toHaveText(
       decision === "accepted" ? "Acceptation enregistrée" : "Refus enregistré",
     );
     await page.reload();
@@ -185,6 +185,7 @@ for (const decision of ["accepted", "declined"] as const)
       page.getByLabel("Titre du devis", { exact: true }),
     ).toBeDisabled();
     await expect(page.locator(".estimate-event-list li")).toHaveCount(2);
+    const contextReadsBeforeExport = contactReads;
     const download = page.waitForEvent("download");
     await page
       .getByRole("button", { name: "Télécharger le PDF", exact: true })
@@ -194,7 +195,7 @@ for (const decision of ["accepted", "declined"] as const)
     await file.saveAs(
       `/private/tmp/workflow-${decision}-${test.info().project.name}.pdf`,
     );
-    expect(contactReads).toBe(0);
+    expect(contactReads).toBe(contextReadsBeforeExport);
     await page.screenshot({
       path: `/private/tmp/workflow-${decision}-${test.info().project.name}.png`,
       fullPage: true,

@@ -463,3 +463,144 @@ test("client directory search, responsive contacts and guarded editing", async (
     page.getByRole("button", { name: "Unsaved client", exact: true }),
   ).toHaveCount(0);
 });
+
+test("team directory keeps invitation dialogs focused and separates history", async ({
+  page,
+}) => {
+  await open(page, "/team");
+  await expect(
+    page.getByRole("region", { name: "Membres", exact: true }),
+  ).toBeVisible();
+  const invite = page.getByRole("button", { name: "Inviter un coéquipier" });
+  await invite.click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel("E-mail du coéquipier")).toBeFocused();
+  await dialog
+    .getByLabel("E-mail du coéquipier")
+    .fill("chantier-long-email@example.test");
+  page.once("dialog", (d) => d.dismiss());
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Créer une invitation" }).click();
+  await expect(dialog.getByLabel("Lien d’invitation")).toHaveValue(
+    /\/invite\/demo-/,
+  );
+  await expect(dialog.getByLabel("Lien d’invitation")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(invite).toBeFocused();
+  const row = page
+    .locator(".team-row")
+    .filter({ hasText: "chantier-long-email@example.test" });
+  await row.getByRole("button", { name: "Lien d’invitation" }).click();
+  await expect(dialog.getByLabel("Lien d’invitation")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(
+    row.getByRole("button", { name: "Lien d’invitation" }),
+  ).toBeFocused();
+  await row.getByRole("button", { name: "Révoquer" }).click();
+  await page.locator(".team-history summary").click();
+  await expect(row.getByText("Révoquée", { exact: true })).toBeVisible();
+  await page
+    .getByRole("combobox", { name: "Langue", exact: true })
+    .selectOption("en");
+  await expect(
+    page.getByRole("button", { name: "Invite teammate" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test("estimate editor protects unsaved edits, keeps actions visible and fits mobile lines", async ({
+  page,
+}) => {
+  await open(page, "/estimates");
+  await page
+    .getByRole("link", { name: "Rénovation intérieure", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Rénovation intérieure", exact: true }),
+  ).toBeVisible();
+  const title = page.getByRole("textbox", {
+    name: "Titre du devis",
+    exact: true,
+  });
+  const save = page.getByRole("button", {
+    name: "Enregistrer le brouillon",
+    exact: true,
+  });
+  await expect(save).toBeDisabled();
+  await title.fill("Rénovation avec isolation et menuiseries sur mesure");
+  const description = page.getByRole("textbox", {
+    name: "Description 1",
+    exact: true,
+  });
+  await description.fill(
+    "Préparation complète des murs et plafonds avec reprises des fissures avant application des finitions",
+  );
+  page.once("dialog", (d) => d.dismiss());
+  await page
+    .locator(".estimate-breadcrumbs")
+    .getByRole("link", { name: "Devis", exact: true })
+    .click();
+  await expect(title).toHaveValue(
+    "Rénovation avec isolation et menuiseries sur mesure",
+  );
+  const backPrompt = page.waitForEvent("dialog").then((d) => d.dismiss());
+  await page.evaluate(() => history.back());
+  await backPrompt;
+  await expect(title).toHaveValue(
+    "Rénovation avec isolation et menuiseries sur mesure",
+  );
+  await expect(page).toHaveURL(/\/estimates\/ixelles-interieur$/);
+  const reloadPrompt = page.waitForEvent("dialog").then((d) => d.dismiss());
+  await page.evaluate(() => location.reload());
+  await reloadPrompt;
+  await expect(title).toHaveValue(
+    "Rénovation avec isolation et menuiseries sur mesure",
+  );
+  expect(
+    await page
+      .locator(".estimate-lines-scroll")
+      .evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
+  await page
+    .getByRole("heading", { name: "Historique des décisions" })
+    .scrollIntoViewIfNeeded();
+  const box = await page.locator(".estimate-editor-actions").boundingBox();
+  expect(box?.y).toBeGreaterThanOrEqual(0);
+  expect(box?.y).toBeLessThan(80);
+  await save.click();
+  await expect(save).toBeDisabled();
+  await page
+    .getByRole("combobox", { name: "Langue", exact: true })
+    .selectOption("en");
+  await expect(
+    page.getByRole("region", { name: "Estimate actions" }),
+  ).toBeVisible();
+  await page
+    .locator(".estimate-breadcrumbs")
+    .getByRole("link", { name: "Estimates", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/estimates$/);
+  await page.goBack();
+  const englishTitle = page.getByRole("textbox", {
+    name: "Estimate title",
+    exact: true,
+  });
+  await expect(englishTitle).toBeVisible();
+  await englishTitle.fill("Unsaved correction");
+  const forwardPrompt = page.waitForEvent("dialog").then((d) => d.dismiss());
+  await page.evaluate(() => history.forward());
+  await forwardPrompt;
+  await expect(englishTitle).toHaveValue("Unsaved correction");
+  const leavePrompt = page.waitForEvent("dialog").then((d) => d.accept());
+  await page
+    .locator(".estimate-breadcrumbs")
+    .getByRole("link", { name: "Estimates", exact: true })
+    .click();
+  await leavePrompt;
+  await expect(page).toHaveURL(/\/estimates$/);
+});

@@ -2,6 +2,21 @@ export const teamCopy = {
   fr: {
     close: "Fermer",
     title: "Équipe",
+    directoryHint: "Gérez les membres et les invitations de votre entreprise.",
+    invite: "Inviter un coéquipier",
+    permissionsTitle: "Accès des membres",
+    loaded: "Chargés",
+    noMembers: "Aucun membre chargé.",
+    noPending: "Aucune invitation en attente parmi les invitations chargées.",
+    invitationHistory: "Historique des invitations chargées",
+    expiredOn: "Expirée le",
+    discard:
+      "Fermer sans créer cette invitation ? Votre adresse saisie sera perdue.",
+    unconfirmedClose:
+      "L’invitation a peut-être été créée. Fermer arrête sa récupération. Vérifiez les invitations avant d’en créer une autre. Fermer ?",
+    retryHint: "Réessayez avec cette même adresse pour récupérer l’invitation.",
+    copyFailed:
+      "Copie impossible. Sélectionnez et copiez le lien manuellement.",
     hint: "Les bonnes personnes, sur les bons chantiers.",
     members: "Membres",
     invitations: "Invitations",
@@ -64,6 +79,20 @@ export const teamCopy = {
   en: {
     close: "Close",
     title: "Team",
+    directoryHint: "Manage your company’s members and invitations.",
+    invite: "Invite teammate",
+    permissionsTitle: "Member access",
+    loaded: "Loaded",
+    noMembers: "No members loaded.",
+    noPending: "No pending invitations among the loaded invitations.",
+    invitationHistory: "Loaded invitation history",
+    expiredOn: "Expired on",
+    discard:
+      "Close without creating this invitation? Your entered email will be lost.",
+    unconfirmedClose:
+      "The invitation may have been created. Closing stops its recovery. Check invitations before creating another. Close?",
+    retryHint: "Retry with this same email to recover the invitation.",
+    copyFailed: "Could not copy. Select and copy the link manually.",
     hint: "The right people, on the right projects.",
     members: "Members",
     invitations: "Invitations",

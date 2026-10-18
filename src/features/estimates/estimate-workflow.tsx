@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { editorCopy } from "@/features/estimates/editor-copy";
 import { useLocale } from "@/lib/i18n";
 import type { SavedEstimate } from "./estimate-service";
 import { estimateStatus, workflowCopy } from "./workflow-copy";
@@ -77,10 +78,9 @@ export function EstimateWorkflow({
     }
   }
   return (
-    <section className="company-form estimate-workflow">
+    <section className="estimate-workflow">
       <h2>{c.heading}</h2>
       <p>{c.hint}</p>
-      {status !== "draft" && <p>{c.frozen}</p>}
       {(status === "draft" || status === "sent") && (
         <>
           <label className="field" htmlFor="decision-note">
@@ -95,7 +95,8 @@ export function EstimateWorkflow({
               onChange={(e) => setNote(e.target.value)}
             />
           </label>
-          {dirty && <p>{c.dirty}</p>}
+          <p className="helper-text">{editorCopy[locale].reference}</p>
+          {dirty && <p className="helper-text">{c.dirty}</p>}
           {status === "draft" && empty && <p>{c.empty}</p>}
           <div className="task-actions">
             {!request.current &&
@@ -145,31 +146,36 @@ export function EstimateWorkflow({
           </Button>
         </div>
       )}
-      <h3>{c.history}</h3>
-      {historyFailed ? (
-        <p role="alert">{c.historyError}</p>
-      ) : events.length === 0 ? (
-        <p>{c.noEvents}</p>
-      ) : (
-        <ol className="estimate-event-list">
-          {events.map((event) => (
-            <li key={event.id}>
-              <strong>{c[estimateStatus(event.to_status)]}</strong>
-              <p>{event.note}</p>
-              <small>
-                {c.recorded}{" "}
-                {new Intl.DateTimeFormat(locale === "fr" ? "fr-BE" : "en-GB", {
-                  dateStyle: "medium",
-                  timeStyle: "short",
-                }).format(new Date(event.recorded_at))}
-              </small>
-            </li>
-          ))}
-        </ol>
-      )}
-      <Button variant="outline" disabled={busy} onClick={refresh}>
-        {c.refresh}
-      </Button>
+      <section className="estimate-history" aria-label={c.history}>
+        <h3>{c.history}</h3>
+        {historyFailed ? (
+          <p role="alert">{c.historyError}</p>
+        ) : events.length === 0 ? (
+          <p>{c.noEvents}</p>
+        ) : (
+          <ol className="estimate-event-list">
+            {events.map((event) => (
+              <li key={event.id}>
+                <strong>{c[estimateStatus(event.to_status)]}</strong>
+                <p>{event.note}</p>
+                <small>
+                  {c.recorded}{" "}
+                  {new Intl.DateTimeFormat(
+                    locale === "fr" ? "fr-BE" : "en-GB",
+                    {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    },
+                  ).format(new Date(event.recorded_at))}
+                </small>
+              </li>
+            ))}
+          </ol>
+        )}
+        <Button variant="outline" disabled={busy} onClick={refresh}>
+          {c.refresh}
+        </Button>
+      </section>
     </section>
   );
 }

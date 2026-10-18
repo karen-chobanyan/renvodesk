@@ -1,13 +1,19 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
-import { Link, useParams } from "react-router";
+import { useParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/features/auth/auth-provider";
 import { workspaceKeys } from "@/features/organizations/workspace-context";
+import { getProject } from "@/features/projects/project-service";
 import { formatMoney, useLocale } from "@/lib/i18n";
 import { draftCopy } from "./draft-copy";
 import { editorLines, type StoredLine, serializeLines } from "./draft-model";
+import { editorCopy } from "./editor-copy";
+import {
+  EstimateEditorActions,
+  EstimateEditorHeader,
+} from "./estimate-editor-layout";
 import { EstimateLines } from "./estimate-lines";
 import {
   estimateHistory,
@@ -19,6 +25,7 @@ import {
 import { type DecisionEvent, EstimateWorkflow } from "./estimate-workflow";
 import { ExportEstimate } from "./export-estimate";
 import { type EstimateLine, estimateTotal } from "./model";
+import { useEstimateLeaveGuard } from "./use-estimate-leave-guard";
 import { estimateStatus, workflowCopy } from "./workflow-copy";
 export function SavedEstimatePage() {
   const { organizationId = "", id = "", estimateId = "" } = useParams(),
@@ -62,9 +69,6 @@ function Draft({
   }
   return (
     <section className="connected-workspace live-estimate">
-      <Link className="back-link" to={`/workspace/${org}/projects/${project}`}>
-        {c.back}
-      </Link>
       {estimateQuery.isError && record && (
         <p role="alert" className="error-message">
           {c.error}
@@ -105,7 +109,8 @@ function Editor({
   onPersist: (next: SavedEstimate) => void;
 }) {
   const { locale, t } = useLocale(),
-    c = draftCopy[locale];
+    c = draftCopy[locale],
+    e = editorCopy[locale];
   const [current, setCurrent] = useState(record),
     [title, setTitle] = useState(record.title),
     [lines, setLines] = useState(() =>
@@ -120,6 +125,23 @@ function Editor({
     [historyFailed, setHistoryFailed] = useState(false);
   const frozen = current.status !== "draft",
     w = workflowCopy[locale];
+  useEstimateLeaveGuard(dirty, e.leave);
+  const { session } = useAuth();
+  const projectQuery = useQuery({
+    queryKey: workspaceKeys.project(
+      session?.user.id ?? "",
+      current.organization_id,
+      current.project_id,
+    ),
+    queryFn: () => getProject(current.organization_id, current.project_id),
+    enabled: !frozen,
+  });
+  const snapshot = current.sent_snapshot as {
+    project?: { name?: string };
+  } | null;
+  const projectName = frozen
+    ? snapshot?.project?.name
+    : projectQuery.data?.name;
   async function refreshHistory() {
     try {
       setEvents(await estimateHistory(current));
@@ -166,14 +188,50 @@ function Editor({
   }
   return (
     <>
-      <p className="eyebrow">{w[estimateStatus(current.status)]}</p>
-      <h1>{current.title}</h1>
-      <p className="page-description">{frozen ? w.frozen : c.notice}</p>
-      <ExportEstimate
-        estimate={current}
-        dirty={dirty}
-        disabled={busy || !!error || transitionLocked}
+      <EstimateEditorHeader
+        title={current.title}
+        status={estimateStatus(current.status)}
+        revision={current.revision}
+        estimatesHref={`/workspace/${current.organization_id}/estimates`}
+        projectHref={`/workspace/${current.organization_id}/projects/${current.project_id}?tab=estimates`}
+        projectName={projectName}
+        notice={frozen ? w.frozen : c.notice}
       />
+      <EstimateEditorActions
+        message={
+          busy
+            ? c.loading
+            : frozen
+              ? e.frozen
+              : saved
+                ? c.saved
+                : dirty
+                  ? t("unsaved")
+                  : e.saved
+        }
+      >
+        <ExportEstimate
+          estimate={current}
+          dirty={dirty}
+          disabled={busy || !!error || transitionLocked}
+        />
+        {!frozen && (
+          <Button
+            disabled={
+              busy ||
+              transitionLocked ||
+              !dirty ||
+              !title.trim() ||
+              !serialized ||
+              error === "conflict"
+            }
+            onClick={save}
+          >
+            {busy ? c.loading : t("save")}
+          </Button>
+        )}
+      </EstimateEditorActions>
+      <h2 className="estimate-section-title">{e.document}</h2>
       <fieldset
         className="project-fields"
         disabled={busy || frozen || transitionLocked}
@@ -193,12 +251,14 @@ function Editor({
         <div className="estimate-paper">
           <EstimateLines
             lines={lines}
+            frozen={frozen}
             update={update}
             remove={(id) => {
               setLines((old) => old.filter((l) => l.id !== id));
               changed();
             }}
           />
+          {!lines.length && <p className="estimate-lines-empty">{e.empty}</p>}
           {!frozen && (
             <div className="estimate-add">
               <Button
@@ -238,26 +298,21 @@ function Editor({
             {c.invalid}
           </p>
         )}
-        {!frozen && (
-          <div className="dialog-actions">
-            <Button
-              disabled={!title.trim() || !serialized || error === "conflict"}
-              onClick={save}
-            >
-              {busy ? c.loading : t("save")}
-            </Button>
-          </div>
-        )}
       </fieldset>
       {error && (
         <div role="alert">
           <p className="error-message">{c[error]}</p>
-          <Button variant="outline" disabled={busy} onClick={reload}>
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={() => {
+              if (!dirty || window.confirm(e.leave)) reload();
+            }}
+          >
             {c.reload}
           </Button>
         </div>
       )}
-      <p role="status">{saved ? c.saved : dirty ? t("unsaved") : ""}</p>
       <EstimateWorkflow
         record={current}
         dirty={dirty}

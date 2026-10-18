@@ -10,17 +10,22 @@ export function DialogContent({
   closeLabel,
   children,
   className = "",
+  onCloseAutoFocus,
 }: {
   title: string;
   description: string;
   closeLabel: string;
   children: ReactNode;
   className?: string;
+  onCloseAutoFocus?: (event: Event) => void;
 }) {
   return (
     <DialogPrimitive.Portal>
       <DialogPrimitive.Overlay className="dialog-overlay" />
-      <DialogPrimitive.Content className={`dialog-content ${className}`}>
+      <DialogPrimitive.Content
+        className={`dialog-content ${className}`}
+        onCloseAutoFocus={onCloseAutoFocus}
+      >
         <DialogPrimitive.Title className="dialog-title">
           {title}
         </DialogPrimitive.Title>
