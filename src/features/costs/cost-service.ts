@@ -131,3 +131,17 @@ export async function voidCost(cost: Cost) {
   if (error) throw error;
   return data;
 }
+
+/** Explicit conflict recovery; never replace a draft from a background list read. */
+export async function getCost(org: string, project: string, id: string) {
+  const { data, error } = await requireSupabase()
+    .from("project_costs")
+    .select("*")
+    .eq("organization_id", org)
+    .eq("project_id", project)
+    .eq("id", id)
+    .maybeSingle();
+  if (error) throw error;
+  if (!data || data.voided) throw new Error("unavailable");
+  return data;
+}

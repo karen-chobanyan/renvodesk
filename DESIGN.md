@@ -344,3 +344,25 @@ Cancel, Escape and the close control confirm before discarding edits. Save failu
 keep fields and the existing request/revision. Conflicts require an explicit,
 confirmed reload. Closing restores focus to the opening control. The existing
 navigation/unload guard protects task drafts with its documented browser limits.
+
+## Budget and costs
+
+Live and fictional Budget tabs share one toolbar, compact three-value summary,
+responsive cost ledger and independent category breakdown. Add cost is the only
+primary section action; Set/Edit budget lives with its amount. Ledger counts refer
+to loaded history, including voided costs. Desktop uses aligned table columns;
+phones stack labeled fields. Voided entries remain legible with an explicit
+excluded-from-totals label and struck amount. Void lives in the secondary disclosure
+and confirmation identifies the description and amount. Empty views explain what
+to record without duplicating the primary action or displaying four zero categories.
+
+Budget and cost editors reuse the task dialog sizing, keyboard focus and leave guard.
+Only one editor opens at a time. Draft fields and the loaded revision remain fixed
+through background refreshes; confirmed conflict reload replaces them only after a
+successful scoped read. Create retries retain their UUID. Zero budgets remain distinct
+from unset budgets. Budget totals use the existing summary RPC, never loaded ledger
+rows. No profit, VAT, invoice or commitment calculation is implied.
+
+Summary and paginated ledger reads fail and retry independently, retaining loaded
+content. The tab updates after writes and on return to the section/window. Background
+updates do not reset an open editor. The manual Refresh toolbar action is removed.

@@ -7,7 +7,13 @@ import { useLocale } from "@/lib/i18n";
 import { costCopy } from "./cost-copy";
 import { exactMoney } from "./cost-model";
 import { getCostSummary, type Summary } from "./cost-service";
-export function CostMetrics({ summary }: { summary: Summary }) {
+export function CostMetrics({
+  summary,
+  editBudget,
+}: {
+  summary: Summary;
+  editBudget?: () => void;
+}) {
   const { locale } = useLocale(),
     c = costCopy[locale];
   const remaining =
@@ -23,12 +29,21 @@ export function CostMetrics({ summary }: { summary: Summary }) {
             ? c.unset
             : exactMoney(BigInt(summary.budget_cents), locale)}
         </strong>
+        {editBudget && (
+          <Button variant="ghost" onClick={editBudget}>
+            {summary.budget_cents === null ? c.setBudget : c.editBudget}
+          </Button>
+        )}
       </div>
       <div>
         <span>{c.actual}</span>
         <strong>{exactMoney(BigInt(summary.total), locale)}</strong>
       </div>
-      <div>
+      <div
+        className={
+          remaining !== null && remaining < 0n ? "cost-over-budget" : undefined
+        }
+      >
         <span>
           {remaining !== null && remaining < 0n ? c.over : c.remaining}
         </span>

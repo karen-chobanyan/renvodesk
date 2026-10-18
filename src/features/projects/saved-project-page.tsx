@@ -255,6 +255,7 @@ function ProjectDetail({
               {owner && (visited.has("budget") || active === "budget") && (
                 <div hidden={active !== "budget"}>
                   <ProjectCosts
+                    active={active === "budget"}
                     org={organizationId}
                     project={id}
                     onChanged={refreshOverview}

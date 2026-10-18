@@ -1,5 +1,26 @@
 export const costCopy = {
   fr: {
+    setBudget: "Définir le budget",
+    editTitle: "Modifier le coût",
+    editorHint:
+      "Montants en EUR hors taxes. Les coûts annulés restent dans l’historique.",
+    discard: "Abandonner les modifications non enregistrées ?",
+    replace: "Remplacer vos champs par la version enregistrée ?",
+    reloadFailed: "Rechargement impossible. Vos champs sont conservés.",
+    invalidBudget:
+      "Saisissez un montant entre 0 et 9 999 999,99 €, avec deux décimales maximum.",
+    excluded: "Exclu des totaux",
+    actions: "Autres actions",
+    loaded: "coûts chargés, historique inclus",
+    emptyHint:
+      "Ajoutez les matériaux, la main-d’œuvre et les autres dépenses au fur et à mesure du chantier.",
+    emptyBreakdown: "La répartition apparaîtra avec les premiers coûts actifs.",
+    summaryError:
+      "Impossible d’actualiser le budget et les totaux. Les montants affichés peuvent être anciens.",
+    listError:
+      "Impossible d’actualiser la liste. Les coûts déjà chargés sont conservés.",
+    moreError:
+      "Impossible de charger la suite. Réessayez sans perdre les coûts affichés.",
     title: "Budget et coûts",
     budget: "Budget de coûts",
     actual: "Coûts réels",
@@ -48,6 +69,25 @@ export const costCopy = {
       "Saisissez 0 pour un budget nul. Un budget non défini n’est pas un budget nul.",
   },
   en: {
+    setBudget: "Set budget",
+    editTitle: "Edit cost",
+    editorHint:
+      "Amounts in EUR excluding tax. Voided costs remain in the history.",
+    discard: "Discard unsaved changes?",
+    replace: "Replace your fields with the saved version?",
+    reloadFailed: "Could not reload. Your fields are preserved.",
+    invalidBudget:
+      "Enter an amount from 0 to €9,999,999.99, with at most two decimals.",
+    excluded: "Excluded from totals",
+    actions: "More actions",
+    loaded: "costs loaded, including history",
+    emptyHint: "Add materials, labor and other expenses as work progresses.",
+    emptyBreakdown: "The breakdown will appear when active costs are recorded.",
+    summaryError:
+      "Could not refresh the budget and totals. Displayed amounts may be out of date.",
+    listError:
+      "Could not refresh the list. Previously loaded costs are preserved.",
+    moreError: "Could not load more. Retry without losing the costs shown.",
     title: "Budget and costs",
     budget: "Cost budget",
     actual: "Actual costs",

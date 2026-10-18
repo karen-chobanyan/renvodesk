@@ -5668,3 +5668,252 @@ details[open] > .compact-identity > svg {
     grid-row: 1 / span 3;
   }
 }
+
+/* Budget workspace: independent ledger and summary heights, shared live/demo. */
+.project-costs-workspace .cost-toolbar {
+  margin: 0 0 20px;
+}
+.project-costs-workspace .metrics {
+  margin: 0 0 12px;
+  padding: 20px 0;
+}
+.project-costs-workspace .metrics > div {
+  align-self: start;
+}
+.project-costs-workspace .metrics .button {
+  align-self: flex-start;
+  margin-top: 6px;
+  padding-inline: 0;
+}
+.project-costs-workspace .cost-notice {
+  margin: 0 0 28px;
+}
+.cost-over-budget strong {
+  color: var(--error);
+}
+.cost-workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 260px;
+  align-items: start;
+  gap: 28px;
+}
+.cost-ledger {
+  min-width: 0;
+}
+.cost-ledger-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.cost-ledger-heading h3,
+.cost-breakdown h3 {
+  margin: 0;
+  font-size: 15px;
+}
+.cost-ledger-heading .helper-text {
+  margin: 0;
+}
+.cost-breakdown {
+  padding-left: 24px;
+  border-left: 1px solid var(--border);
+}
+.cost-breakdown .financial-lines {
+  margin: 12px 0 0;
+}
+.cost-breakdown .financial-lines > div {
+  gap: 12px;
+  padding: 12px 0;
+  font-size: 12px;
+}
+.cost-breakdown strong {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.cost-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.cost-table th {
+  text-align: left;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 0 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.cost-table td {
+  padding: 16px 10px;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+.cost-table th:first-child,
+.cost-table td:first-child {
+  padding-left: 0;
+}
+.cost-table th:last-child,
+.cost-table td:last-child {
+  padding-right: 0;
+}
+.cost-table .cost-description {
+  min-width: 150px;
+  overflow-wrap: anywhere;
+}
+.cost-description strong {
+  font-weight: 550;
+}
+.cost-description p {
+  margin: 6px 0;
+  color: var(--muted);
+  white-space: pre-wrap;
+  font-size: 12px;
+}
+.cost-description small {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+}
+.cost-table .cost-amount {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.cost-row-actions {
+  white-space: nowrap;
+}
+.cost-row-actions > .button,
+.cost-row-actions > details {
+  display: inline-flex;
+  vertical-align: middle;
+}
+.cost-row-voided {
+  color: var(--muted);
+}
+.cost-row-voided .cost-amount {
+  text-decoration: line-through;
+}
+.cost-empty {
+  padding: 24px 0;
+  border-top: 1px solid var(--border);
+}
+.cost-empty h3 {
+  font-size: 15px;
+  margin: 0 0 8px;
+}
+.cost-empty p {
+  max-width: 55ch;
+  margin: 0;
+}
+.cost-load-more {
+  margin-top: 20px;
+}
+.cost-read-error {
+  padding: 12px 0;
+}
+.cost-read-error p {
+  margin: 0 0 8px;
+}
+.cost-editor-dialog .cost-description-field {
+  grid-column: 1 / -1;
+}
+@media (max-width: 1200px) {
+  .cost-workspace-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .cost-breakdown {
+    padding: 20px 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--border);
+  }
+  .cost-breakdown .financial-lines {
+    max-width: 460px;
+  }
+}
+@media (max-width: 700px) {
+  .project-costs-workspace .cost-toolbar {
+    align-items: center;
+  }
+  .project-costs-workspace .metrics {
+    gap: 16px;
+  }
+  .cost-table thead {
+    display: none;
+  }
+  .cost-table,
+  .cost-table tbody {
+    display: block;
+  }
+  .cost-table .cost-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px 16px;
+    padding: 18px 0;
+    border-top: 1px solid var(--border);
+  }
+  .cost-table td {
+    display: block;
+    border: 0;
+    padding: 0;
+  }
+  .cost-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    margin-bottom: 3px;
+  }
+  .cost-table .cost-description {
+    grid-column: 1 / -1;
+  }
+  .cost-table .cost-amount {
+    text-align: left;
+  }
+  .cost-table .cost-row-actions {
+    text-align: right;
+    align-self: end;
+  }
+}
+
+.cost-row-actions .file-more-actions > summary::after {
+  content: none;
+}
+.cost-row-actions .file-more-content {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 2;
+  box-shadow: var(--shadow-overlay);
+}
+
+.cost-table td:nth-child(3) {
+  white-space: nowrap;
+}
+.cost-budget-dialog .project-fields {
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (max-width: 760px) {
+  .project-costs-workspace .metrics {
+    gap: 0;
+    padding: var(--space-2) 0;
+  }
+  .project-costs-workspace .metrics > div,
+  .project-costs-workspace .metrics > div:first-child {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--space-1) var(--space-4);
+  }
+  .project-costs-workspace .metrics > div > span {
+    min-height: 0;
+    margin: 0;
+    font-size: var(--text-sm);
+  }
+  .project-costs-workspace .metrics .button {
+    grid-column: 2;
+    justify-self: end;
+    margin: 0;
+  }
+}

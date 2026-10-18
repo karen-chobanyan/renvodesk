@@ -2165,39 +2165,43 @@ test("project budget, cost recovery, conflict and void history", async ({
     .getByRole("link", { name: "Budget et coûts", exact: true })
     .click();
   const panel = page.locator("#project-costs");
+  const dialog = page.getByRole("dialog");
   await expect(panel.getByText("Non défini", { exact: true })).toBeVisible();
-  await panel.getByRole("button", { name: "Modifier le budget" }).click();
-  await panel.getByLabel("Budget de coûts", { exact: true }).fill("100.00");
-  await panel.getByRole("button", { name: "Enregistrer le budget" }).click();
+  await panel.getByRole("button", { name: "Définir le budget" }).click();
+  await dialog.getByLabel("Budget de coûts", { exact: true }).fill("100.00");
+  await dialog.getByRole("button", { name: "Enregistrer le budget" }).click();
   await expect(
     panel.locator(".metrics").getByText("100,00 €", { exact: true }),
   ).toHaveCount(2);
   await panel.getByRole("button", { name: "Ajouter un coût" }).click();
-  await panel.getByLabel("Description du coût").fill("Peinture");
-  await panel.getByLabel("Montant HT (€)").fill("120,29");
-  await panel.getByRole("button", { name: "Enregistrer le coût" }).click();
-  await expect(panel.getByRole("alert")).toContainText(
+  await dialog.getByLabel("Description du coût").fill("Peinture");
+  await dialog.getByLabel("Montant HT (€)").fill("120,29");
+  await dialog.getByRole("button", { name: "Enregistrer le coût" }).click();
+  await expect(dialog.getByRole("alert")).toContainText(
     "Enregistrement non confirmé",
   );
-  await panel.getByRole("button", { name: "Enregistrer le coût" }).click();
-  await expect(panel.locator("article")).toHaveCount(1);
+  await dialog.getByRole("button", { name: "Enregistrer le coût" }).click();
+  await expect(panel.locator(".cost-row")).toHaveCount(1);
   expect(costs).toHaveLength(1);
   await expect(
     panel.locator(".metrics").getByText("20,29 €", { exact: true }),
   ).toBeVisible();
   await page.reload();
-  await expect(panel.locator("article")).toHaveCount(1);
-  await panel.getByRole("button", { name: "Modifier", exact: true }).click();
-  await panel.getByLabel("Montant HT (€)").fill("90.29");
-  await panel.getByRole("button", { name: "Enregistrer le coût" }).click();
-  await expect(panel.getByRole("alert")).toContainText(
+  await expect(panel.locator(".cost-row")).toHaveCount(1);
+  await panel
+    .getByRole("button", { name: "Modifier — Peinture", exact: true })
+    .click();
+  await dialog.getByLabel("Montant HT (€)").fill("90.29");
+  await dialog.getByRole("button", { name: "Enregistrer le coût" }).click();
+  await expect(dialog.getByRole("alert")).toContainText(
     "Les données ont changé",
   );
-  await expect(panel.getByLabel("Montant HT (€)")).toHaveValue("90.29");
-  await panel.getByRole("button", { name: "Recharger les coûts" }).click();
-  await panel.getByRole("button", { name: "Modifier", exact: true }).click();
-  await panel.getByLabel("Montant HT (€)").fill("90.29");
-  await panel.getByRole("button", { name: "Enregistrer le coût" }).click();
+  await expect(dialog.getByLabel("Montant HT (€)")).toHaveValue("90.29");
+  page.once("dialog", (d) => d.accept());
+  await dialog.getByRole("button", { name: "Recharger les coûts" }).click();
+  await expect(dialog.getByLabel("Montant HT (€)")).toHaveValue("120.29");
+  await dialog.getByLabel("Montant HT (€)").fill("90.29");
+  await dialog.getByRole("button", { name: "Enregistrer le coût" }).click();
   await expect(
     panel.locator(".metrics").getByText("9,71 €", { exact: true }),
   ).toBeVisible();
@@ -2220,18 +2224,22 @@ test("project budget, cost recovery, conflict and void history", async ({
     path: `/private/tmp/renvo-costs-${test.info().project.name}.png`,
     fullPage: true,
   });
+  await english.getByLabel("More actions — Peinture").click();
   await english.getByRole("button", { name: "Void cost", exact: true }).click();
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Cancel", exact: true })
     .click();
-  await expect(english.locator("article")).toHaveCount(1);
+  await expect(english.locator(".cost-row")).toHaveCount(1);
+  await english.getByLabel("More actions — Peinture").click();
   await english.getByRole("button", { name: "Void cost", exact: true }).click();
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Void cost", exact: true })
     .click();
-  await expect(english.getByText("Voided cost", { exact: true })).toBeVisible();
+  await expect(
+    english.getByText("Voided cost · Excluded from totals", { exact: true }),
+  ).toBeVisible();
   await expect(
     english.locator(".metrics").getByText("€0.00", { exact: true }),
   ).toBeVisible();

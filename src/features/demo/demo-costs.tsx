@@ -1,20 +1,13 @@
-import { type FormEvent, useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { costCopy } from "@/features/costs/cost-copy";
 import {
-  amountInput,
-  type CostInput,
-  categories,
-  exactMoney,
-  parseAmount,
-  validCost,
-} from "@/features/costs/cost-model";
+  budgetDraft,
+  CostEditorDialog,
+  costDraft,
+  VoidCostDialog,
+} from "@/features/costs/cost-dialogs";
+import { CostLayout, type CostRow } from "@/features/costs/cost-layout";
 import type { Summary } from "@/features/costs/cost-service";
-import { CostMetrics } from "@/features/costs/cost-summary";
-import { dateLabel } from "@/features/tasks/task-model";
 import { useDemo } from "@/lib/demo-store";
 import { useLocale } from "@/lib/i18n";
 import { type DemoCost, say, tx } from "./demo-types";
@@ -48,296 +41,128 @@ export function useDemoSummary(projectId: string) {
   return demoSummary(costs, projectId, budgets[projectId] ?? null);
 }
 
-export function DemoCosts({ projectId }: { projectId: string }) {
-  const { locale } = useLocale(),
-    c = costCopy[locale];
-  const { costs, saveCost } = useDemo();
+type Action =
+  | { kind: "budget"; cents: number | null }
+  | { kind: "cost"; id: string; snapshot: DemoCost | null }
+  | { kind: "void"; snapshot: DemoCost };
+export function DemoCosts({
+  projectId,
+  active = true,
+}: {
+  projectId: string;
+  active?: boolean;
+}) {
+  const { locale } = useLocale();
+  const { costs, saveCost, setBudget, base } = useDemo();
   const summary = useDemoSummary(projectId);
-  const [budgetEdit, setBudgetEdit] = useState(false),
-    [edit, setEdit] = useState<DemoCost | "new" | null>(null),
-    [voiding, setVoiding] = useState<DemoCost | null>(null);
+  const [action, setAction] = useState<Action | null>(null);
   const [search] = useSearchParams();
-  const wantsBudget =
-    search.get("editBudget") === "1" && search.get("tab") === "budget";
+  const wantsBudget = active && search.get("editBudget") === "1";
+  const consumed = useRef(false);
   useEffect(() => {
-    if (wantsBudget) setBudgetEdit(true);
-  }, [wantsBudget]);
+    if (!wantsBudget) consumed.current = false;
+    else if (!consumed.current) {
+      consumed.current = true;
+      setAction({ kind: "budget", cents: summary.budget_cents });
+    }
+  }, [wantsBudget, summary.budget_cents]);
+  useEffect(() => {
+    if (!active) setAction(null);
+  }, [active]);
   const rows = costs
     .filter((row) => row.projectId === projectId)
-    .sort((a, b) => b.date.localeCompare(a.date));
+    .sort((a, b) => b.date.localeCompare(a.date) || a.id.localeCompare(b.id));
+  const viewRow = (row: DemoCost): CostRow => ({
+    id: row.id,
+    description: say(row.description, locale),
+    category: row.category,
+    amount_cents: row.amountCents,
+    incurred_on: row.date,
+    notes: row.notes ? say(row.notes, locale) : "",
+    voided: row.voided,
+  });
+  const close = () => setAction(null);
   return (
-    <section id="project-costs" aria-label={c.title}>
-      <p className="helper-text cost-notice">{c.notice}</p>
-      <CostMetrics summary={summary} />
-      <div className="cost-ledger">
-        <div>
-          <div className="section-heading project-section-heading">
-            <h2>{c.breakdown}</h2>
-            <Button
-              variant="outline"
-              onClick={() => setBudgetEdit(!budgetEdit)}
-            >
-              {c.editBudget}
-            </Button>
-          </div>
-          {budgetEdit && (
-            <BudgetEditor
-              projectId={projectId}
-              current={summary.budget_cents}
-              done={() => setBudgetEdit(false)}
-            />
-          )}
-          <div className="financial-lines">
-            {categories.map((category) => (
-              <div key={category}>
-                <span>{c[category]}</span>
-                <strong>{exactMoney(BigInt(summary[category]), locale)}</strong>
-              </div>
-            ))}
-          </div>
-          <div className="section-heading project-section-heading costs-heading">
-            <h2>{c.actual}</h2>
-            <div className="task-actions">
-              <Button onClick={() => setEdit("new")}>{c.add}</Button>
-            </div>
-          </div>
-          {edit && (
-            <CostEditor
-              key={edit === "new" ? "new" : edit.id}
-              projectId={projectId}
-              record={edit === "new" ? undefined : edit}
-              done={() => setEdit(null)}
-            />
-          )}
-          {!rows.length && <p className="workspace-loading">{c.empty}</p>}
-          {rows.map((row) => (
-            <article className="task-row" key={row.id}>
-              <div className="task-content">
-                <strong>{say(row.description, locale)}</strong>
-                <small>
-                  {c[row.category]} · {dateLabel(row.date, locale)}
-                </small>
-                {row.notes && (
-                  <p className="task-notes">{say(row.notes, locale)}</p>
-                )}
-                {row.voided && <span className="status">{c.voided}</span>}
-              </div>
-              <div className="task-actions">
-                <strong>{exactMoney(BigInt(row.amountCents), locale)}</strong>
-                {!row.voided && (
-                  <>
-                    <Button variant="ghost" onClick={() => setEdit(row)}>
-                      {c.edit}
-                    </Button>
-                    <Button variant="ghost" onClick={() => setVoiding(row)}>
-                      {c.void}
-                    </Button>
-                  </>
-                )}
-              </div>
-            </article>
-          ))}
-        </div>
-      </div>
-      <Dialog
-        open={!!voiding}
-        onOpenChange={(open) => {
-          if (!open) setVoiding(null);
+    <>
+      <CostLayout
+        summary={summary}
+        rows={rows.map(viewRow)}
+        add={() =>
+          setAction({ kind: "cost", id: crypto.randomUUID(), snapshot: null })
+        }
+        editBudget={() =>
+          setAction({ kind: "budget", cents: summary.budget_cents })
+        }
+        edit={(id) => {
+          const row = rows.find((row) => row.id === id);
+          if (row) setAction({ kind: "cost", id, snapshot: row });
         }}
-      >
-        <DialogContent
-          title={c.confirm}
-          description={voiding ? say(voiding.description, locale) : ""}
-          closeLabel={c.close}
-        >
-          <p>{c.voidHint}</p>
-          <div className="dialog-actions">
-            <Button variant="outline" onClick={() => setVoiding(null)}>
-              {c.cancel}
-            </Button>
-            <Button
-              onClick={() => {
-                if (voiding) saveCost({ ...voiding, voided: true }, false);
-                setVoiding(null);
-              }}
-            >
-              {c.void}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </section>
-  );
-}
-
-function BudgetEditor({
-  projectId,
-  current,
-  done,
-}: {
-  projectId: string;
-  current: number | null;
-  done: () => void;
-}) {
-  const { locale } = useLocale(),
-    c = costCopy[locale];
-  const { setBudget } = useDemo();
-  const [invalid, setInvalid] = useState(false);
-  function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const cents = parseAmount(
-      String(new FormData(e.currentTarget).get("budget") ?? ""),
-    );
-    if (cents === null) {
-      setInvalid(true);
-      return;
-    }
-    setBudget(projectId, cents);
-    done();
-  }
-  return (
-    <form className="company-form task-editor" onSubmit={submit}>
-      <fieldset className="project-fields">
-        <label className="field" htmlFor="demo-cost-budget">
-          {c.budget}
-          <Input
-            id="demo-cost-budget"
-            name="budget"
-            inputMode="decimal"
-            required
-            defaultValue={current === null ? "" : amountInput(current)}
-          />
-        </label>
-        <p className="helper-text">{c.budgetHint}</p>
-        <div className="dialog-actions">
-          <Button type="button" variant="outline" onClick={done}>
-            {c.cancel}
-          </Button>
-          <Button>{c.saveBudget}</Button>
-        </div>
-      </fieldset>
-      {invalid && <p role="alert">{c.invalid}</p>}
-    </form>
-  );
-}
-
-function CostEditor({
-  projectId,
-  record,
-  done,
-}: {
-  projectId: string;
-  record?: DemoCost;
-  done: () => void;
-}) {
-  const { locale, t } = useLocale(),
-    c = costCopy[locale];
-  const { saveCost, base } = useDemo();
-  const [invalid, setInvalid] = useState(false);
-  function submit(e: FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const form = new FormData(e.currentTarget);
-    const amount = parseAmount(String(form.get("amount") ?? ""));
-    const input: CostInput = {
-      description: String(form.get("description") ?? "").trim(),
-      category: String(form.get("category")) as CostInput["category"],
-      amount_cents: amount ?? -1,
-      incurred_on: String(form.get("date") ?? ""),
-      notes: String(form.get("notes") ?? "").trim(),
-    };
-    if (amount === null || !validCost(input)) {
-      setInvalid(true);
-      return;
-    }
-    const keep = (old: DemoCost["notes"], value: string) =>
-      old && say(old, locale) === value ? old : value ? tx(value, value) : null;
-    saveCost(
-      {
-        id: record?.id ?? crypto.randomUUID(),
-        projectId,
-        description:
-          keep(record?.description ?? null, input.description) ??
-          tx(input.description, input.description),
-        category: input.category,
-        amountCents: input.amount_cents,
-        date: input.incurred_on,
-        notes: keep(record?.notes ?? null, input.notes),
-        voided: false,
-      },
-      !record,
-    );
-    done();
-  }
-  return (
-    <form className="company-form task-editor" onSubmit={submit}>
-      <fieldset className="project-fields">
-        <label className="field" htmlFor="demo-cost-description">
-          {c.description}
-          <Input
-            id="demo-cost-description"
-            name="description"
-            required
-            maxLength={200}
-            defaultValue={record ? say(record.description, locale) : ""}
-          />
-        </label>
-        <label className="field" htmlFor="demo-cost-category">
-          {c.category}
-          <select
-            className="input"
-            id="demo-cost-category"
-            name="category"
-            defaultValue={record?.category ?? "materials"}
-          >
-            {categories.map((category) => (
-              <option key={category} value={category}>
-                {c[category]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field" htmlFor="demo-cost-amount">
-          {c.amount}
-          <Input
-            id="demo-cost-amount"
-            name="amount"
-            inputMode="decimal"
-            required
-            defaultValue={record ? amountInput(record.amountCents) : ""}
-          />
-        </label>
-        <label className="field" htmlFor="demo-cost-date">
-          {c.date}
-          <Input
-            id="demo-cost-date"
-            name="date"
-            type="date"
-            required
-            min="1900-01-01"
-            max="2100-12-31"
-            defaultValue={record?.date ?? base}
-          />
-        </label>
-        <label className="field task-notes-field" htmlFor="demo-cost-notes">
-          {c.notes}
-          <textarea
-            className="input"
-            id="demo-cost-notes"
-            name="notes"
-            rows={2}
-            maxLength={1000}
-            defaultValue={record?.notes ? say(record.notes, locale) : ""}
-          />
-        </label>
-        <div className="dialog-actions">
-          <Button type="button" variant="outline" onClick={done}>
-            {c.cancel}
-          </Button>
-          <Button>{c.save}</Button>
-        </div>
-      </fieldset>
-      {invalid && <p role="alert">{c.invalid}</p>}
-      <p className="helper-text">{t("excludingTax")}</p>
-    </form>
+        voidRow={(id) => {
+          const row = rows.find((row) => row.id === id);
+          if (row) setAction({ kind: "void", snapshot: row });
+        }}
+      />
+      {action?.kind === "budget" && (
+        <CostEditorDialog
+          kind="budget"
+          editing={action.cents !== null}
+          initial={budgetDraft(action.cents)}
+          close={close}
+          save={async (input) => {
+            if (typeof input !== "number") return false;
+            setBudget(projectId, input);
+            return true;
+          }}
+        />
+      )}
+      {action?.kind === "cost" && (
+        <CostEditorDialog
+          key={action.id}
+          kind="cost"
+          editing={!!action.snapshot}
+          initial={costDraft(
+            action.snapshot ? viewRow(action.snapshot) : null,
+            base,
+          )}
+          close={close}
+          save={async (input) => {
+            if (typeof input === "number") return false;
+            const record = action.snapshot;
+            const keep = (old: DemoCost["notes"], value: string) =>
+              old && say(old, locale) === value
+                ? old
+                : value
+                  ? tx(value, value)
+                  : null;
+            saveCost(
+              {
+                id: action.id,
+                projectId,
+                description:
+                  keep(record?.description ?? null, input.description) ??
+                  tx(input.description, input.description),
+                category: input.category,
+                amountCents: input.amount_cents,
+                date: input.incurred_on,
+                notes: keep(record?.notes ?? null, input.notes),
+                voided: false,
+              },
+              !record,
+            );
+            return true;
+          }}
+        />
+      )}
+      {action?.kind === "void" && (
+        <VoidCostDialog
+          row={viewRow(action.snapshot)}
+          close={close}
+          save={async () => {
+            saveCost({ ...action.snapshot, voided: true }, false);
+            return true;
+          }}
+        />
+      )}
+    </>
   );
 }

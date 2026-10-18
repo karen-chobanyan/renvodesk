@@ -905,3 +905,52 @@ test("task modals protect drafts and restore keyboard focus in both languages", 
     "Check beam connections.",
   );
 });
+
+test("budget layout and modals share localized responsive presentation", async ({
+  page,
+}) => {
+  await open(page, "/projects/maison-ixelles?tab=budget");
+  const panel = page.locator("#project-costs");
+  await expect(panel.locator(".cost-row")).toHaveCount(10);
+  await expect(
+    panel.getByRole("button", { name: "Ajouter un coût" }),
+  ).toHaveCount(1);
+  await page.screenshot({
+    animations: "disabled",
+    path: `/private/tmp/renvo-budget-fr-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  const add = panel.getByRole("button", { name: "Ajouter un coût" });
+  await add.click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByLabel("Description du coût")).toBeFocused();
+  await dialog
+    .getByLabel("Description du coût")
+    .fill("Un coût avec une longue description pour vérifier la mise en page");
+  await dialog.getByLabel("Montant HT (€)").fill("12345,67");
+  page.once("dialog", (d) => d.dismiss());
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  await page.screenshot({
+    animations: "disabled",
+    path: `/private/tmp/renvo-budget-modal-fr-${test.info().project.name}.png`,
+  });
+  await dialog.getByRole("button", { name: "Enregistrer le coût" }).click();
+  await expect(add).toBeFocused();
+  await page.locator(".language-picker select").selectOption("en");
+  await expect(
+    panel.getByRole("heading", { name: "Budget and costs", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth <=
+        document.documentElement.clientWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    animations: "disabled",
+    path: `/private/tmp/renvo-budget-en-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+});

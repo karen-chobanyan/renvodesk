@@ -108,7 +108,7 @@ function DemoProjectDetail({ project }: { project: Project }) {
           )}
           {(active === "budget" || visited.has("budget")) && (
             <div hidden={active !== "budget"}>
-              <DemoCosts projectId={project.id} />
+              <DemoCosts projectId={project.id} active={active === "budget"} />
             </div>
           )}
           {(active === "estimates" || visited.has("estimates")) && (
