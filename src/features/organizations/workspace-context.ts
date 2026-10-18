@@ -32,8 +32,13 @@ export const workspaceKeys = {
     ["workspace", userId, organizationId, "team"] as const,
   project: (userId: string, organizationId: string, projectId: string) =>
     ["workspace", userId, organizationId, "project", projectId] as const,
-  estimates: (userId: string, organizationId: string, search: string) =>
-    ["workspace", userId, organizationId, "estimates", search] as const,
+  estimates: (
+    userId: string,
+    organizationId: string,
+    search: string,
+    status = "",
+  ) =>
+    ["workspace", userId, organizationId, "estimates", search, status] as const,
   estimate: (userId: string, organizationId: string, estimateId: string) =>
     ["workspace", userId, organizationId, "estimate", estimateId] as const,
   storage: (userId: string, organizationId: string) =>

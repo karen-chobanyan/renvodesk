@@ -1,7 +1,9 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { type FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/features/auth/auth-provider";
 import { formatMoney, useLocale } from "@/lib/i18n";
 import { draftCopy } from "./draft-copy";
 import { createEstimate, listEstimates } from "./estimate-service";
@@ -16,6 +18,8 @@ export function ProjectEstimates({
   const { locale } = useLocale(),
     c = draftCopy[locale],
     navigate = useNavigate();
+  const client = useQueryClient();
+  const { session } = useAuth();
   const [rows, setRows] = useState<Awaited<ReturnType<typeof listEstimates>>>(
     [],
   );
@@ -75,6 +79,14 @@ export function ProjectEstimates({
     setError(false);
     try {
       const draft = await createEstimate(organizationId, projectId, id, title);
+      void client.invalidateQueries({
+        queryKey: [
+          "workspace",
+          session?.user.id ?? "",
+          organizationId,
+          "estimates",
+        ],
+      });
       navigate(`${base}/estimates/${draft.id}`);
     } catch {
       setError(true);

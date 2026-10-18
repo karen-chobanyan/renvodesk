@@ -96,7 +96,15 @@ the first available membership. No permissions or database schema changed.
 
 Live sidebar identities use compact avatar/name disclosure rows matching the demo. Company selection, add/settings links and account sign-out are inside keyboard-accessible expandable panels. Escape closes the panel and returns focus to its trigger; mobile drawer remains scrollable.
 
-Company estimates: `/workspace/:organizationId/estimates` lists saved drafts with server-side title/project/client search, 20-row pagination and direct draft/project links. Creation starts from a project. No schema or permission changes; demo estimate routes remain separate.
+Company estimates: `/workspace/:organizationId/estimates` uses the same compact
+register header, bordered search toolbar and contextual empty states as Projects
+and Clients. Title/project/client search and status filters apply on the server
+before 20-row pagination; counts describe loaded results. Rows show project/client,
+owner-recorded status and EUR amounts excluding tax, stacking without horizontal
+scroll on phones. New estimate opens a project/title dialog with paginated project
+selection, guarded closing and stable request IDs for interrupted-create recovery.
+Saved edits and recorded status changes invalidate the company register. Live and
+fictional demo registers share presentation and FR/EN copy, with separate services.
 
 ## Project cost budgets
 

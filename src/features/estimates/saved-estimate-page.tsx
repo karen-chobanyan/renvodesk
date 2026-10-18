@@ -82,9 +82,12 @@ function Draft({
           key={reload}
           record={record}
           reload={refresh}
-          onPersist={(next) =>
-            client.setQueryData(workspaceKeys.estimate(userId, org, id), next)
-          }
+          onPersist={(next) => {
+            client.setQueryData(workspaceKeys.estimate(userId, org, id), next);
+            void client.invalidateQueries({
+              queryKey: ["workspace", userId, org, "estimates"],
+            });
+          }}
         />
       ) : (
         <p role="alert">{c.missing}</p>

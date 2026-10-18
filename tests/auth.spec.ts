@@ -1251,6 +1251,7 @@ test("live pages share the shell content bounds", async ({
     [`/workspace/${org}/settings`, ".connected-workspace"],
     [`/workspace/${org}/clients`, ".clients-register"],
     [`/workspace/${org}/schedule`, ".schedule-workspace"],
+    [`/workspace/${org}/estimates`, ".estimates-register"],
     [`/workspace/${org}/projects/${projectId}`, ".project-detail-workspace"],
     [
       `/workspace/${org}/projects/${projectId}/estimates/${projectId}`,
@@ -1783,24 +1784,39 @@ test("company estimates search, pagination and saved draft links", async ({
   page,
 }) => {
   await mockApi(page);
+  const records = Array.from({ length: 22 }, (_, i) => ({
+    id: `estimate-${i}`,
+    project_id: "project-a",
+    organization_id: org,
+    lines: [],
+    currency: "EUR",
+    title: `Kitchen quote ${i}`,
+    revision: 1,
+    status: i === 21 ? "accepted" : "draft",
+    total_cents: 123456,
+    projects: { name: "Maison Test", client_name: "Client Dupont" },
+  }));
   await page.route("**/rest/v1/estimates**", async (route) => {
     const url = new URL(route.request().url());
     expect(url.searchParams.get("organization_id")).toBe(`eq.${org}`);
-    const records = Array.from({ length: 21 }, (_, i) => ({
-      id: `estimate-${i}`,
-      project_id: "project-a",
-      title: `Kitchen quote ${i}`,
-      revision: 1,
-      status: "draft",
-      total_cents: 123456,
-      projects: { name: "Maison Test", client_name: "Client Dupont" },
-    }));
+    const recordId = url.searchParams.get("id")?.slice(3);
+    if (recordId) {
+      const record = records.find((row) => row.id === recordId);
+      if (route.request().method() === "PATCH") {
+        Object.assign(record ?? {}, route.request().postDataJSON());
+        return route.fulfill({ json: [record] });
+      }
+      return route.fulfill({ json: record });
+    }
     const search = url.searchParams.get("or");
     if (search) {
       expect(url.searchParams.get("match.or")).toContain("client_name.ilike");
       expect(search).toContain("match.not.is.null");
     }
-    const rows = search?.includes("absent") ? [] : records;
+    const status = url.searchParams.get("status")?.slice(3);
+    const rows = search?.includes("absent")
+      ? []
+      : records.filter((row) => !status || row.status === status);
     const offset = Number(url.searchParams.get("offset") ?? 0);
     await route.fulfill({ json: rows.slice(offset, offset + 20) });
   });
@@ -1814,23 +1830,55 @@ test("company estimates search, pagination and saved draft links", async ({
   await expect(page).toHaveURL(new RegExp(`/workspace/${org}/estimates`));
   await expect(page.locator("tbody tr")).toHaveCount(20);
   await page.getByRole("button", { name: "Voir plus", exact: true }).click();
-  await expect(page.locator("tbody tr")).toHaveCount(21);
+  await expect(page.locator("tbody tr")).toHaveCount(22);
   await expect(
     page.getByRole("link", { name: "Kitchen quote 0", exact: true }),
   ).toHaveAttribute(
     "href",
     `/workspace/${org}/projects/project-a/estimates/estimate-0`,
   );
+  await page.getByRole("button", { name: "Acceptés", exact: true }).click();
+  await expect(page.locator("tbody tr")).toHaveCount(1);
+  await expect(page.locator("tbody tr")).toContainText("Kitchen quote 21");
+  await expect(page.locator(".estimate-register-footer")).toContainText(
+    "Devis chargés: 1",
+  );
   await page
     .getByRole("textbox", { name: "Rechercher un devis, projet ou client" })
     .fill("absent");
   await page.getByRole("button", { name: "Rechercher", exact: true }).click();
   await expect(page.locator("tbody tr")).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Aucun devis ne correspond" }),
+  ).toBeVisible();
+  await page
+    .locator(".estimate-register-empty")
+    .getByRole("button", { name: "Réinitialiser" })
+    .click();
+  await expect(
+    page.getByRole("textbox", {
+      name: "Rechercher un devis, projet ou client",
+    }),
+  ).toBeFocused();
+  await expect(
+    page.getByRole("button", { name: "Tous", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
   await page
     .getByRole("textbox", { name: "Rechercher un devis, projet ou client" })
     .fill("Dupont");
   await page.getByRole("button", { name: "Rechercher", exact: true }).click();
   await expect(page.locator("tbody tr")).toHaveCount(20);
+  expect(
+    await page
+      .locator(".table-scroll")
+      .evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
+  await expect(
+    page.locator("tbody tr").first().locator(".estimate-status"),
+  ).toBeVisible();
+  await expect(
+    page.locator("tbody tr").first().locator(".estimate-amount"),
+  ).toBeVisible();
   await selectPersonalLanguage(page, "en");
   await expect(
     page.getByRole("heading", { name: "Estimates", exact: true }),
@@ -1844,6 +1892,126 @@ test("company estimates search, pagination and saved draft links", async ({
     path: `/private/tmp/renvo-estimates-overview-${test.info().project.name}.png`,
     fullPage: true,
   });
+  await page
+    .getByRole("link", { name: "Kitchen quote 0", exact: true })
+    .click();
+  await page
+    .getByRole("textbox", { name: "Estimate title" })
+    .fill("Kitchen quote updated");
+  await page.getByRole("button", { name: "Save draft", exact: true }).click();
+  await expect(page.getByText("Draft saved.", { exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(
+    page.getByRole("link", { name: "Kitchen quote updated", exact: true }),
+  ).toBeVisible();
+});
+
+test("estimate register creates a draft with paginated project selection and retry recovery", async ({
+  page,
+}) => {
+  await mockApi(page);
+  const projects = Array.from({ length: 21 }, (_, i) => ({
+    id: `project-${i}`,
+    organization_id: org,
+    name: `Maison ${i}`,
+    client_name: `Client ${i}`,
+    city: "Namur",
+    address: "",
+    status: "planning",
+    revision: 1,
+    created_at: "2026-10-18T12:00:00Z",
+  }));
+  let projectsFail = true;
+  await page.route("**/rest/v1/projects**", async (route) => {
+    const url = new URL(route.request().url());
+    expect(url.searchParams.get("organization_id")).toBe(`eq.${org}`);
+    if (projectsFail)
+      return route.fulfill({ status: 400, json: { message: "Unavailable" } });
+    const offset = Number(url.searchParams.get("offset") ?? 0);
+    return route.fulfill({ json: projects.slice(offset, offset + 20) });
+  });
+  let saved: Record<string, unknown> | null = null;
+  const requests: Record<string, unknown>[] = [];
+  let releaseCreate: () => void = () => {};
+  const createPending = new Promise<void>((resolve) => {
+    releaseCreate = resolve;
+  });
+  await page.route("**/rest/v1/estimates**", async (route) => {
+    const url = new URL(route.request().url());
+    if (route.request().method() === "POST") {
+      const body = route.request().postDataJSON();
+      expect(body.organization_id).toBe(org);
+      expect(body.project_id).toBe("project-20");
+      requests.push(body);
+      if (saved) return route.fulfill({ status: 409, json: { code: "23505" } });
+      saved = {
+        ...body,
+        lines: [],
+        total_cents: 0,
+        revision: 1,
+        status: "draft",
+        currency: "EUR",
+      };
+      await createPending;
+      return route.abort();
+    }
+    expect(url.searchParams.get("organization_id")).toBe(`eq.${org}`);
+    if (url.searchParams.has("id")) {
+      expect(url.searchParams.get("project_id")).toBe("eq.project-20");
+      expect(url.searchParams.get("id")).toBe(`eq.${saved?.id}`);
+      return route.fulfill({ json: saved });
+    }
+    return route.fulfill({ json: saved ? [saved] : [] });
+  });
+  await login(page);
+  await page.getByLabel("Nom de l’entreprise").fill("Atelier Devis");
+  await page.getByRole("button", { name: "Créer mon entreprise" }).click();
+  await page.goto(`/workspace/${org}/estimates`);
+  await expect(
+    page.getByRole("heading", { name: "Aucun devis pour le moment" }),
+  ).toBeVisible();
+  const newButton = page.locator("#estimate-new");
+  await newButton.click();
+  const dialog = page.getByRole("dialog", { name: "Nouveau devis" });
+  await expect(dialog.getByRole("alert")).toContainText(
+    "Impossible de charger les projets",
+  );
+  projectsFail = false;
+  await dialog.getByRole("button", { name: "Réessayer", exact: true }).click();
+  await expect(
+    dialog
+      .getByRole("combobox", { name: "Projet", exact: true })
+      .locator("option"),
+  ).toHaveCount(21);
+  await dialog.getByRole("button", { name: "Charger plus de projets" }).click();
+  await expect(
+    dialog
+      .getByRole("combobox", { name: "Projet", exact: true })
+      .locator("option"),
+  ).toHaveCount(22);
+  await dialog
+    .getByRole("combobox", { name: "Projet", exact: true })
+    .selectOption("project-20");
+  await dialog.getByLabel("Titre du devis").fill("Aménagement du grenier");
+  await dialog.getByRole("button", { name: "Créer le brouillon" }).click();
+  await expect(dialog.getByRole("button", { name: "Annuler" })).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  releaseCreate();
+  await expect(dialog.getByRole("alert")).toContainText(
+    "Création non confirmée",
+  );
+  await expect(
+    dialog.getByRole("combobox", { name: "Projet", exact: true }),
+  ).toBeDisabled();
+  await expect(dialog.getByLabel("Titre du devis")).toBeDisabled();
+  await dialog.getByRole("button", { name: "Réessayer", exact: true }).click();
+  await expect(page).toHaveURL(/\/projects\/project-20\/estimates\//);
+  await expect(
+    page.getByRole("textbox", { name: "Titre du devis" }),
+  ).toHaveValue("Aménagement du grenier");
+  expect(requests).toHaveLength(2);
+  expect(requests[1]).toEqual(requests[0]);
 });
 
 test("project budget, cost recovery, conflict and void history", async ({

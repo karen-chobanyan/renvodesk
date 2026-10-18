@@ -177,6 +177,84 @@ test("demo costs update totals and voided costs are excluded", async ({
   await expect(page.getByText("Coût annulé")).toBeVisible();
 });
 
+test("estimate register filters, responsive rows and guarded creation", async ({
+  page,
+}) => {
+  await open(page, "/estimates");
+  const register = page.locator(".estimates-register");
+  const search = page.getByRole("textbox", {
+    name: "Rechercher un devis, projet ou client",
+  });
+  const initialRows = await register.locator("tbody tr").count();
+  await page.getByRole("button", { name: "Acceptés", exact: true }).click();
+  await expect(register.locator("tbody tr").first()).toContainText(
+    "Acceptation enregistrée",
+  );
+  await search.fill("introuvable");
+  await expect(
+    page.getByText(
+      "Appuyez sur Entrée ou Rechercher pour appliquer votre recherche.",
+    ),
+  ).toBeVisible();
+  await search.press("Enter");
+  await expect(
+    page.getByRole("heading", { name: "Aucun devis ne correspond" }),
+  ).toBeVisible();
+  await page
+    .locator(".estimate-register-empty")
+    .getByRole("button", { name: "Réinitialiser" })
+    .click();
+  await expect(search).toBeFocused();
+  await expect(register.locator("tbody tr")).toHaveCount(initialRows);
+  expect(
+    await register
+      .locator(".table-scroll")
+      .evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
+  const first = register.locator("tbody tr").first();
+  await expect(first.locator(".estimate-status")).toBeVisible();
+  await expect(first.locator(".estimate-amount")).toBeVisible();
+  await page.locator("#estimate-new").click();
+  const dialog = page.getByRole("dialog", { name: "Nouveau devis" });
+  await expect(
+    dialog.getByRole("combobox", { name: "Projet", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#estimate-new")).toBeFocused();
+  await page.locator("#estimate-new").press("Enter");
+  await dialog
+    .getByRole("combobox", { name: "Projet", exact: true })
+    .selectOption("maison-ixelles");
+  await dialog
+    .getByLabel("Titre du devis")
+    .fill(
+      "Rénovation de la bibliothèque et du bureau avec rangements sur mesure",
+    );
+  page.once("dialog", (prompt) => void prompt.dismiss());
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Créer le brouillon" }).click();
+  await expect(page).toHaveURL(/\/estimates\/[^/]+$/);
+  await expect(dialog).not.toBeVisible();
+  await expect(
+    page.getByRole("textbox", { name: "Titre du devis" }),
+  ).toHaveValue(
+    "Rénovation de la bibliothèque et du bureau avec rangements sur mesure",
+  );
+  await page.goBack();
+  await expect(register.locator("tbody tr")).toHaveCount(initialRows + 1);
+  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  await expect(
+    page.getByRole("button", { name: "New estimate", exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Draft", exact: true }).click();
+  expect(
+    await register
+      .locator(".table-scroll")
+      .evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
+});
+
 test("demo estimate workflow records sending and freezes content", async ({
   page,
 }) => {

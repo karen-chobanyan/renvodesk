@@ -2,6 +2,7 @@ import { requireSupabase } from "@/lib/supabase/client";
 import type { Database } from "@/lib/supabase/database.types";
 import { track } from "@/lib/telemetry/runtime";
 import type { StoredLine } from "./draft-model";
+import type { EstimateStatus } from "./workflow-copy";
 export type SavedEstimate = Database["public"]["Tables"]["estimates"]["Row"];
 const summary = "id,title,total_cents,revision,status,created_at";
 export async function listEstimates(org: string, project: string, offset = 0) {
@@ -74,6 +75,7 @@ export async function listCompanyEstimates(
   org: string,
   search = "",
   offset = 0,
+  status: EstimateStatus | "" = "",
 ) {
   let query = requireSupabase()
     .from("estimates")
@@ -81,6 +83,7 @@ export async function listCompanyEstimates(
       "id,project_id,title,total_cents,revision,status,created_at,projects(name,client_name),match:projects()",
     )
     .eq("organization_id", org);
+  if (status) query = query.eq("status", status);
   if (search.trim()) {
     const pattern = `"%${search.trim().replaceAll("\\", "\\\\").replaceAll('"', '\\"')}%"`;
     query = query

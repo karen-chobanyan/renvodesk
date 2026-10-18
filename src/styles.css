@@ -2458,18 +2458,6 @@ details[open] > .compact-identity > svg {
   background: var(--soft);
 }
 
-.estimate-search {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 20px 0;
-  border-block: 1px solid var(--border);
-}
-.estimate-search .search-field {
-  flex: 1;
-  min-width: 220px;
-}
 .estimate-revision {
   display: block;
   color: var(--muted);
@@ -4560,5 +4548,207 @@ details[open] > .compact-identity > svg {
   }
   .client-drawer .button {
     min-height: 44px;
+  }
+}
+
+/* Estimate register: the same hierarchy and controls as projects and clients. */
+.estimates-register .estimate-status-filter {
+  display: flex;
+  flex-wrap: wrap;
+  overflow: visible;
+}
+.estimates-register .estimate-search {
+  flex-wrap: wrap;
+}
+.estimate-search .search-field {
+  flex: 1;
+  min-width: 180px;
+}
+.estimates-register .estimate-register-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+.estimate-register-table th:first-child {
+  width: 30%;
+}
+.estimate-register-table th:nth-child(2) {
+  width: 28%;
+}
+.estimate-register-table th:nth-child(3) {
+  width: 24%;
+}
+.estimate-register-table th:last-child {
+  width: 18%;
+}
+.estimate-register-table th {
+  font-size: 11px;
+}
+.estimate-register-table td {
+  font-size: var(--text-sm);
+  padding: var(--space-4) var(--space-3);
+  overflow-wrap: anywhere;
+}
+.estimate-register-table td:first-child {
+  padding-left: var(--space-3);
+}
+.estimate-title-link {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--text);
+  font-size: var(--text-base);
+  font-weight: 550;
+}
+.estimate-title-link:hover,
+.estimate-project a:hover {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.estimate-project a {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
+.estimate-project small {
+  display: block;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  margin-top: var(--space-1);
+}
+.estimate-register-table .status {
+  white-space: normal;
+  line-height: 1.5;
+}
+.estimate-status-draft {
+  color: var(--muted);
+  background: var(--soft);
+}
+.estimate-status-sent {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 9%, var(--surface));
+}
+.estimate-status-accepted {
+  color: var(--green);
+  background: color-mix(in srgb, var(--green) 10%, var(--surface));
+}
+.estimate-status-declined {
+  color: var(--text);
+  background: color-mix(in srgb, var(--text) 10%, var(--surface));
+}
+.estimate-amount strong {
+  font-size: var(--text-base);
+  font-weight: 550;
+}
+.estimate-mobile-label {
+  display: none;
+}
+.estimate-register-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding-block: var(--space-4);
+}
+.estimate-register-footer .register-scope {
+  margin: 0;
+}
+.estimate-register-empty {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-3);
+  padding: var(--space-8) 0;
+  border-block: 1px solid var(--border);
+}
+.estimate-register-empty > svg,
+.estimate-register-empty > p {
+  color: var(--muted);
+}
+.estimate-register-empty > p {
+  font-size: var(--text-sm);
+}
+.estimate-create-dialog {
+  width: min(560px, calc(100vw - 32px));
+}
+.estimate-create-form {
+  display: grid;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+.estimate-create-form .field,
+.estimate-create-form .helper-text {
+  margin: 0;
+}
+.estimate-create-form > .button {
+  justify-self: start;
+}
+.estimate-create-form select {
+  text-overflow: ellipsis;
+}
+.estimate-project-empty {
+  display: grid;
+  gap: var(--space-2);
+}
+@media (max-width: 760px) {
+  .estimates-register .project-register-header > .button {
+    width: 100%;
+  }
+  .estimates-register .estimate-status-filter {
+    gap: 0 var(--space-2);
+  }
+  .estimate-status-filter button {
+    padding-inline: var(--space-1);
+    min-height: 44px;
+  }
+  .estimate-search .search-field {
+    min-width: 0;
+  }
+  .estimate-search > .button {
+    flex-shrink: 0;
+  }
+  .estimate-register-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .estimate-register-table tbody {
+    display: block;
+  }
+  .estimate-register-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    grid-template-areas: "identity identity" "project project" "status amount";
+    gap: var(--space-3);
+    padding-block: var(--space-4);
+    border-bottom: 1px solid var(--border);
+  }
+  .estimate-register-table td,
+  .estimate-register-table td:first-child {
+    display: block;
+    min-width: 0;
+    border: 0;
+    padding: 0;
+  }
+  .estimate-register-table .estimate-identity {
+    grid-area: identity;
+  }
+  .estimate-register-table .estimate-project {
+    grid-area: project;
+  }
+  .estimate-register-table .estimate-status {
+    grid-area: status;
+    align-self: end;
+  }
+  .estimate-register-table .estimate-amount {
+    grid-area: amount;
+    align-self: end;
+  }
+  .estimate-mobile-label {
+    display: block;
+    color: var(--muted);
+    font-size: 11px;
+    margin-bottom: var(--space-1);
   }
 }
