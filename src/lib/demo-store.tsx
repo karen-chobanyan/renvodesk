@@ -58,6 +58,10 @@ function useDemoState() {
   const [members, setMembers] = useState(demoMembers);
   const [invitations, setInvitations] = useState(() => demoInvitations(base));
   const [company, setCompany] = useState(demoCompany);
+  const [accountProfile, saveAccountProfile] = useState<{
+    name: string;
+    language: "fr" | "en" | null;
+  }>({ name: demoMembers[0].name, language: null });
 
   const log = useCallback((input: ActivityInput) => {
     const entry: DemoActivity = {
@@ -278,6 +282,8 @@ function useDemoState() {
     createInvitation,
     revokeInvitation,
     company,
+    accountProfile,
+    saveAccountProfile,
     saveCompany: (patch: Partial<typeof demoCompany>) =>
       setCompany((old) => ({ ...old, ...patch })),
   };

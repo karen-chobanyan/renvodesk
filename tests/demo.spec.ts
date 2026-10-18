@@ -666,3 +666,80 @@ test("settings keep separate drafts, translate without reset and link to related
     .click();
   await expect(page).toHaveURL(/\/account$/);
 });
+
+test("account demo matches settings, retains profile changes and disables password operations", async ({
+  page,
+}) => {
+  await open(page, "/account");
+  await expect(
+    page.getByRole("heading", { name: "Paramètres du compte", exact: true }),
+  ).toBeVisible();
+  const profile = page.getByRole("region", { name: "Profil", exact: true });
+  await expect(
+    profile.getByRole("button", { name: "Enregistrer le profil" }),
+  ).toBeDisabled();
+  await page.getByLabel("Nom complet", { exact: true }).fill("Camille Laurent");
+  await page.getByLabel("Langue préférée", { exact: true }).selectOption("en");
+  await profile.getByRole("button", { name: "Enregistrer le profil" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Account settings", exact: true }),
+  ).toBeVisible();
+  await page
+    .getByLabel("Full name", { exact: true })
+    .fill("Pending correction");
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page.getByRole("link", { name: "My workspace", exact: true }).click();
+  await expect(page).toHaveURL(/\/account$/);
+  await page
+    .getByRole("region", { name: "Profile", exact: true })
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await expect(page.getByLabel("Full name", { exact: true })).toHaveValue(
+    "Camille Laurent",
+  );
+  await page
+    .getByRole("button", { name: "Change password", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Current password", { exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page
+      .getByRole("region", { name: "Password", exact: true })
+      .getByRole("button", { name: "Cancel", exact: true }),
+  ).toBeFocused();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await expect(
+    page.getByRole("button", { name: "Show — Current password", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: "Change password", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("link", { name: "Forgot your password?", exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("region", { name: "Password", exact: true })
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await page.getByRole("link", { name: "My workspace", exact: true }).click();
+  await page.goBack();
+  await expect(page.getByLabel("Full name", { exact: true })).toHaveValue(
+    "Camille Laurent",
+  );
+  await page
+    .getByRole("combobox", { name: "Language", exact: true })
+    .selectOption("fr");
+  await expect(page.getByLabel("Nom complet", { exact: true })).toHaveValue(
+    "Camille Laurent",
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});

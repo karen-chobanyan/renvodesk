@@ -15,6 +15,7 @@
   --muted: #6c7672;
   --accent: #274c62;
   --accent-hover: #1c3b4e;
+  --error: #a44c3b;
   --border: #e3e7e1;
   --sidebar: #f0f2ec;
   --soft: #f3f5f1;
@@ -1195,7 +1196,7 @@ th.numeric {
 }
 .error-message {
   font-size: 11px;
-  color: #a44c3b;
+  color: var(--error);
   line-height: 1.6;
   margin-top: 12px;
 }
@@ -4036,26 +4037,6 @@ details[open] > .compact-identity > svg {
 .workspace-settings-section .helper-text {
   margin: 0;
 }
-.account-settings-form {
-  display: grid;
-  gap: var(--space-4);
-  max-width: 460px;
-  margin-top: var(--space-6);
-}
-.account-settings-form .field {
-  margin: 0;
-}
-.account-settings-form .field small {
-  color: var(--muted);
-  line-height: 1.5;
-}
-.account-settings-form > .button {
-  justify-self: start;
-}
-.account-settings-form [role="status"],
-.account-settings-form [role="alert"] {
-  margin: 0;
-}
 .workspace-preferences-form {
   margin-top: var(--space-6);
 }
@@ -5356,4 +5337,57 @@ details[open] > .compact-identity > svg {
   .settings-form-actions > [role="status"] {
     flex-basis: 100%;
   }
+}
+
+.account-sign-in-email {
+  display: grid;
+  gap: var(--space-1);
+  padding-bottom: var(--space-6);
+  margin-bottom: var(--space-6);
+  border-bottom: 1px solid var(--border);
+}
+.account-sign-in-email strong {
+  overflow-wrap: anywhere;
+}
+.account-sign-in-email > span,
+.account-sign-in-email small {
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.account-password-fields {
+  display: grid;
+  gap: var(--space-4);
+  max-width: 520px;
+}
+.account-password-fields .field {
+  margin: 0;
+}
+.account-password-fields small {
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.account-password-input {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.account-password-input input {
+  flex: 1;
+  min-width: 0;
+}
+.account-password-input button {
+  flex-shrink: 0;
+}
+.account-password-form .error-message {
+  margin-bottom: 0;
+}
+.account-password-success {
+  margin-top: var(--space-3);
+}
+.account-demo-note {
+  margin: 0 0 var(--space-4);
+}
+.account-settings-page [aria-invalid="true"] {
+  border-color: var(--error);
 }

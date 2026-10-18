@@ -290,3 +290,20 @@ Storage presents the company allowance first and the shared owner-account allowa
 second, explains reservations, and offers Refresh with inline recovery. Stale usage
 remains visible with an error if refresh fails. Live and fictional settings reuse
 forms, layout, copy and storage presentation; demo writes remain in memory.
+
+
+## Account settings
+
+Account settings shares the compact header and divided Settings surface. The
+profile section shows the signed-in email as read-only identity, with name and
+personal language fields. Save activates only for edits; Cancel restores saved
+values, and subsequent edits clear success feedback. Profile and password forms
+save independently, including when a profile save changes the interface language.
+
+Password fields open on demand, with per-field Show/Hide, associated validation
+and first-error focus. Recovery stays beside the current-password field. Cancel
+clears and closes the form; success does the same and reports confirmation.
+Passwords remain in uncontrolled inputs rather than persistent or shared state.
+One page-level guard covers both drafts, with the existing navigation limitations.
+Live and fictional Account settings reuse presentation and FR/EN copy. Demo profile
+changes survive route navigation in memory; password operations remain disabled.

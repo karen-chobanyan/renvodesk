@@ -1180,23 +1180,44 @@ test("account settings save profile language and change password", async ({
   await expect(
     page.getByRole("combobox", { name: "Preferred language" }),
   ).toHaveValue("en");
-  await page.getByLabel("Current password").fill("current-password");
+  await page
+    .getByRole("button", { name: "Change password", exact: true })
+    .click();
+  await page
+    .getByLabel("Current password", { exact: true })
+    .fill("current-password");
   await page
     .getByLabel("New password", { exact: true })
     .fill("new-password-123");
-  await page.getByLabel("Confirm new password").fill("different-password-123");
+  await page
+    .getByLabel("Confirm new password", { exact: true })
+    .fill("different-password-123");
   await page.getByRole("button", { name: "Change password" }).click();
   await expect(page.getByRole("alert")).toContainText("do not match");
   expect(passwordUpdates).toBe(0);
-  await page.getByLabel("Confirm new password").fill("new-password-123");
+  await page
+    .getByLabel("Confirm new password", { exact: true })
+    .fill("new-password-123");
   await page.getByRole("button", { name: "Change password" }).click();
   await expect(page.getByRole("alert")).toContainText(
     "current password is incorrect",
   );
   await page.getByRole("button", { name: "Change password" }).click();
-  await expect(page.getByRole("status")).toContainText("Password updated");
+  await expect(
+    page
+      .getByRole("region", { name: "Password", exact: true })
+      .getByRole("status"),
+  ).toContainText("Password updated");
   expect(passwordUpdates).toBe(2);
-  await expect(page.getByLabel("Current password")).toHaveValue("");
+  await expect(
+    page.getByLabel("Current password", { exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByRole("button", { name: "Change password", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Current password", { exact: true }),
+  ).toHaveValue("");
 });
 test("live pages share the shell content bounds", async ({
   page,
@@ -3228,4 +3249,245 @@ test("team lists recover independently and preserve invitation pagination", asyn
   await expect(
     invitations.getByText("invite-20@example.test", { exact: true }),
   ).toBeVisible();
+});
+
+async function openAccountForUxTest(page: Page) {
+  await mockApi(page);
+  await page.goto("/login");
+  await page.getByRole("button", { name: "Tout refuser", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Adresse e-mail", exact: true })
+    .fill(user.email);
+  await page.getByLabel("Mot de passe", { exact: true }).fill("test-password");
+  await page.getByRole("button", { name: "Se connecter", exact: true }).click();
+  await expect(page).toHaveURL(/\/workspace/);
+  await page.goto("/workspace/account");
+  await expect(
+    page.getByRole("heading", { name: "Paramètres du compte", exact: true }),
+  ).toBeVisible();
+}
+
+test("account profile retries, cancels and keeps password edits through language changes", async ({
+  page,
+}) => {
+  await openAccountForUxTest(page);
+  let profileSaves = 0;
+  await page.route("**/auth/v1/user", async (route) => {
+    if (route.request().method() !== "PUT") {
+      await route.fulfill({ json: user });
+      return;
+    }
+    const body = route.request().postDataJSON();
+    expect(body).not.toHaveProperty("password");
+    expect(body.data.full_name).toBe("Camille Laurent");
+    expect(body.data.preferred_language).toBe("en");
+    profileSaves++;
+    if (profileSaves === 1) {
+      await route.fulfill({
+        status: 429,
+        json: { code: "over_request_rate_limit", msg: "Try later" },
+      });
+      return;
+    }
+    await route.fulfill({
+      json: { user: { ...user, user_metadata: body.data } },
+    });
+  });
+  const profile = page.getByRole("region", { name: "Profil", exact: true });
+  await expect(profile.getByText(user.email, { exact: true })).toBeVisible();
+  await expect(profile.getByRole("textbox")).toHaveCount(1);
+  await expect(
+    profile.getByRole("button", { name: "Enregistrer le profil" }),
+  ).toBeDisabled();
+  await page.getByLabel("Nom complet", { exact: true }).fill("   ");
+  await profile.getByRole("button", { name: "Enregistrer le profil" }).click();
+  await expect(page.getByLabel("Nom complet", { exact: true })).toBeFocused();
+  await expect(page.getByLabel("Nom complet", { exact: true })).toHaveAttribute(
+    "aria-invalid",
+    "true",
+  );
+  expect(profileSaves).toBe(0);
+  await profile.getByRole("button", { name: "Annuler", exact: true }).click();
+  await expect(page.getByLabel("Nom complet", { exact: true })).toHaveValue("");
+  await page
+    .getByRole("button", { name: "Changer le mot de passe", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Mot de passe actuel", { exact: true }),
+  ).toBeFocused();
+  await page
+    .getByLabel("Mot de passe actuel", { exact: true })
+    .fill("synthetic-current-123");
+  await page
+    .getByRole("button", {
+      name: "Afficher — Mot de passe actuel",
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByLabel("Mot de passe actuel", { exact: true }),
+  ).toHaveAttribute("type", "text");
+  await page.getByLabel("Nom complet", { exact: true }).fill("Camille Laurent");
+  await page.getByLabel("Langue préférée", { exact: true }).selectOption("en");
+  await profile.getByRole("button", { name: "Enregistrer le profil" }).click();
+  await expect(profile.getByRole("alert")).toContainText("Trop de tentatives");
+  await expect(page.getByLabel("Nom complet", { exact: true })).toHaveValue(
+    "Camille Laurent",
+  );
+  await profile.getByRole("button", { name: "Enregistrer le profil" }).click();
+  const englishProfile = page.getByRole("region", {
+    name: "Profile",
+    exact: true,
+  });
+  await expect(englishProfile.getByRole("status")).toHaveText("Profile saved.");
+  await expect(
+    page.getByLabel("Current password", { exact: true }),
+  ).toHaveValue("synthetic-current-123");
+  await page.getByLabel("Full name", { exact: true }).fill("Unsaved profile");
+  await expect(englishProfile.getByRole("status")).toHaveText(
+    "Unsaved changes",
+  );
+  await page
+    .getByRole("region", { name: "Password", exact: true })
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Change password", exact: true }),
+  ).toBeFocused();
+  await expect(page.getByLabel("Full name", { exact: true })).toHaveValue(
+    "Unsaved profile",
+  );
+  await page
+    .getByRole("button", { name: "Change password", exact: true })
+    .click();
+  await expect(
+    page.getByLabel("Current password", { exact: true }),
+  ).toHaveValue("");
+  await expect(
+    page.getByLabel("Current password", { exact: true }),
+  ).toHaveAttribute("type", "password");
+  await englishProfile
+    .getByRole("button", { name: "Cancel", exact: true })
+    .click();
+  await expect(page.getByLabel("Full name", { exact: true })).toHaveValue(
+    "Camille Laurent",
+  );
+  await expect(page.getByLabel("Full name", { exact: true })).toBeFocused();
+  expect(profileSaves).toBe(2);
+});
+
+test("account password errors focus fields and recovery warns once before discarding both drafts", async ({
+  page,
+}) => {
+  await openAccountForUxTest(page);
+  let passwordRequests = 0;
+  const responses = [
+    "invalid_credentials",
+    "same_password",
+    "reauthentication_needed",
+  ];
+  await page.route("**/auth/v1/user", async (route) => {
+    if (route.request().method() !== "PUT") {
+      await route.fulfill({ json: user });
+      return;
+    }
+    const body = route.request().postDataJSON();
+    expect(body.current_password).toBe("synthetic-current-123");
+    expect(body.password).toBe("synthetic-new-1234");
+    expect(body).not.toHaveProperty("data");
+    const code = responses[passwordRequests++];
+    await route.fulfill({
+      status: 400,
+      headers: {
+        "x-supabase-api-version": "2024-01-01",
+        "access-control-expose-headers": "x-supabase-api-version",
+      },
+      json: { code, msg: "Synthetic error" },
+    });
+  });
+  await page
+    .getByRole("button", { name: "Changer le mot de passe", exact: true })
+    .click();
+  const password = page.getByRole("region", {
+    name: "Mot de passe",
+    exact: true,
+  });
+  await expect(
+    password.getByRole("link", { name: "Mot de passe oublié ?", exact: true }),
+  ).toBeVisible();
+  const submit = password.getByRole("button", {
+    name: "Changer le mot de passe",
+    exact: true,
+  });
+  await submit.click();
+  await expect(
+    page.getByLabel("Mot de passe actuel", { exact: true }),
+  ).toBeFocused();
+  await page
+    .getByLabel("Mot de passe actuel", { exact: true })
+    .fill("synthetic-current-123");
+  await page.getByLabel("Nouveau mot de passe", { exact: true }).fill("short");
+  await submit.click();
+  await expect(
+    page.getByLabel("Nouveau mot de passe", { exact: true }),
+  ).toBeFocused();
+  await page
+    .getByLabel("Nouveau mot de passe", { exact: true })
+    .fill("synthetic-new-1234");
+  await page
+    .getByLabel("Confirmer le nouveau mot de passe", { exact: true })
+    .fill("does-not-match-123");
+  await submit.click();
+  await expect(
+    page.getByLabel("Confirmer le nouveau mot de passe", { exact: true }),
+  ).toBeFocused();
+  await expect(
+    page.getByLabel("Confirmer le nouveau mot de passe", { exact: true }),
+  ).toHaveAttribute("aria-describedby", "account-confirm-password-error");
+  expect(passwordRequests).toBe(0);
+  await page
+    .getByLabel("Confirmer le nouveau mot de passe", { exact: true })
+    .fill("synthetic-new-1234");
+  await submit.click();
+  await expect(password.getByRole("alert")).toHaveText(
+    "Le mot de passe actuel est incorrect.",
+  );
+  await expect(
+    page.getByLabel("Mot de passe actuel", { exact: true }),
+  ).toBeFocused();
+  await submit.click();
+  await expect(password.getByRole("alert")).toContainText(
+    "doit être différent",
+  );
+  await expect(
+    page.getByLabel("Nouveau mot de passe", { exact: true }),
+  ).toBeFocused();
+  await submit.click();
+  await expect(password.getByRole("alert")).toContainText(
+    "Une nouvelle vérification",
+  );
+  await expect(password.getByRole("alert")).toBeFocused();
+  await page.getByLabel("Nom complet", { exact: true }).fill("Unrecorded name");
+  let dialogs = 0;
+  page.on("dialog", async (dialog) => {
+    dialogs++;
+    await dialog.dismiss();
+  });
+  await password
+    .getByRole("link", { name: "Mot de passe oublié ?", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/workspace\/account$/);
+  expect(dialogs).toBe(1);
+  await page.evaluate(() => location.reload());
+  await expect.poll(() => dialogs).toBe(2);
+  await expect(
+    page.getByLabel("Nouveau mot de passe", { exact: true }),
+  ).toHaveValue("synthetic-new-1234");
+  page.removeAllListeners("dialog");
+  page.once("dialog", (dialog) => dialog.accept());
+  await password
+    .getByRole("link", { name: "Mot de passe oublié ?", exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/auth\/forgot$/);
+  expect(passwordRequests).toBe(3);
 });
