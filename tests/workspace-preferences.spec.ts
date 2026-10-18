@@ -52,7 +52,7 @@ test("workspace language and location save while currency stays fixed", async ({
   await expect(region.getByLabel("Langue par défaut")).toHaveValue("fr");
   await expect(region.getByLabel("Pays de l’entreprise")).toHaveValue("BE");
   await expect(region).toContainText("EUR · €");
-  await expect(region).toContainText("pas encore disponible");
+  await expect(region).toContainText("Fixe pour les devis");
 
   await region.getByLabel("Langue par défaut").selectOption("en");
   await region.getByLabel("Pays de l’entreprise").selectOption("NL");
@@ -62,6 +62,7 @@ test("workspace language and location save while currency stays fixed", async ({
   await expect(region).toContainText("ont changé");
   await expect(region.getByLabel("Langue par défaut")).toHaveValue("en");
   await expect(region.getByLabel("Pays de l’entreprise")).toHaveValue("NL");
+  page.once("dialog", (dialog) => dialog.accept());
   await region
     .getByRole("button", { name: "Recharger et remplacer mes choix" })
     .click();

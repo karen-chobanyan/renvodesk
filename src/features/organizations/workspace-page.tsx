@@ -9,6 +9,7 @@ import { StorageUsage } from "@/features/storage-usage/storage-usage";
 import { useLocale } from "@/lib/i18n";
 import { CompanyContacts } from "./company-contacts";
 import { createOrganization } from "./organization-service";
+import { SettingsLayout } from "./settings-layout";
 import { useWorkspace } from "./workspace-context";
 import { WorkspacePreferences } from "./workspace-preferences";
 export function WorkspacePage({ settings = false }: { settings?: boolean }) {
@@ -58,11 +59,7 @@ function Workspace({ settings }: { settings: boolean }) {
   const showForm = creating || (!loading && organizations.length === 0);
   return (
     <section className="connected-workspace">
-      {(loading ||
-        loadFailed ||
-        showForm ||
-        settings ||
-        !activeOrganization) && (
+      {(loading || loadFailed || showForm || !activeOrganization) && (
         <>
           <p className="eyebrow">{settings ? settingsTitle : ui("projects")}</p>
           <h1>
@@ -152,25 +149,16 @@ function Workspace({ settings }: { settings: boolean }) {
         </form>
       ) : activeOrganization ? (
         settings ? (
-          <div className="workspace-settings">
-            <WorkspacePreferences
-              key={activeOrganization.id}
-              id={activeOrganization.id}
-            />
-            <StorageUsage organizationId={activeOrganization.id} />
-            <CompanyContacts
-              key={activeOrganization.id}
-              id={activeOrganization.id}
-            />
-            <section className="workspace-settings-section">
-              <h2>{locale === "fr" ? "Abonnement" : "Subscription"}</h2>
-              <p className="helper-text">
-                {locale === "fr"
-                  ? "La gestion des offres et de la facturation sera disponible ici plus tard."
-                  : "Plan and billing management will be available here later."}
-              </p>
-            </section>
-          </div>
+          <SettingsLayout
+            key={activeOrganization.id}
+            company={activeOrganization.name}
+            teamHref={`/workspace/${activeOrganization.id}/team`}
+            accountHref="/workspace/account"
+          >
+            <CompanyContacts id={activeOrganization.id} />
+            <WorkspacePreferences id={activeOrganization.id} />
+            <StorageUsage organizationId={activeOrganization.id} settings />
+          </SettingsLayout>
         ) : (
           <SavedProjects
             key={activeOrganization.id}

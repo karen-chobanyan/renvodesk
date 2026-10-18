@@ -267,3 +267,26 @@ for cancelable same-document navigation (including Back/Forward), without replac
 BrowserRouter. Browsers without this API retain link-click and unload prompts;
 SPA history traversal protection requires Navigation API support. Inputs remain
 memory-only. The demo retains dirty inputs when its language changes.
+
+
+## Company settings
+
+Settings uses the compact register header and shell content width. A single divided
+surface places expanded document contacts first, workspace preferences second and
+storage last. Desktop rows pair a narrow heading/help column with readable form
+fields; phones stack the same content. Addresses use a textarea and phone fields
+use a telephone keyboard. EUR is compact read-only information. Language help links
+to personal Account settings; Team and Account shortcuts replace the subscription
+placeholder. No new persisted settings fields are added.
+
+Each form owns its draft and original revision until save, cancel or explicit reload.
+Background reads and saves in the other section cannot reset edits or advance their
+revision. Save is disabled until dirty; Cancel restores the form's loaded values.
+Conflicts require a successful explicit reload before saving again. Failed reloads
+preserve inputs. One page-level leave guard covers both forms, using the same native
+navigation/unload behavior and browser limitations as the estimate editor.
+
+Storage presents the company allowance first and the shared owner-account allowance
+second, explains reservations, and offers Refresh with inline recovery. Stale usage
+remains visible with an error if refresh fails. Live and fictional settings reuse
+forms, layout, copy and storage presentation; demo writes remain in memory.

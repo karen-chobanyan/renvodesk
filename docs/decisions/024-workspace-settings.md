@@ -28,3 +28,12 @@ convert the existing EUR records.
 See [implementation plan](../plans/2026-09-24-workspace-settings.md). The migration
 is applied only to the RenvoDesk development Supabase project; production rollout
 has not occurred.
+
+
+### 2026-10-18 layout update
+
+The subscription placeholder has been removed in favor of working Team and Account
+links. Expanded document contacts precede preferences and storage. Separate save
+boundaries and revisions remain; shared forms now track dirty state, guard navigation
+and confirm conflict reloads. This supersedes only the placeholder presentation
+above: billing remains deferred. See `../plans/2026-10-18-settings-ux.md`.

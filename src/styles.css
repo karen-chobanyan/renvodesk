@@ -5182,3 +5182,178 @@ details[open] > .compact-identity > svg {
 .estimate-workflow > .helper-text {
   margin: var(--space-2) 0;
 }
+
+/* Company settings use the workspace width; individual fields stay readable. */
+.settings-page {
+  min-width: 0;
+}
+.settings-sections {
+  display: grid;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  margin-top: var(--space-6);
+}
+.settings-section {
+  display: grid;
+  grid-template-columns: minmax(200px, 0.8fr) minmax(0, 2fr);
+  gap: var(--space-8);
+  padding: var(--space-6);
+  min-width: 0;
+}
+.settings-section + .settings-section {
+  border-top: 1px solid var(--border);
+}
+.settings-section-heading h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-lg);
+}
+.settings-section-heading .helper-text {
+  margin: 0;
+  max-width: 36ch;
+}
+.settings-section-content {
+  min-width: 0;
+  max-width: 820px;
+}
+.settings-form fieldset {
+  padding: 0;
+  margin: 0;
+  border: 0;
+  min-width: 0;
+}
+.settings-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.settings-fields .field {
+  min-width: 0;
+  margin: 0;
+}
+.settings-fields small,
+.settings-related small {
+  color: var(--muted);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+}
+.settings-address,
+.settings-currency {
+  grid-column: 1 / -1;
+}
+.settings-address textarea {
+  min-height: 90px;
+  resize: vertical;
+}
+.settings-currency {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-3);
+  font-size: var(--text-sm);
+  padding-top: var(--space-2);
+}
+.settings-inline-link {
+  font-size: var(--text-sm);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.settings-form-actions,
+.storage-refresh {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.settings-form-actions {
+  margin-top: var(--space-6);
+}
+.settings-form-actions [role="status"],
+.storage-refresh [role="status"] {
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.settings-form-error {
+  margin-top: var(--space-4);
+}
+.storage-usage-label {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-variant-numeric: tabular-nums;
+}
+.settings-section progress {
+  width: 100%;
+  height: 7px;
+  accent-color: var(--accent);
+}
+.storage-refresh {
+  margin-bottom: var(--space-4);
+}
+.settings-section progress {
+  appearance: none;
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--soft);
+}
+.settings-section progress::-webkit-progress-bar {
+  background: var(--soft);
+}
+.settings-section progress::-webkit-progress-value {
+  background: var(--accent);
+}
+.settings-section progress::-moz-progress-bar {
+  background: var(--accent);
+}
+.settings-related {
+  display: grid;
+  grid-template-columns: minmax(200px, 0.8fr) repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  margin-top: var(--space-6);
+  padding: var(--space-4) var(--space-6);
+}
+.settings-related h2 {
+  margin: 0;
+  font-size: var(--text-base);
+}
+.settings-related a {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+.settings-related a:hover strong {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.settings-related span {
+  display: grid;
+  gap: var(--space-1);
+}
+.settings-related svg {
+  flex: 0 0 auto;
+}
+@media (max-width: 1000px) {
+  .settings-section,
+  .settings-related {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-6);
+  }
+  .settings-section-heading .helper-text {
+    max-width: 65ch;
+  }
+}
+@media (max-width: 600px) {
+  .settings-section,
+  .settings-related {
+    padding: var(--space-4);
+  }
+  .settings-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .settings-form-actions > [role="status"] {
+    flex-basis: 100%;
+  }
+}

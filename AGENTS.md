@@ -409,7 +409,7 @@ Projects no longer embeds company administration.
 routes carry the company ID in the path. Switching companies returns to that company’s
 register. `/workspace/:organizationId/settings` contains workspace default language,
 editable BE/FR/NL company country, fixed EUR currency, document contact details,
-storage usage and a future subscription section. Personal language choices take
+storage usage and links to Team and Account settings. Personal language choices take
 precedence over the workspace default. Country edits do not alter project
 addresses or sent estimate snapshots; future draft PDF exports use the current
 country. EUR financial amounts remain fixed. Preferences

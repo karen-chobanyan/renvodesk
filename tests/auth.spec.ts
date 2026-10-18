@@ -456,10 +456,9 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await expect(page.getByLabel("Langue par défaut")).toHaveValue("fr");
   await expect(page.getByLabel("Pays de l’entreprise")).toHaveValue("BE");
   await expect(page.getByText("EUR · €")).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Abonnement" })).toBeVisible();
-  await page
-    .getByText("Coordonnées pour les documents", { exact: true })
-    .click();
+  await expect(page.getByRole("heading", { name: "Abonnement" })).toHaveCount(
+    0,
+  );
   await page
     .getByLabel("Adresse de l’entreprise", { exact: true })
     .fill("12 rue de la Paix");
@@ -472,9 +471,6 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await expect(
     page.getByText("Coordonnées enregistrées.", { exact: true }),
   ).toBeVisible();
-  await page
-    .getByText("Coordonnées pour les documents", { exact: true })
-    .click();
   await page.goto(`/workspace?company=${org}`);
   await expect(
     page.getByText("Aucun projet pour le moment.", { exact: false }),

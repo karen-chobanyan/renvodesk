@@ -151,7 +151,7 @@ hosting the frontend, configure SPA history fallback and production auth redirec
 
 ## Export a draft PDF
 
-In Workspace, expand **Document contact details** for the selected company to save
+In Settings, use **Document contact details** for the selected company to save
 an optional address, email and phone. Open a saved project and estimate, save any
 changes, then choose **Download PDF**. The current interface language controls the
 PDF labels; customer descriptions remain unchanged. Export rereads the saved
@@ -226,7 +226,7 @@ access and account sign-out. Projects no longer embeds company administration.
 routes carry the company ID in the path. Switching companies returns to that company’s
 register. `/workspace/:organizationId/settings` contains owner-editable default
 language and BE/FR/NL company country, fixed EUR currency, document contact
-details, storage usage and a future subscription section. A personal language
+details, storage usage and links to Team and Account settings. A personal language
 choice overrides the workspace default. Country changes do not update project
 addresses or sent estimate snapshots; future draft PDF exports use the current
 country. See [decision 024](docs/decisions/024-workspace-settings.md).

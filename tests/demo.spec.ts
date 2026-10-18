@@ -604,3 +604,65 @@ test("estimate editor protects unsaved edits, keeps actions visible and fits mob
   await leavePrompt;
   await expect(page).toHaveURL(/\/estimates$/);
 });
+
+test("settings keep separate drafts, translate without reset and link to related pages", async ({
+  page,
+}) => {
+  await open(page, "/settings");
+  const contacts = page.getByRole("region", {
+    name: "Coordonnées pour les documents",
+  });
+  await expect(
+    contacts.getByRole("button", { name: "Enregistrer les coordonnées" }),
+  ).toBeDisabled();
+  await page
+    .getByLabel("Adresse de l’entreprise")
+    .fill("18 rue des Ateliers\n1000 Bruxelles");
+  await page.getByLabel("Pays de l’entreprise").selectOption("FR");
+  await page
+    .getByRole("button", { name: "Enregistrer les préférences" })
+    .click();
+  await expect(page.getByLabel("Adresse de l’entreprise")).toHaveValue(
+    "18 rue des Ateliers\n1000 Bruxelles",
+  );
+  await page
+    .getByRole("combobox", { name: "Langue", exact: true })
+    .selectOption("en");
+  await expect(page.getByLabel("Company address")).toHaveValue(
+    "18 rue des Ateliers\n1000 Bruxelles",
+  );
+  await expect(
+    page.getByRole("button", { name: "Save preferences" }),
+  ).toBeDisabled();
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page
+    .getByRole("navigation", { name: "Related settings" })
+    .getByRole("link", { name: /^Team/ })
+    .click();
+  await expect(page).toHaveURL(/\/settings$/);
+  await page.getByRole("button", { name: "Save contact details" }).click();
+  await expect(
+    page.getByRole("button", { name: "Save contact details" }),
+  ).toBeDisabled();
+  await expect(page.getByRole("heading", { name: "Subscription" })).toHaveCount(
+    0,
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page
+    .getByRole("navigation", { name: "Related settings" })
+    .getByRole("link", { name: /^Team/ })
+    .click();
+  await expect(page).toHaveURL(/\/team$/);
+  await page.goBack();
+  await expect(page.getByLabel("Company address")).toHaveValue(
+    "18 rue des Ateliers\n1000 Bruxelles",
+  );
+  await page
+    .getByRole("link", { name: "Choose my language in account settings" })
+    .click();
+  await expect(page).toHaveURL(/\/account$/);
+});
