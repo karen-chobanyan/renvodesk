@@ -1,8 +1,10 @@
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useAuth } from "@/features/auth/auth-provider";
 import { useLocale } from "@/lib/i18n";
+import { NewSketchDialog } from "./new-sketch-dialog";
 import { sketchCopy } from "./sketch-copy";
 import {
   createSketch,
@@ -13,8 +15,12 @@ import {
 } from "./sketch-service";
 
 export function SketchPreview({ sk }: { sk: Sketch }) {
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(""),
+    [failed, setFailed] = useState(false);
+  const { locale } = useLocale();
   useEffect(() => {
+    setUrl("");
+    setFailed(false);
     let active = true,
       object = "";
     if (sk.current_save_id)
@@ -26,13 +32,21 @@ export function SketchPreview({ sk }: { sk: Sketch }) {
             setUrl(object);
           }
         })
-        .catch(() => {});
+        .catch(() => {
+          if (active) setFailed(true);
+        });
     return () => {
       active = false;
       if (object) URL.revokeObjectURL(object);
     };
   }, [sk]);
-  return url ? <img className="sketch-preview" src={url} alt="" /> : null;
+  return url ? (
+    <img className="sketch-preview" src={url} alt="" />
+  ) : failed ? (
+    <span className="sketch-preview-error">
+      {sketchCopy[locale].previewError}
+    </span>
+  ) : null;
 }
 export function ProjectSketches({
   org,
@@ -40,77 +54,68 @@ export function ProjectSketches({
   owner,
   onOpenSketch,
   refreshKey,
+  active = true,
 }: {
   org: string;
   project: string;
   owner: boolean;
   onOpenSketch: (id: string) => void;
   refreshKey: number;
+  active?: boolean;
 }) {
   const { locale } = useLocale(),
     c = sketchCopy[locale];
-  const [items, setItems] = useState<Sketch[]>([]),
-    [title, setTitle] = useState(""),
-    [failed, setFailed] = useState(false),
-    [busy, setBusy] = useState(false),
-    [more, setMore] = useState(false),
-    [loaded, setLoaded] = useState(false);
+  const { session } = useAuth();
+  const activeRef = useRef(active);
+  useEffect(() => {
+    activeRef.current = active;
+    return () => {
+      activeRef.current = false;
+    };
+  }, [active]);
+  const query = useInfiniteQuery({
+    queryKey: ["workspace", session?.user.id, org, "project-sketches", project],
+    queryFn: ({ pageParam }) => listSketches(org, project, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) =>
+      last.length === 20 ? pages.length * 20 : undefined,
+    enabled: active,
+    staleTime: 0,
+    retry: false,
+  });
+  const items = Array.from(
+    new Map(
+      (query.data?.pages.flat() ?? []).map((row) => [row.id, row]),
+    ).values(),
+  );
+  const [creating, setCreating] = useState(false);
   const [search] = useSearchParams();
-  const createDisclosure = useRef<HTMLDetailsElement>(null);
   const wantsNew =
+    active &&
     owner &&
     search.get("tab") === "documents" &&
     search.get("new") === "sketch";
   useEffect(() => {
-    if (!wantsNew || !createDisclosure.current) return;
-    createDisclosure.current.open = true;
-    requestAnimationFrame(() =>
-      (
-        createDisclosure.current?.querySelector<HTMLInputElement>(
-          "input:not(:disabled)",
-        ) ?? createDisclosure.current?.querySelector("summary")
-      )?.focus(),
-    );
+    if (wantsNew) setCreating(true);
   }, [wantsNew]);
-  const request = useRef<{ id: string; title: string } | null>(null);
-  async function load(offset = 0) {
-    setBusy(true);
-    setFailed(false);
-    try {
-      const rows = await listSketches(org, project, offset);
-      setItems((old) => (offset ? [...old, ...rows] : rows));
-      setMore(rows.length === 20);
-      setLoaded(true);
-    } catch {
-      setFailed(true);
-    } finally {
-      setBusy(false);
-    }
-  }
-  // biome-ignore lint/correctness/useExhaustiveDependencies: project identity and modal close refresh the list
   useEffect(() => {
-    void load();
-  }, [org, project, refreshKey]);
-  async function create() {
-    setBusy(true);
-    setFailed(false);
-    request.current ??= { id: crypto.randomUUID(), title: title.trim() };
-    try {
-      const sk = await createSketch(
-        org,
-        project,
-        request.current.id,
-        request.current.title,
-      );
-      request.current = null;
-      setTitle("");
-      setBusy(false);
-      onOpenSketch(sk.id);
-    } catch {
-      setFailed(true);
-      setBusy(false);
+    if (!active) setCreating(false);
+  }, [active]);
+  const refetch = query.refetch;
+  const lastRefresh = useRef(refreshKey);
+  useEffect(() => {
+    if (lastRefresh.current !== refreshKey) {
+      lastRefresh.current = refreshKey;
+      void refetch();
     }
-  }
+  }, [refreshKey, refetch]);
+  useEffect(() => {
+    const focus = () => {
+      if (active) void refetch({ cancelRefetch: false });
+    };
+    window.addEventListener("focus", focus);
+    return () => window.removeEventListener("focus", focus);
+  }, [active, refetch]);
   return (
     <section id="project-sketches" className="company-form">
       <header className="document-section-heading">
@@ -119,43 +124,44 @@ export function ProjectSketches({
           <p className="helper-text">{c.hint}</p>
         </div>
         {owner && (
-          <details className="project-create" ref={createDisclosure}>
-            <summary className="button button-primary">{c.new}</summary>
-            <form
-              className="sketch-toolbar"
-              onSubmit={(e) => {
-                e.preventDefault();
-                void create();
-              }}
-            >
-              <label className="field" htmlFor="new-sketch">
-                {c.name}
-                <Input
-                  id="new-sketch"
-                  required
-                  maxLength={120}
-                  value={title}
-                  disabled={busy || !!request.current}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-              </label>
-              <Button disabled={busy || !title.trim()}>
-                {request.current ? c.retry : c.create}
-              </Button>
-            </form>
-          </details>
+          <Button variant="outline" onClick={() => setCreating(true)}>
+            {c.new}
+          </Button>
         )}
       </header>
-      {failed && (
-        <p role="alert">
-          {c.error}{" "}
-          <Button variant="outline" disabled={busy} onClick={() => void load()}>
-            {c.refresh}
-          </Button>
-        </p>
+      {creating && (
+        <NewSketchDialog
+          close={() => {
+            setCreating(false);
+            void refetch();
+          }}
+          create={async (title, id) => {
+            const sk = await createSketch(org, project, id, title);
+            setCreating(false);
+            void refetch();
+            if (activeRef.current) onOpenSketch(sk.id);
+          }}
+        />
       )}
-      {!loaded && !failed && <p role="status">{c.loading}</p>}
-      {loaded && !items.length && <p className="document-empty">{c.empty}</p>}
+      {query.isError && !query.isFetchNextPageError && (
+        <div role="alert">
+          <p>{c.error}</p>
+          <Button
+            variant="outline"
+            disabled={query.isFetching}
+            onClick={() => void refetch()}
+          >
+            {c.retry}
+          </Button>
+        </div>
+      )}
+      {query.isPending && !query.isError && <p role="status">{c.loading}</p>}
+      {!query.isPending && !query.isError && !items.length && (
+        <div className="document-empty">
+          <strong>{c.empty}</strong>
+          {owner && <p className="helper-text">{c.emptyHint}</p>}
+        </div>
+      )}
       <div className="document-sketch-gallery">
         {items.map((sk) => (
           <button
@@ -191,13 +197,18 @@ export function ProjectSketches({
           </button>
         ))}
       </div>
-      {more && (
+      {query.isFetchNextPageError && <p role="alert">{c.moreError}</p>}
+      {query.hasNextPage && (
         <Button
           variant="outline"
-          disabled={busy}
-          onClick={() => void load(items.length)}
+          disabled={query.isFetching}
+          onClick={() => void query.fetchNextPage({ cancelRefetch: false })}
         >
-          {c.more}
+          {query.isFetchingNextPage
+            ? c.loading
+            : query.isFetchNextPageError
+              ? c.retry
+              : c.more}
         </Button>
       )}
     </section>

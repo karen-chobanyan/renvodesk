@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useLocale } from "@/lib/i18n";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
+import { fileCopy } from "./file-copy";
 import { MAX_FILE_BYTES } from "./file-model";
 
 const copy = {
@@ -59,6 +61,13 @@ export function MediaCapture({
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [attempt, setAttempt] = useState(0);
+  const [returnFocus] = useState(() => document.activeElement);
+  useUnsavedChangesGuard(!!file || recording, fileCopy[locale].discard);
+  function cancel() {
+    if ((file || recording) && !window.confirm(fileCopy[locale].discard))
+      return;
+    close();
+  }
   const video = useRef<HTMLVideoElement>(null);
   const recorder = useRef<MediaRecorder | null>(null);
   const alive = useRef(false);
@@ -124,11 +133,20 @@ export function MediaCapture({
   }, [recording]);
   useEffect(() => {
     const stop = () => {
-      if (document.hidden) close();
+      if (!document.hidden) return;
+      // Stop device use in the background, retaining the captured result for review.
+      if (recorder.current?.state === "recording") recorder.current.stop();
+      stream?.getTracks().forEach((track) => {
+        track.stop();
+      });
+      if (!file && !recording) {
+        setStream(null);
+        setError(c.error);
+      }
     };
     document.addEventListener("visibilitychange", stop);
     return () => document.removeEventListener("visibilitychange", stop);
-  }, [close]);
+  }, [stream, file, recording, c.error]);
   function finish(blob: Blob, ext: string) {
     stream?.getTracks().forEach((track) => {
       track.stop();
@@ -138,6 +156,7 @@ export function MediaCapture({
       setError(c.large);
       return;
     }
+    setError("");
     setFile(
       new File([blob], `${kind}-${crypto.randomUUID().slice(0, 8)}.${ext}`, {
         type: blob.type,
@@ -219,10 +238,20 @@ export function MediaCapture({
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open) close();
+        if (!open) cancel();
       }}
     >
-      <DialogContent title={c[kind]} description={c.hint} closeLabel={c.cancel}>
+      <DialogContent
+        title={c[kind]}
+        description={c.hint}
+        closeLabel={c.cancel}
+        onCloseAutoFocus={(event) => {
+          if (returnFocus instanceof HTMLElement && returnFocus.isConnected) {
+            event.preventDefault();
+            returnFocus.focus();
+          }
+        }}
+      >
         {error ? (
           <p role="alert">{error}</p>
         ) : file ? (
@@ -251,13 +280,14 @@ export function MediaCapture({
           </p>
         )}
         <div className="dialog-actions">
-          <Button variant="outline" onClick={close}>
+          <Button variant="outline" onClick={cancel}>
             {c.cancel}
           </Button>
           {(file || error) && (
             <Button
               variant="outline"
               onClick={() => {
+                if (file && !window.confirm(fileCopy[locale].discard)) return;
                 setFile(null);
                 setAttempt((n) => n + 1);
               }}

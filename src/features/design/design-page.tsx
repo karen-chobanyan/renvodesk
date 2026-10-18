@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { costCopy } from "@/features/costs/cost-copy";
 import { CostMetrics } from "@/features/costs/cost-summary";
+import { fileCopy } from "@/features/files/file-copy";
 import { useLocale } from "@/lib/i18n";
 export function DesignPage() {
   const { t, locale } = useLocale();
@@ -60,6 +61,18 @@ export function DesignPage() {
           {locale === "fr"
             ? "Voir le registre et les dialogues dans la démo"
             : "View the ledger and dialogs in the demo"}
+        </Link>
+      </section>
+      <section className="showcase-section">
+        <h2>{fileCopy[locale].title}</h2>
+        <p className="helper-text">{fileCopy[locale].description}</p>
+        <Link
+          className="account-link"
+          to="/projects/maison-ixelles?tab=documents"
+        >
+          {locale === "fr"
+            ? "Voir l’import, les fichiers et les croquis dans la démo"
+            : "View the uploader, files and sketches in the demo"}
         </Link>
       </section>
       <section className="showcase-section">

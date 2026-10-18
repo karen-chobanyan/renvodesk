@@ -119,8 +119,15 @@ function DemoProjectDetail({ project }: { project: Project }) {
           {(active === "documents" || visited.has("documents")) && (
             <div hidden={active !== "documents"}>
               <div className="project-documents">
-                <DemoFiles projectId={project.id} />
-                <DemoSketches projectId={project.id} open={setSketch} />
+                <DemoFiles
+                  projectId={project.id}
+                  active={active === "documents"}
+                />
+                <DemoSketches
+                  projectId={project.id}
+                  open={setSketch}
+                  active={active === "documents"}
+                />
               </div>
             </div>
           )}

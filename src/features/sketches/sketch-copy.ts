@@ -1,5 +1,12 @@
 export const sketchCopy = {
   fr: {
+    createFailed:
+      "Création non confirmée. Réessayez pour récupérer le même croquis.",
+    moreError:
+      "Impossible de charger la suite. Les croquis affichés sont conservés.",
+    previewError: "Aperçu indisponible · ouvrez le croquis",
+    emptyHint:
+      "Créez un croquis pour illustrer une idée ou annoter le chantier.",
     title: "Croquis",
     hint: "Dessinez une idée, un plan simple ou une annotation de chantier.",
     new: "Nouveau croquis",
@@ -49,6 +56,10 @@ export const sketchCopy = {
     missing: "Croquis introuvable ou accès indisponible.",
   },
   en: {
+    createFailed: "Creation not confirmed. Retry to recover the same sketch.",
+    moreError: "Could not load more. The sketches already shown are preserved.",
+    previewError: "Preview unavailable · open the sketch",
+    emptyHint: "Create a sketch to illustrate an idea or annotate the site.",
     title: "Sketches",
     hint: "Draw an idea, a simple plan or a site annotation.",
     new: "New sketch",

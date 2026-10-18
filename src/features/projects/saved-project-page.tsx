@@ -279,6 +279,7 @@ function ProjectDetail({
                   className="project-documents"
                 >
                   <ProjectFiles
+                    active={active === "documents"}
                     organizationId={organizationId}
                     projectId={id}
                     canManage={owner}
@@ -286,6 +287,7 @@ function ProjectDetail({
                     onChanged={refreshOverview}
                   />
                   <ProjectSketches
+                    active={active === "documents"}
                     org={organizationId}
                     project={id}
                     owner={owner}

@@ -310,7 +310,7 @@ test("saved sketch opens in place, restores history and restricts members", asyn
     mimeType: "text/plain",
     buffer: Buffer.from("Layout fixture"),
   });
-  await expect(page.locator(".document-selected")).toHaveText(
+  await expect(page.locator(".document-selected")).toContainText(
     "layout-check.txt",
   );
   await expect(page.locator("#project-sketches .sketch-preview")).toBeVisible();
@@ -323,6 +323,8 @@ test("saved sketch opens in place, restores history and restricts members", asyn
     path: `/private/tmp/project-documents-en-${test.info().project.name}.png`,
     fullPage: true,
   });
+  page.once("dialog", (d) => d.accept());
+  await page.getByRole("button", { name: "Remove selection" }).click();
   await selectPersonalLanguage(page, "fr");
   await page.locator("#project-sketches .sketch-list-row").click();
   await page.evaluate(() => {
@@ -425,7 +427,10 @@ test("saved sketch opens in place, restores history and restricts members", asyn
   await page.evaluate(() => {
     document.body.dataset.sketchPageMarker = "kept";
   });
-  await page.locator("#project-sketches summary").click();
+  await page
+    .locator("#project-sketches")
+    .getByRole("button", { name: "Nouveau croquis" })
+    .click();
   await page.getByLabel("Nom du croquis", { exact: true }).fill("New kitchen");
   await page
     .getByRole("button", { name: "Créer le croquis", exact: true })

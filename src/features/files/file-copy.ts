@@ -1,5 +1,19 @@
 export const fileCopy = {
   fr: {
+    change: "Changer",
+    clearSelection: "Retirer",
+    notUploaded: "Pas encore importé",
+    uploading: "Import en cours…",
+    discard: "Abandonner le fichier ou la capture non enregistré ?",
+    library: "Fichiers enregistrés",
+    emptyHint:
+      "Ajoutez vos plans, photos et documents avec les commandes ci-dessus.",
+    memberEmpty: "Les fichiers ajoutés par le propriétaire apparaîtront ici.",
+    moreError:
+      "Impossible de charger la suite. Les fichiers affichés sont conservés.",
+    actionError: "Cette action a échoué. Réessayez depuis ce fichier.",
+    analyzeTitle: "Transcrire cette note vocale ?",
+    previewFailed: "Impossible de charger cet aperçu.",
     title: "Fichiers du projet",
     description: "Plans, photos et documents du chantier.",
     add: "Ajouter un fichier",
@@ -74,6 +88,18 @@ export const fileCopy = {
     progress: "Progression de l’import",
   },
   en: {
+    change: "Change",
+    clearSelection: "Remove selection",
+    notUploaded: "Not uploaded yet",
+    uploading: "Uploading…",
+    discard: "Discard the unsaved file or capture?",
+    library: "Saved files",
+    emptyHint: "Add plans, photos and site documents using the controls above.",
+    memberEmpty: "Files added by the owner will appear here.",
+    moreError: "Could not load more. The files already shown are preserved.",
+    actionError: "This action failed. Try again from this file.",
+    analyzeTitle: "Transcribe this voice note?",
+    previewFailed: "Could not load this preview.",
     title: "Project files",
     description: "Plans, photos and site documents.",
     add: "Upload file",

@@ -1,6 +1,6 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { Camera, FileText, Mic, Sparkles, Upload } from "lucide-react";
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { Sparkles } from "lucide-react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
@@ -9,7 +9,9 @@ import { projectDetailCopy } from "@/features/projects/project-detail-copy";
 import { useProjectItemFocus } from "@/features/projects/use-project-item-focus";
 import { quotaErrorCode } from "@/features/storage-usage/storage-model";
 import { useLocale } from "@/lib/i18n";
+import { useUnsavedChangesGuard } from "@/lib/use-unsaved-changes-guard";
 import { fileCopy } from "./file-copy";
+import { FileLibrary } from "./file-library";
 import { canPreview, PREVIEW_URL_SECONDS, validateFile } from "./file-model";
 import { FileMoreActions } from "./file-more-actions";
 import {
@@ -23,6 +25,7 @@ import {
   reserveFile,
   uploadFile,
 } from "./file-service";
+import { FileUploader } from "./file-uploader";
 
 import { MediaCapture } from "./media-capture";
 import {
@@ -38,25 +41,24 @@ export function ProjectFiles({
   organizationId,
   projectId,
   canManage,
+  active = true,
   onTaskCreated,
   onChanged,
 }: {
   organizationId: string;
   projectId: string;
   canManage: boolean;
+  active?: boolean;
   onTaskCreated: () => void;
   onChanged?: () => void;
 }) {
   const { locale } = useLocale(),
     c = fileCopy[locale];
-  const [rows, setRows] = useState<ProjectFile[]>([]),
-    [loading, setLoading] = useState(true),
-    [failed, setFailed] = useState(false),
-    [reload, setReload] = useState(0),
-    [more, setMore] = useState(false);
   const [selected, setSelected] = useState<File | null>(null),
     [requestId, setRequestId] = useState(() => crypto.randomUUID()),
     [busy, setBusy] = useState(false),
+    [uploadBusy, setUploadBusy] = useState(false),
+    [actionError, setActionError] = useState<string | null>(null),
     [percent, setPercent] = useState(0),
     [error, setError] = useState<
       | "invalid"
@@ -73,15 +75,50 @@ export function ProjectFiles({
       null,
     ),
     [expired, setExpired] = useState(false);
+  const [analyzeFile, setAnalyzeFile] = useState<ProjectFile | null>(null);
+  const libraryHeading = useRef<HTMLHeadingElement>(null);
+  const modalOpener = useRef<Element | null>(null);
+  function rememberFocus() {
+    const element = document.activeElement;
+    modalOpener.current =
+      element?.closest("details")?.querySelector("summary") ?? element;
+  }
+  function restoreFocus(event: Event) {
+    const element = modalOpener.current;
+    if (
+      element instanceof HTMLElement &&
+      element.isConnected &&
+      element.getClientRects().length
+    ) {
+      event.preventDefault();
+      element.focus();
+    } else if (libraryHeading.current) {
+      event.preventDefault();
+      libraryHeading.current.focus();
+    }
+  }
   const [capture, setCapture] = useState<"photo" | "voice" | null>(null);
   const aiFlag =
     canManage && import.meta.env.VITE_AI_SITE_NOTES_ENABLED === "true";
   const ai = useSiteNoteAnalysis(organizationId, projectId, aiFlag);
   const canAnalyze = aiFlag && ai.available;
-  const [dragging, setDragging] = useState(false);
-  const dragDepth = useRef(0);
-  const input = useRef<HTMLInputElement>(null),
-    controller = useRef<AbortController | null>(null);
+  const controller = useRef<AbortController | null>(null);
+  const activeRef = useRef(active);
+  useUnsavedChangesGuard(!!selected || uploadBusy, c.discard);
+  useEffect(() => {
+    activeRef.current = active;
+    if (!active) {
+      controller.current?.abort();
+      setSelected(null);
+      setCapture(null);
+      setPreview(null);
+      setRemoving(null);
+      setAnalyzeFile(null);
+    }
+    return () => {
+      activeRef.current = false;
+    };
+  }, [active]);
   useEffect(() => () => controller.current?.abort(), []);
   useEffect(() => {
     setExpired(false);
@@ -96,42 +133,49 @@ export function ProjectFiles({
   const { session } = useAuth(),
     userId = session?.user.id ?? "",
     queryClient = useQueryClient();
-  // Account usage spans every company, so refresh all cached storage readings.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: upload/deletion completion refreshes Settings usage
+  const filesQuery = useInfiniteQuery({
+    queryKey: ["workspace", userId, organizationId, "project-files", projectId],
+    queryFn: ({ pageParam }) => listFiles(organizationId, projectId, pageParam),
+    initialPageParam: 0,
+    getNextPageParam: (last, pages) =>
+      last.length === 20 ? pages.length * 20 : undefined,
+    enabled: active,
+    staleTime: 0,
+    retry: false,
+  });
+  const rows = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          (filesQuery.data?.pages.flat() ?? []).map((row) => [row.id, row]),
+        ).values(),
+      ),
+    [filesQuery.data],
+  );
+  const loading = filesQuery.isPending,
+    failed = filesQuery.isError && !filesQuery.isFetchNextPageError;
+  const refetch = filesQuery.refetch;
   useEffect(() => {
-    if (!reload) return;
+    const focus = () => {
+      if (active) void refetch({ cancelRefetch: false });
+    };
+    window.addEventListener("focus", focus);
+    return () => window.removeEventListener("focus", focus);
+  }, [active, refetch]);
+  function refresh() {
+    void refetch();
     onChanged?.();
     void queryClient.invalidateQueries({
       queryKey: ["workspace", userId],
       predicate: (query) => query.queryKey[3] === "storage",
     });
-  }, [reload]);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: reload refreshes metadata after upload or deletion
-  useEffect(() => {
-    let active = true;
-    setLoading(true);
-    setFailed(false);
-    void listFiles(organizationId, projectId)
-      .then((data) => {
-        if (active) {
-          setRows(data);
-          setMore(data.length === 20);
-        }
-      })
-      .catch(() => {
-        if (active) setFailed(true);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [organizationId, projectId, reload]);
+  }
   const [search] = useSearchParams();
   const focusId = search.get("tab") === "documents" ? search.get("file") : null;
+  const [focusRetry, setFocusRetry] = useState(0);
   const [focused, setFocused] = useState<ProjectFile | null>(null),
     [focusFailed, setFocusFailed] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: explicit retry rereads the selected file even when cached pages are unchanged
   useEffect(() => {
     setFocused(null);
     setFocusFailed(false);
@@ -150,7 +194,7 @@ export function ProjectFiles({
     return () => {
       active = false;
     };
-  }, [focusId, loading, rows, organizationId, projectId]);
+  }, [focusId, loading, rows, organizationId, projectId, focusRetry]);
   useProjectItemFocus(
     focusId,
     !loading && (!!focused || rows.some((row) => row.id === focusId)),
@@ -161,16 +205,31 @@ export function ProjectFiles({
       ? [focused, ...rows]
       : rows;
   function selectFile(file: File | null) {
+    if (busy) return;
+    const problem = file ? validateFile(file) : null;
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    if (selected && !window.confirm(c.discard)) return;
     setNotice(null);
     setRequestId(crypto.randomUUID());
     setPercent(0);
-    const problem = file ? validateFile(file) : null;
-    setError(problem);
-    setSelected(problem ? null : file);
+    setError(null);
+    setSelected(file);
+  }
+  function openCapture(kind: "photo" | "voice") {
+    if (selected && !window.confirm(c.discard)) return;
+    setSelected(null);
+    setError(null);
+    setNotice(null);
+    rememberFocus();
+    setCapture(kind);
   }
   async function upload() {
     if (!selected || busy) return;
     setBusy(true);
+    setUploadBusy(true);
     setError(null);
     setNotice(null);
     setPercent(0);
@@ -192,7 +251,7 @@ export function ProjectFiles({
       setPercent(100);
       setSelected(null);
       setRequestId(crypto.randomUUID());
-      if (input.current) input.current.value = "";
+
       setNotice("success");
     } catch (error) {
       const code = quotaErrorCode(error);
@@ -205,18 +264,19 @@ export function ProjectFiles({
       );
     } finally {
       setBusy(false);
-      setReload((n) => n + 1);
+      setUploadBusy(false);
+      refresh();
     }
   }
-  async function action(run: () => Promise<void>) {
+  async function action(run: () => Promise<void>, fileId: string) {
     if (busy) return;
     setBusy(true);
-    setError(null);
+    setActionError(null);
     setNotice(null);
     try {
       await run();
     } catch {
-      setError("error");
+      setActionError(fileId);
     } finally {
       setBusy(false);
     }
@@ -228,299 +288,254 @@ export function ProjectFiles({
           <h2>{c.title}</h2>
           <p className="helper-text">{c.description}</p>
         </div>
-        {canManage && (
-          <Button disabled={busy} onClick={() => input.current?.click()}>
-            <Upload size={16} aria-hidden="true" />
-            {c.add}
-          </Button>
-        )}
       </header>
       {canManage && (
-        <fieldset
-          aria-label={c.choose}
-          className={`document-upload-shell${dragging ? " is-dragging" : ""}`}
-          onDragEnter={(event) => {
-            event.preventDefault();
-            if (!busy && event.dataTransfer.types.includes("Files")) {
-              dragDepth.current += 1;
-              setDragging(true);
-            }
-          }}
-          onDragOver={(event) => {
-            event.preventDefault();
-            event.dataTransfer.dropEffect = busy ? "none" : "copy";
-          }}
-          onDragLeave={(event) => {
-            event.preventDefault();
-            dragDepth.current = Math.max(0, dragDepth.current - 1);
-            if (!dragDepth.current) setDragging(false);
-          }}
-          onDrop={(event) => {
-            event.preventDefault();
-            dragDepth.current = 0;
-            setDragging(false);
-            if (busy) return;
-            const files = event.dataTransfer.files;
-            if (!files.length) return;
-            if (input.current) input.current.value = "";
-            if (files.length !== 1) {
-              selectFile(null);
-              setError("single");
-              return;
-            }
-            selectFile(files[0]);
-          }}
-        >
-          <div className="document-upload">
-            <div className="document-drop-target">
-              <p>
-                {dragging
-                  ? c.drop
-                  : locale === "fr"
-                    ? "Déposez un fichier ici"
-                    : "Drop a file here"}
+        <FileUploader
+          selected={selected}
+          busy={busy}
+          uploading={uploadBusy}
+          percent={percent}
+          select={selectFile}
+          capture={openCapture}
+          upload={upload}
+          error={
+            error && (
+              <p role="alert" className="error-message">
+                {c[error]}
               </p>
-              <p className="helper-text" id="project-file-hint">
-                {c.hint}
-              </p>
-              <input
-                ref={input}
-                id="project-file-input"
-                hidden
-                aria-label={c.choose}
-                aria-describedby="project-file-hint"
-                tabIndex={-1}
-                type="file"
-                accept=".dxf,.pdf,.jpg,.jpeg,.png,.webp,.txt,.docx,.xlsx,.webm,.m4a,.ogg"
-                disabled={busy}
-                onChange={(e) => selectFile(e.target.files?.[0] ?? null)}
-              />
-            </div>
-            <div className="capture-actions">
-              <Button
-                variant="outline"
-                disabled={busy}
-                onClick={() => setCapture("photo")}
-              >
-                <Camera size={18} aria-hidden="true" />
-                {c.photo}
-              </Button>
-              <Button
-                variant="outline"
-                disabled={busy}
-                onClick={() => setCapture("voice")}
-              >
-                <Mic size={18} aria-hidden="true" />
-                {c.voice}
-              </Button>
-            </div>
-            {selected && (
-              <div className="document-upload-selection">
-                <p className="document-selected" role="status">
-                  {selected.name}
-                </p>
-                <Button disabled={busy} onClick={upload}>
-                  {busy ? c.loading : c.upload}
-                </Button>
-              </div>
-            )}
-          </div>
-        </fieldset>
+            )
+          }
+          notice={notice && <p role="status">{c[notice]}</p>}
+        />
       )}
       {capture && (
         <MediaCapture
           kind={capture}
           close={() => setCapture(null)}
-          select={(file) => {
-            if (input.current) input.current.value = "";
-            selectFile(file);
-          }}
+          select={selectFile}
         />
       )}
-      {selected && busy && (
-        <div>
-          <progress aria-label={c.progress} max={100} value={percent} />
-          <span>{percent}%</span>
-        </div>
-      )}
-      {notice && <p role="status">{c[notice]}</p>}
-      {aiFlag && <SiteNoteAnalysisNotices state={ai} />}
-      {error && (
-        <p role="alert" className="error-message">
-          {c[error]}
+      <div className="document-library-heading">
+        <h3 ref={libraryHeading} tabIndex={-1}>
+          {c.library}
+        </h3>
+        <p className="register-scope">
+          {projectDetailCopy[locale].loadedFiles}: {rows.length}
+          {focused && !rows.some((row) => row.id === focused.id)
+            ? ` + 1 (${projectDetailCopy[locale].selected})`
+            : ""}
         </p>
-      )}
+      </div>
+      {aiFlag &&
+        (ai.running ||
+          ai.error ||
+          visibleRows.some(
+            (file) =>
+              file.state === "ready" &&
+              ["audio/webm", "audio/mp4"].includes(file.mime_type),
+          )) && <SiteNoteAnalysisNotices state={ai} />}
       {loading && <p role="status">{c.loading}</p>}
       {failed ? (
         <>
           <p role="alert">{c.loadError}</p>
-          <Button onClick={() => setReload((n) => n + 1)}>{c.retry}</Button>
+          <Button
+            disabled={filesQuery.isFetching}
+            onClick={() => void refetch()}
+          >
+            {c.retry}
+          </Button>
         </>
       ) : !loading && !rows.length && !focused ? (
-        <p className="document-empty">{c.empty}</p>
+        <div className="document-empty">
+          <strong>{c.empty}</strong>
+          <p className="helper-text">
+            {canManage ? c.emptyHint : c.memberEmpty}
+          </p>
+        </div>
       ) : null}
       {focusFailed && (
         <p role="alert">
           {projectDetailCopy[locale].missingItem}{" "}
-          <Button variant="ghost" onClick={() => setReload((n) => n + 1)}>
+          <Button
+            variant="ghost"
+            disabled={filesQuery.isFetching}
+            onClick={() => setFocusRetry((n) => n + 1)}
+          >
             {c.retry}
           </Button>
         </p>
       )}
       {visibleRows.length > 0 && (
-        <>
-          {canAnalyze && <p className="helper-text">{c.aiDisclosure}</p>}
-          <table className="document-file-table">
-            <caption className="sr-only">{c.title}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{c.name}</th>
-                <th scope="col">{c.type}</th>
-                <th scope="col">{c.size}</th>
-                <th scope="col">{c.actions}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleRows.map((file) => (
-                <tr
-                  key={file.id}
-                  id={`file-${file.id}`}
-                  tabIndex={-1}
-                  data-selected={file.id === focusId || undefined}
-                >
-                  <td className="document-file-name">
-                    <div className="document-file-info">
-                      <FileText size={22} aria-hidden="true" />
-                      <div>
-                        <strong>{file.original_name}</strong>
-                        {file.state !== "ready" && (
-                          <p>
-                            {file.state === "pending" ? c.pending : c.deleting}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="document-file-type">
-                    {file.original_name
-                      .split(".")
-                      .pop()
-                      ?.slice(0, 5)
-                      .toUpperCase() || "FILE"}
-                  </td>
-                  <td className="document-file-size">
-                    {new Intl.NumberFormat(locale, {
-                      maximumFractionDigits: 1,
-                    }).format(file.size_bytes / 1024)}{" "}
-                    KiB
-                  </td>
-                  <td>
-                    <div className="file-actions">
-                      {file.state === "ready" ? (
-                        <>
-                          {canPreview(file.mime_type) && (
-                            <Button
-                              variant="outline"
-                              disabled={busy}
-                              onClick={() =>
-                                action(async () => {
-                                  const url = await previewUrl(file);
-                                  setPreview({ file, url });
-                                })
-                              }
-                            >
-                              {file.mime_type === "application/dxf"
-                                ? c.openPlan
-                                : c.preview}
-                            </Button>
-                          )}
-                          {canAnalyze &&
-                            ["audio/webm", "audio/mp4"].includes(
-                              file.mime_type,
-                            ) && (
-                              <Button
-                                variant="outline"
-                                disabled={busy || !!ai.running}
-                                onClick={() => void ai.analyze(file.id)}
-                              >
-                                <Sparkles size={16} aria-hidden="true" />
-                                {c.analyze}
-                              </Button>
-                            )}
-                        </>
-                      ) : canManage && file.state === "pending" ? (
+        <FileLibrary
+          focusId={focusId}
+          rows={visibleRows.map((file) => ({
+            id: file.id,
+            name: file.original_name,
+            size: file.size_bytes,
+            status:
+              file.state === "ready"
+                ? undefined
+                : file.state === "pending"
+                  ? c.pending
+                  : c.deleting,
+            error:
+              actionError === file.id ? (
+                <p role="alert" className="error-message">
+                  {c.actionError}
+                </p>
+              ) : undefined,
+          }))}
+          actions={(id) => {
+            const file = visibleRows.find((row) => row.id === id);
+            if (!file) return null;
+            return (
+              <>
+                {file.state === "ready" ? (
+                  <>
+                    {canPreview(file.mime_type) ? (
+                      <Button
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => {
+                          rememberFocus();
+                          void action(async () => {
+                            const url = await previewUrl(file);
+                            if (activeRef.current) setPreview({ file, url });
+                          }, file.id);
+                        }}
+                      >
+                        {file.mime_type === "application/dxf"
+                          ? c.openPlan
+                          : c.preview}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() =>
+                          action(() => downloadFile(file), file.id)
+                        }
+                      >
+                        {c.download}
+                      </Button>
+                    )}
+                    {canAnalyze &&
+                      ["audio/webm", "audio/mp4"].includes(file.mime_type) && (
                         <Button
-                          variant="outline"
-                          disabled={busy}
-                          onClick={() =>
-                            action(async () => {
-                              await confirmUpload(file);
-                              setReload((n) => n + 1);
-                              setNotice("success");
-                            })
-                          }
+                          variant="ghost"
+                          disabled={busy || !!ai.running}
+                          onClick={() => {
+                            rememberFocus();
+                            setAnalyzeFile(file);
+                          }}
                         >
-                          {c.verify}
+                          <Sparkles size={16} aria-hidden="true" />
+                          {c.analyze}
                         </Button>
-                      ) : null}
-                      {(file.state === "ready" || canManage) && (
-                        <FileMoreActions name={file.original_name}>
-                          {file.state === "ready" && (
-                            <Button
-                              variant="ghost"
-                              disabled={busy}
-                              onClick={() => action(() => downloadFile(file))}
-                            >
-                              {c.download}
-                            </Button>
-                          )}
-                          {canManage && (
-                            <Button
-                              variant="ghost"
-                              disabled={busy}
-                              onClick={() => setRemoving(file)}
-                            >
-                              {c.remove}
-                            </Button>
-                          )}
-                        </FileMoreActions>
                       )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
+                  </>
+                ) : canManage && file.state === "pending" ? (
+                  <Button
+                    variant="outline"
+                    disabled={busy}
+                    onClick={() =>
+                      action(async () => {
+                        await confirmUpload(file);
+                        if (file.id === requestId) {
+                          setSelected(null);
+                          setRequestId(crypto.randomUUID());
+                          setError(null);
+                        }
+                        refresh();
+                        setNotice("success");
+                      }, file.id)
+                    }
+                  >
+                    {c.verify}
+                  </Button>
+                ) : null}
+                {(canManage ||
+                  (file.state === "ready" && canPreview(file.mime_type))) && (
+                  <FileMoreActions name={file.original_name}>
+                    {file.state === "ready" && canPreview(file.mime_type) && (
+                      <Button
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() =>
+                          action(() => downloadFile(file), file.id)
+                        }
+                      >
+                        {c.download}
+                      </Button>
+                    )}
+                    {canManage && (
+                      <Button
+                        variant="ghost"
+                        disabled={busy}
+                        onClick={() => {
+                          rememberFocus();
+                          setActionError(null);
+                          setRemoving(file);
+                        }}
+                      >
+                        {c.remove}
+                      </Button>
+                    )}
+                  </FileMoreActions>
+                )}
+              </>
+            );
+          }}
+        />
       )}
-      <p className="register-scope">
-        {projectDetailCopy[locale].loadedFiles}: {rows.length}
-        {focused && !rows.some((row) => row.id === focused.id)
-          ? ` + 1 (${projectDetailCopy[locale].selected})`
-          : ""}
-      </p>
-      {more && !failed && (
+      {filesQuery.isFetchNextPageError && (
+        <p role="alert" className="error-message">
+          {c.moreError}
+        </p>
+      )}
+      {filesQuery.hasNextPage && (
         <Button
-          disabled={busy || loading}
+          disabled={filesQuery.isFetching}
           variant="outline"
           onClick={() =>
-            action(async () => {
-              const data = await listFiles(
-                organizationId,
-                projectId,
-                rows.length,
-              );
-              setRows((old) => [
-                ...old,
-                ...data.filter((f) => !old.some((o) => o.id === f.id)),
-              ]);
-              setMore(data.length === 20);
-            })
+            void filesQuery.fetchNextPage({ cancelRefetch: false })
           }
         >
-          {c.more}
+          {filesQuery.isFetchingNextPage
+            ? c.loading
+            : filesQuery.isFetchNextPageError
+              ? c.retry
+              : c.more}
         </Button>
       )}
+      <Dialog
+        open={!!analyzeFile}
+        onOpenChange={(open) => {
+          if (!open) setAnalyzeFile(null);
+        }}
+      >
+        <DialogContent
+          title={c.analyzeTitle}
+          description={analyzeFile?.original_name ?? ""}
+          closeLabel={c.close}
+          onCloseAutoFocus={restoreFocus}
+        >
+          <p className="helper-text">{c.aiDisclosure}</p>
+          <div className="dialog-actions">
+            <Button variant="outline" onClick={() => setAnalyzeFile(null)}>
+              {c.cancel}
+            </Button>
+            <Button
+              onClick={() => {
+                if (analyzeFile) void ai.analyze(analyzeFile.id);
+                setAnalyzeFile(null);
+              }}
+            >
+              {c.analyze}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={!!removing}
         onOpenChange={(open) => {
@@ -528,6 +543,7 @@ export function ProjectFiles({
         }}
       >
         <DialogContent
+          onCloseAutoFocus={restoreFocus}
           title={c.deleteTitle}
           description={c.deleteHint}
           closeLabel={c.close}
@@ -548,15 +564,15 @@ export function ProjectFiles({
                   if (!removing) return;
                   await deleteFile(removing);
                   setRemoving(null);
-                  setReload((n) => n + 1);
+                  refresh();
                   setNotice("deleted");
-                })
+                }, removing?.id ?? "")
               }
             >
               {c.remove}
             </Button>
           </div>
-          {error && <p role="alert">{c[error]}</p>}
+          {actionError === removing?.id && <p role="alert">{c.actionError}</p>}
         </DialogContent>
       </Dialog>
       {ai.review && (
@@ -585,6 +601,7 @@ export function ProjectFiles({
                   ? "image-dialog file-viewer-dialog"
                   : ""
           }
+          onCloseAutoFocus={restoreFocus}
           title={preview?.file.original_name ?? c.preview}
           description={
             preview?.file.mime_type === "application/dxf"
@@ -605,9 +622,11 @@ export function ProjectFiles({
             <Suspense fallback={<p role="status">{c.loading}</p>}>
               <PdfPreview
                 key={preview.url}
-                onDownload={() => action(() => downloadFile(preview.file))}
+                onDownload={() =>
+                  action(() => downloadFile(preview.file), preview.file.id)
+                }
                 downloading={busy}
-                downloadError={error === "error"}
+                downloadError={actionError === preview.file.id}
                 url={preview.url}
                 title={preview.file.original_name}
               />
@@ -626,9 +645,11 @@ export function ProjectFiles({
                 key={preview.url}
                 url={preview.url}
                 title={preview.file.original_name}
-                onDownload={() => action(() => downloadFile(preview.file))}
+                onDownload={() =>
+                  action(() => downloadFile(preview.file), preview.file.id)
+                }
                 downloading={busy}
-                downloadError={error === "error"}
+                downloadError={actionError === preview.file.id}
                 onError={() => setExpired(true)}
               />
             </Suspense>

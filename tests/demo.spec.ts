@@ -278,6 +278,10 @@ test("demo estimate workflow records sending and freezes content", async ({
 test("demo voice note review creates a suggested task", async ({ page }) => {
   await open(page, "/projects/maison-ixelles?tab=documents");
   await page.getByRole("button", { name: "Transcrire avec l’IA" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Transcrire avec l’IA" })
+    .click();
   const dialog = page.getByRole("dialog");
   await expect(
     dialog.getByRole("heading", { name: "Transcription" }),
@@ -775,6 +779,9 @@ test("project details demo shares editor, focused links, estimate creation and r
   await expect(page.locator('tr[data-selected="true"]')).toBeFocused();
   await expect(
     page.getByRole("button", { name: "Choisir un fichier", exact: true }),
+  ).toHaveCount(1);
+  await expect(
+    page.getByRole("button", { name: "Ajouter un fichier", exact: true }),
   ).toHaveCount(0);
   await page.locator('tr[data-selected="true"] summary').click();
   await expect(

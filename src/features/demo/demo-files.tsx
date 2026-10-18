@@ -1,10 +1,12 @@
-import { Camera, FileText, Mic, Sparkles, Upload } from "lucide-react";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { fileCopy } from "@/features/files/file-copy";
+import { FileLibrary } from "@/features/files/file-library";
 import { FileMoreActions } from "@/features/files/file-more-actions";
+import { FileUploader } from "@/features/files/file-uploader";
 import { projectDetailCopy } from "@/features/projects/project-detail-copy";
 import { useProjectItemFocus } from "@/features/projects/use-project-item-focus";
 import { useDemo } from "@/lib/demo-store";
@@ -66,7 +68,13 @@ function usePreviewUrl(file: DemoFile | null) {
   return { url, failed };
 }
 
-export function DemoFiles({ projectId }: { projectId: string }) {
+export function DemoFiles({
+  projectId,
+  active = true,
+}: {
+  projectId: string;
+  active?: boolean;
+}) {
   const { locale } = useLocale(),
     c = fileCopy[locale],
     d = useDemoCopy();
@@ -75,6 +83,25 @@ export function DemoFiles({ projectId }: { projectId: string }) {
   const [notice, setNotice] = useState(""),
     [preview, setPreview] = useState<DemoFile | null>(null),
     [review, setReview] = useState(false);
+  const [analyzeFile, setAnalyzeFile] = useState<DemoFile | null>(null);
+  const opener = useRef<Element | null>(null);
+  function rememberFocus() {
+    const el = document.activeElement;
+    opener.current = el?.closest("details")?.querySelector("summary") ?? el;
+  }
+  function restoreFocus(event: Event) {
+    if (opener.current instanceof HTMLElement && opener.current.isConnected) {
+      event.preventDefault();
+      opener.current.focus();
+    }
+  }
+  useEffect(() => {
+    if (!active) {
+      setPreview(null);
+      setReview(false);
+      setAnalyzeFile(null);
+    }
+  }, [active]);
   const { url, failed } = usePreviewUrl(preview);
   const [search] = useSearchParams();
   const focusId = search.get("tab") === "documents" ? search.get("file") : null;
@@ -98,115 +125,104 @@ export function DemoFiles({ projectId }: { projectId: string }) {
           <h2>{c.title}</h2>
           <p className="helper-text">{c.description}</p>
         </div>
-        <Button onClick={() => setNotice(d.uploadDemo)}>
-          <Upload size={16} aria-hidden="true" />
-          {c.add}
-        </Button>
       </header>
-      <fieldset aria-label={c.choose} className="document-upload-shell">
-        <div className="document-upload">
-          <div className="document-drop-target">
-            <p>
-              {locale === "fr" ? "Déposez un fichier ici" : "Drop a file here"}
-            </p>
-            <p className="helper-text">{c.hint}</p>
-          </div>
-          <div className="capture-actions">
-            <Button variant="outline" onClick={() => setNotice(d.captureDemo)}>
-              <Camera size={18} aria-hidden="true" />
-              {c.photo}
-            </Button>
-            <Button variant="outline" onClick={() => setNotice(d.captureDemo)}>
-              <Mic size={18} aria-hidden="true" />
-              {c.voice}
-            </Button>
-          </div>
-        </div>
-      </fieldset>
-      {notice && <p role="status">{notice}</p>}
+      <FileUploader
+        select={() => setNotice(d.uploadDemo)}
+        choose={() => setNotice(d.uploadDemo)}
+        capture={() => setNotice(d.captureDemo)}
+        notice={notice && <p role="status">{notice}</p>}
+      />
+      <div className="document-library-heading">
+        <h3>{c.library}</h3>
+        <p className="register-scope">
+          {projectDetailCopy[locale].loadedFiles}: {rows.length}
+        </p>
+      </div>
       {!rows.length ? (
-        <p className="document-empty">{c.empty}</p>
+        <div className="document-empty">
+          <strong>{c.empty}</strong>
+          <p className="helper-text">{c.emptyHint}</p>
+        </div>
       ) : (
-        <>
-          {rows.some((f) => f.kind === "audio") && (
-            <p className="helper-text">{d.aiDemo}</p>
-          )}
-          <table className="document-file-table">
-            <caption className="sr-only">{c.title}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{c.name}</th>
-                <th scope="col">{c.type}</th>
-                <th scope="col">{c.size}</th>
-                <th scope="col">{c.actions}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((file) => (
-                <tr
-                  key={file.id}
-                  id={`file-${file.id}`}
-                  tabIndex={-1}
-                  data-selected={file.id === focusId || undefined}
-                >
-                  <td className="document-file-name">
-                    <div className="document-file-info">
-                      <FileText size={22} aria-hidden="true" />
-                      <div>
-                        <strong>{file.name}</strong>
-                      </div>
-                      <FileMoreActions name={file.name}>
-                        <Button
-                          variant="outline"
-                          onClick={() =>
-                            file.url
-                              ? download(file.url, file.name)
-                              : setNotice(d.downloadUnavailable)
-                          }
-                        >
-                          {c.download}
-                        </Button>
-                      </FileMoreActions>
-                    </div>
-                  </td>
-                  <td className="document-file-type">
-                    {file.name.split(".").pop()?.toUpperCase()}
-                  </td>
-                  <td className="document-file-size">
-                    {new Intl.NumberFormat(locale, {
-                      maximumFractionDigits: 1,
-                    }).format(file.sizeBytes / 1024)}{" "}
-                    KiB
-                  </td>
-                  <td>
-                    <div className="file-actions">
-                      {file.kind === "audio" ? (
-                        <Button
-                          variant="outline"
-                          onClick={() => setReview(true)}
-                        >
-                          <Sparkles size={16} aria-hidden="true" />
-                          {c.analyze}
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          onClick={() => setPreview(file)}
-                        >
-                          {file.kind === "dxf" ? c.openPlan : c.preview}
-                        </Button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
+        <FileLibrary
+          focusId={focusId}
+          rows={rows.map((file) => ({
+            id: file.id,
+            name: file.name,
+            size: file.sizeBytes,
+          }))}
+          actions={(id) => {
+            const file = rows.find((file) => file.id === id);
+            if (!file) return null;
+            return (
+              <>
+                {file.kind === "audio" ? (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      rememberFocus();
+                      setAnalyzeFile(file);
+                    }}
+                  >
+                    <Sparkles size={16} aria-hidden="true" />
+                    {c.analyze}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="ghost"
+                    onClick={() => {
+                      rememberFocus();
+                      setPreview(file);
+                    }}
+                  >
+                    {file.kind === "dxf" ? c.openPlan : c.preview}
+                  </Button>
+                )}
+                <FileMoreActions name={file.name}>
+                  <Button
+                    variant="ghost"
+                    onClick={() =>
+                      file.url
+                        ? download(file.url, file.name)
+                        : setNotice(d.downloadUnavailable)
+                    }
+                  >
+                    {c.download}
+                  </Button>
+                </FileMoreActions>
+              </>
+            );
+          }}
+        />
       )}
-      <p className="register-scope">
-        {projectDetailCopy[locale].loadedFiles}: {rows.length}
-      </p>
+      <Dialog
+        open={!!analyzeFile}
+        onOpenChange={(open) => {
+          if (!open) setAnalyzeFile(null);
+        }}
+      >
+        <DialogContent
+          title={c.analyzeTitle}
+          description={analyzeFile?.name ?? ""}
+          closeLabel={c.close}
+          onCloseAutoFocus={restoreFocus}
+        >
+          <p className="helper-text">{d.aiDemo}</p>
+          <div className="dialog-actions">
+            <Button variant="outline" onClick={() => setAnalyzeFile(null)}>
+              {c.cancel}
+            </Button>
+            <Button
+              onClick={() => {
+                setAnalyzeFile(null);
+                setReview(true);
+              }}
+            >
+              {c.analyze}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {review && (
         <DemoSiteNoteReview
           projectId={projectId}
@@ -220,6 +236,7 @@ export function DemoFiles({ projectId }: { projectId: string }) {
         }}
       >
         <DialogContent
+          onCloseAutoFocus={restoreFocus}
           className={dialogClass}
           title={preview?.name ?? c.preview}
           description={

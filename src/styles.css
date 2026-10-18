@@ -5557,25 +5557,6 @@ details[open] > .compact-identity > svg {
 .project-detail-workspace .cost-ledger .financial-lines {
   max-width: 760px;
 }
-.project-detail-workspace .document-drop-target {
-  padding: var(--space-3) var(--space-4);
-  justify-items: start;
-  text-align: left;
-}
-.project-detail-workspace .document-drop-target .helper-text {
-  max-width: none;
-}
-.project-detail-workspace .document-upload .capture-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-2);
-}
-.project-detail-workspace .document-upload .capture-actions .button {
-  background: transparent;
-  border-color: transparent;
-  padding-inline: var(--space-2);
-}
 .file-more-actions {
   position: relative;
   font-size: 12px;
@@ -5915,5 +5896,163 @@ details[open] > .compact-identity > svg {
     grid-column: 2;
     justify-self: end;
     margin: 0;
+  }
+}
+
+/* Documents workspace: a clear capture area, readable library and quiet sketches. */
+.project-documents {
+  grid-template-columns: minmax(0, 1fr) 320px;
+  align-items: start;
+  gap: var(--space-8);
+}
+.project-documents #project-sketches {
+  padding-left: var(--space-6);
+}
+.document-upload .capture-actions .button {
+  background: var(--surface);
+}
+.document-upload .capture-actions .button:hover {
+  background: var(--soft);
+}
+.document-upload-selection {
+  flex-wrap: wrap;
+  padding: var(--space-4);
+  margin-top: var(--space-4);
+  background: var(--soft);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.document-selected {
+  flex: 1;
+}
+.document-selected small {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--muted);
+}
+.document-selection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.document-upload-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+.document-upload-progress progress {
+  width: 100%;
+  height: 8px;
+  accent-color: var(--accent);
+}
+.document-library-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin: var(--space-6) 0 var(--space-2);
+}
+.document-library-heading h3 {
+  font-size: var(--text-base);
+  margin: 0;
+}
+.document-library-heading .register-scope {
+  margin: 0;
+}
+.document-file-table th:first-child {
+  width: 48%;
+}
+.document-file-table th:nth-child(2) {
+  width: 9%;
+}
+.document-file-table th:nth-child(3) {
+  width: 13%;
+}
+.document-file-table .file-actions {
+  justify-content: flex-end;
+  align-items: center;
+}
+.document-file-table .file-more-actions > summary::after {
+  content: none;
+}
+.document-file-table .file-more-content {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 3;
+  box-shadow: var(--shadow-overlay);
+  min-width: 140px;
+}
+.document-file-table .file-more-actions > summary {
+  min-height: 40px;
+}
+.project-documents .document-sketch-canvas {
+  height: 150px;
+  aspect-ratio: auto;
+}
+.project-documents .document-sketch-gallery {
+  gap: var(--space-4);
+}
+.project-documents .sketch-list-row {
+  padding: var(--space-2);
+  gap: var(--space-2);
+}
+.project-documents .sketch-list-row strong {
+  font-size: 13px;
+}
+.sketch-preview-error {
+  position: absolute;
+  inset: auto var(--space-2) var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--muted);
+  background: var(--surface);
+}
+.document-empty strong {
+  color: var(--text);
+  font-weight: 500;
+}
+.document-empty .helper-text {
+  margin: var(--space-2) 0 0;
+}
+@media (max-width: 1150px) {
+  .project-documents {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .project-documents #project-sketches {
+    padding: var(--space-6) 0 0;
+  }
+}
+@media (max-width: 760px) {
+  .document-upload-selection {
+    align-items: flex-start;
+  }
+  .document-selected,
+  .document-selection-actions {
+    flex-basis: 100%;
+  }
+  .document-selection-actions > .button:last-child {
+    margin-left: auto;
+  }
+  .document-file-table .file-actions {
+    justify-content: flex-start;
+    padding-left: 34px;
+  }
+  .document-file-table .button {
+    min-height: 44px;
+  }
+  .document-file-table td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .document-file-table .file-more-content {
+    right: auto;
+    left: 0;
+  }
+  .project-documents .document-sketch-gallery {
+    grid-template-columns: minmax(0, 1fr);
   }
 }

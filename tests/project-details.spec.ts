@@ -171,6 +171,11 @@ test("project empty actions open task, estimate, sketch and unset budget control
   await nav.getByRole("link", { name: "Overview", exact: true }).click();
   await page.getByRole("link", { name: "New sketch", exact: true }).click();
   await expect(page.getByLabel("Sketch name", { exact: true })).toBeVisible();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Cancel", exact: true })
+    .first()
+    .click();
   await nav.getByRole("link", { name: "Overview", exact: true }).click();
   await page.getByRole("link", { name: "Set budget", exact: true }).click();
   await expect(page.getByLabel("Cost budget", { exact: true })).toHaveValue("");

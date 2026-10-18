@@ -695,8 +695,12 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     .getByRole("button", { name: "Prendre la photo", exact: true })
     .click();
   await expect(page.getByRole("dialog").locator("img")).toBeVisible();
+  page.once("dialog", (d) => d.dismiss());
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog").locator("img")).toBeVisible();
   await page.getByRole("button", { name: "Utiliser ce fichier" }).click();
   await expect(files.locator(".document-selected")).toContainText("photo-");
+  page.once("dialog", (d) => d.accept());
   await files.getByRole("button", { name: "Note vocale", exact: true }).click();
   await page.getByRole("button", { name: "Démarrer l’enregistrement" }).click();
   await expect(page.getByRole("dialog").getByRole("status")).toContainText(
@@ -705,7 +709,21 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await expect(page.getByRole("dialog").getByRole("status")).toContainText(
     "0:01",
   );
-  await page.getByRole("button", { name: "Arrêter", exact: true }).click();
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      value: true,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
+  await expect(page.getByRole("dialog").locator("audio")).toBeVisible();
+  await page.evaluate(() => {
+    Object.defineProperty(document, "hidden", {
+      configurable: true,
+      value: false,
+    });
+    document.dispatchEvent(new Event("visibilitychange"));
+  });
   await expect(page.getByRole("dialog").locator("audio")).toBeVisible();
   await page.getByRole("button", { name: "Utiliser ce fichier" }).click();
   await expect(files.locator(".document-selected")).toContainText("voice-");
@@ -718,6 +736,7 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
       ),
     ),
   ).toBe(true);
+  page.once("dialog", (d) => d.accept());
   await page.evaluate(() => {
     navigator.mediaDevices.getUserMedia = async () => {
       throw new DOMException("Denied", "NotAllowedError");
@@ -756,7 +775,7 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await expect(dropzone).toHaveClass(/is-dragging/);
   await dropzone.dispatchEvent("drop", { dataTransfer: droppedFiles });
   await expect(dropzone).not.toHaveClass(/is-dragging/);
-  await expect(dropzone.getByRole("status")).toHaveText("chantier.png");
+  await expect(dropzone.getByRole("status")).toContainText("chantier.png");
   await droppedFiles.dispose();
   await files.getByRole("button", { name: "Importer", exact: true }).click();
   await expect(
@@ -888,12 +907,14 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   const fileDownload = page.waitForEvent("download");
   await files.getByRole("button", { name: "Télécharger", exact: true }).click();
   expect((await fileDownload).suggestedFilename()).toBe("chantier.png");
+  await files.locator(".file-more-actions summary").click();
   await files.getByRole("button", { name: "Supprimer", exact: true }).click();
   await page
     .getByRole("dialog")
     .getByRole("button", { name: "Annuler" })
     .click();
   await expect(files.getByText("chantier.png", { exact: true })).toBeVisible();
+  await files.locator(".file-more-actions summary").click();
   await files.getByRole("button", { name: "Supprimer", exact: true }).click();
   await page
     .getByRole("dialog")
@@ -2919,6 +2940,10 @@ test("owner reviews an AI voice-note proposal before creating a task", async ({
     page.getByText("Analyses restantes aujourd’hui : 7"),
   ).toBeVisible();
   await page.getByRole("button", { name: "Transcrire avec l’IA" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Transcrire avec l’IA" })
+    .click();
   await expect(page.getByText("Transcription en cours…")).toBeVisible();
   const dialog = page.getByRole("dialog", { name: "Analyser la note vocale" });
   await expect(dialog).toBeVisible();
@@ -2993,12 +3018,24 @@ test("AI analysis retries keep the request ID and explain limits", async ({
   await page.goto(`/workspace/${org}/projects/${projectId}?tab=documents`);
   const analyze = page.getByRole("button", { name: "Transcrire avec l’IA" });
   await analyze.click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Transcrire avec l’IA" })
+    .click();
   await expect(page.getByText(/la même demande sera reprise/)).toBeVisible();
   await analyze.click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Transcrire avec l’IA" })
+    .click();
   await expect(page.getByText(/limite quotidienne/)).toBeVisible();
   // An unknown outcome reuses the request ID; a refusal starts a new one.
   expect(requestIds[1]).toBe(requestIds[0]);
   await analyze.click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Transcrire avec l’IA" })
+    .click();
   await expect(
     page.getByText(/Une autre analyse est déjà en cours/),
   ).toBeVisible();
@@ -3169,13 +3206,22 @@ test("project overview navigation, retained drafts, isolated failures and legacy
   ).toBeFocused();
   await nav.getByRole("link", { name: "Documents", exact: true }).click();
   await expect(page.locator("#project-sketches input")).not.toBeVisible();
-  await page.locator("#project-sketches summary").click();
+  await page
+    .locator("#project-sketches")
+    .getByRole("button", { name: "Nouveau croquis" })
+    .click();
   await page.getByLabel("Nom du croquis").fill("Cuisine – implantation");
-  await nav.getByRole("link", { name: "Vue d’ensemble" }).click();
-  await nav.getByRole("link", { name: "Documents" }).click();
+  page.once("dialog", (d) => d.dismiss());
+  await page.keyboard.press("Escape");
   await expect(page.getByLabel("Nom du croquis")).toHaveValue(
     "Cuisine – implantation",
   );
+  page.once("dialog", (d) => d.accept());
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Annuler", exact: true })
+    .first()
+    .click();
   await page.goto(`${base}#project-tasks`);
   await expect(
     page.getByRole("region", { name: "Tâches du projet" }),

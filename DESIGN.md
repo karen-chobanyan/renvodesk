@@ -194,16 +194,35 @@ keep their existing behavior.
 
 ## Project Documents
 
-Documents uses the shared Inter typeface and control radii. A compact upload target
-and paired camera/voice actions precede a native file table with name, type, size
-and explicit actions. Selection reveals the upload confirmation action; selecting
-or capturing a file never uploads it automatically. On phones file rows stack
-metadata and actions without horizontal page scrolling.
+Documents uses the shared Inter typeface and control radii. The centered dashed
+upload target contains an icon, inline Choose a file control and supported-format
+hint. Equal outlined photo and voice controls sit below it; no duplicate header
+upload action. Selection shows the filename, size, Change/Remove and explicit
+Upload action, with local progress and errors. Selecting or capturing never uploads
+automatically. Protect selected files, captured media and recording against
+unintended navigation or dismissal; stop device use in the background while
+retaining the capture for review.
 
-The narrower sketch column has a fine vertical divider, an aligned creation
-control and private previews in thin bordered interactive tiles. It stacks below
-files on narrower screens. Keep placeholders distinct from actual saved previews,
-FR/EN copy complete, and hover/drag feedback compatible with reduced motion.
+Saved files use a native table with type icons, readable filenames, metadata and
+explicit actions. Put the loaded count beside the library heading. Preview/Open
+is visible when supported; otherwise show Download. Secondary actions use an
+accessible ellipsis disclosure. Explain AI processing in a confirmation dialog
+before analyzing an eligible voice note. On phones file rows stack metadata and
+actions without horizontal page scrolling, retaining 44px action targets.
+
+The independently sized 320px sketch column has a fine vertical divider and
+contained previews in thin bordered interactive tiles. It stacks below files on
+narrower screens. New sketch opens a focused, guarded name dialog; interrupted
+creation retains its request identity for recovery. Keep preview failures distinct
+from actual saved previews, FR/EN copy complete, and hover/drag feedback compatible
+with reduced motion. Restore focus when dialogs close.
+
+File and sketch lists retain loaded pages through refresh failures, refresh after
+writes and on return, and report independent list, pagination and action errors.
+Background reads never replace uploader or sketch-name drafts. Empty states lead
+owners to the existing controls and explain read-only access to members. Demo
+views share the layout while clearly explaining unavailable upload, capture and
+sketch-creation operations.
 
 The full Activity journal spans the project content width. Its 24px heading aligns
 with the category filter and labeled Refresh action. Day headings have fine rules;
@@ -321,9 +340,9 @@ link. Empty states lead to the relevant creation or capture controls.
 
 Project estimates reuse the register table and creation dialog, with the current
 project fixed and redundant project columns omitted. Tasks places the company
-schedule link with its other actions. Documents uses one Upload file entry plus
-a compact drop target and secondary capture controls. Preview/AI actions remain
-visible; download and deletion sit in an accessible disclosure. AI disclosure and
+schedule link with its other actions. Documents uses the centered uploader and
+paired outlined capture controls described above. Preview/AI actions remain
+visible; secondary file actions sit in an accessible disclosure. AI disclosure and
 existing file recovery, preview, expiry and deletion confirmation remain intact.
 
 Overview task/file links focus the matching row. If it falls outside the loaded

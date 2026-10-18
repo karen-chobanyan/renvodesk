@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "react-router";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { NewSketchDialog } from "@/features/sketches/new-sketch-dialog";
 import { sketchCopy } from "@/features/sketches/sketch-copy";
 import "@/features/sketches/sketch-modal.css";
 import { useDemo } from "@/lib/demo-store";
@@ -80,8 +81,10 @@ export function DemoSketchDialog({
 export function DemoSketches({
   projectId,
   open,
+  active = true,
 }: {
   projectId: string;
+  active?: boolean;
   open: (sketch: DemoSketch) => void;
 }) {
   const { locale } = useLocale(),
@@ -92,10 +95,15 @@ export function DemoSketches({
   const [notice, setNotice] = useState(false);
   const [search] = useSearchParams();
   const wantsNew =
-    search.get("tab") === "documents" && search.get("new") === "sketch";
+    active &&
+    search.get("tab") === "documents" &&
+    search.get("new") === "sketch";
   useEffect(() => {
     if (wantsNew) setNotice(true);
   }, [wantsNew]);
+  useEffect(() => {
+    if (!active) setNotice(false);
+  }, [active]);
   return (
     <section id="project-sketches" className="company-form">
       <header className="document-section-heading">
@@ -105,14 +113,24 @@ export function DemoSketches({
         </div>
         <button
           type="button"
-          className="button button-primary"
+          className="button button-outline"
           onClick={() => setNotice(true)}
         >
           {c.new}
         </button>
       </header>
-      {notice && <p role="status">{d.sketchNew}</p>}
-      {!rows.length && <p className="document-empty">{c.empty}</p>}
+      {notice && (
+        <NewSketchDialog
+          close={() => setNotice(false)}
+          unavailable={d.sketchNew}
+        />
+      )}
+      {!rows.length && (
+        <div className="document-empty">
+          <strong>{c.empty}</strong>
+          <p className="helper-text">{c.emptyHint}</p>
+        </div>
+      )}
       <div className="document-sketch-gallery">
         {rows.map((sk) => (
           <button

@@ -359,9 +359,11 @@ test("owner uploads DXF, reopens saved plan, uses controls and deletes original"
   await openPlan(page);
   expect(state.signed).toBe(2);
   await page.keyboard.press("Escape");
+  await files.locator(".file-more-actions summary").click();
   const download = page.waitForEvent("download");
   await files.getByRole("button", { name: "Download", exact: true }).click();
   expect((await download).suggestedFilename()).toBe("Plan.DXF");
+  await files.locator(".file-more-actions summary").click();
   await files.getByRole("button", { name: "Delete", exact: true }).click();
   await page
     .getByRole("dialog")
