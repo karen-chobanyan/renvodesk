@@ -93,7 +93,7 @@ function Journal({
     setStarted(null);
     loadingOlder.current = false;
     void Promise.all([
-      listActivity(org, project, category, null, compact ? 5 : 20),
+      listActivity(org, project, category, null, compact ? 3 : 20),
       activityStartedAt(),
       listTeam(org).catch(() => []),
     ])

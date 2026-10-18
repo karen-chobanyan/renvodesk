@@ -369,7 +369,14 @@ The global estimates link opens the live company estimate register.
 Keep demo records separate from live data while replacing previews incrementally.
 See docs/decisions/007-shared-workspace-design.md.
 
-Saved project overview now mirrors the demo detail composition: real project header/status and client/address sidebar, live cost-budget metrics and breakdown, sketch navigation, and live estimate/file sections. Financial amounts are saved integer cents. Site editing and revision-conflict recovery remain available below the overview.
+Saved project details and its demo share a compact header, sticky section navigation,
+project editor and estimate register presentation. The overview prioritizes tasks,
+with an actionable budget summary, recent estimates/files/sketches and a three-entry
+journal preview. Task/file links resolve and focus scoped records, even outside the
+first loaded page. Related writes refresh the overview without remounting working
+panels. The editor freezes its base revision until save or successful confirmed
+reload; background reads never replace dirty inputs. See the 2026-10-18 update in
+decision 007. Financial amounts remain saved integer cents.
 
 ## Project tasks and schedule invariants
 

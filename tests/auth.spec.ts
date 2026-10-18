@@ -593,6 +593,7 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     path: `/private/tmp/renvo-edit-${test.info().project.name}.png`,
     fullPage: true,
   });
+  page.once("dialog", (dialog) => dialog.accept());
   await page
     .getByRole("button", { name: "Recharger et remplacer mes champs" })
     .click();
@@ -665,12 +666,10 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   });
   await page
     .locator(".project-tabs")
-    .getByRole("link", { name: "Vue d’ensemble", exact: true })
+    .getByRole("link", { name: "Documents", exact: true })
     .click();
-  await page
-    .getByRole("button", { name: "Enregistrer une note vocale" })
-    .click();
-  await expect(page).toHaveURL(/\?tab=documents#project-files$/);
+  await files.getByRole("button", { name: "Note vocale", exact: true }).click();
+  await expect(page).toHaveURL(/\?tab=documents$/);
   await expect(page.getByRole("dialog", { name: "Note vocale" })).toBeVisible();
   await page
     .getByRole("dialog", { name: "Note vocale" })
@@ -885,6 +884,7 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await page.keyboard.press("Escape");
   await selectPersonalLanguage(page, "fr");
   await page.unroute(imageRoute);
+  await files.locator(".file-more-actions summary").click();
   const fileDownload = page.waitForEvent("download");
   await files.getByRole("button", { name: "Télécharger", exact: true }).click();
   expect((await fileDownload).suggestedFilename()).toBe("chantier.png");
@@ -991,7 +991,11 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     .locator(".project-tabs")
     .getByRole("link", { name: "Devis", exact: true })
     .click();
-  await page.locator("#project-estimates summary").click();
+  await page
+    .locator("#project-estimates")
+    .getByRole("button", { name: "Nouveau devis", exact: true })
+    .first()
+    .click();
   await page
     .getByLabel("Titre du devis", { exact: true })
     .fill("Rénovation étage");
@@ -999,7 +1003,10 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
   await expect(
     page.getByText("Création non confirmée.", { exact: false }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Créer le brouillon" }).click();
+  await page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Réessayer", exact: true })
+    .click();
   await expect(
     page.getByRole("heading", { name: "Rénovation étage" }),
   ).toBeVisible();
@@ -1488,20 +1495,21 @@ test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
     .getByRole("link", { name: "Tâches", exact: true })
     .click();
   const panel = page.getByRole("region", { name: "Tâches du projet" });
+  const editor = page.getByRole("dialog");
   await panel.getByRole("button", { name: "Nouvelle tâche" }).click();
-  await panel.getByLabel("Nom de la tâche").fill("Préparer le chantier");
-  await panel.getByLabel("Responsable", { exact: true }).selectOption(id);
-  await panel.getByLabel("Date de début").fill("2026-09-23");
-  await panel.getByLabel("Date limite").fill("2026-09-21");
-  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
-  await expect(panel.getByRole("alert")).toContainText("Vérifiez");
-  await panel.getByLabel("Date de début").fill("2026-09-21");
-  await panel.getByLabel("Date limite").fill("2026-09-23");
-  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
-  await expect(panel.getByRole("alert")).toContainText(
+  await editor.getByLabel("Nom de la tâche").fill("Préparer le chantier");
+  await editor.getByLabel("Responsable", { exact: true }).selectOption(id);
+  await editor.getByLabel("Date de début").fill("2026-09-23");
+  await editor.getByLabel("Date limite").fill("2026-09-21");
+  await editor.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  await expect(editor.getByRole("alert")).toContainText("Vérifiez");
+  await editor.getByLabel("Date de début").fill("2026-09-21");
+  await editor.getByLabel("Date limite").fill("2026-09-23");
+  await editor.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  await expect(editor.getByRole("alert")).toContainText(
     "Enregistrement non confirmé",
   );
-  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  await editor.getByRole("button", { name: "Enregistrer la tâche" }).click();
   await expect(panel.locator("article")).toHaveCount(1);
   expect(tasks).toHaveLength(1);
   await page.reload();
@@ -1509,16 +1517,17 @@ test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
     panel.getByText("Préparer le chantier", { exact: true }),
   ).toBeVisible();
   await panel.getByRole("button", { name: "Modifier", exact: true }).click();
-  await panel.getByLabel("Statut de la tâche").selectOption("in_progress");
-  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
-  await expect(panel.getByRole("alert")).toContainText("La tâche a changé");
-  await expect(panel.getByLabel("Statut de la tâche")).toHaveValue(
+  await editor.getByLabel("Statut de la tâche").selectOption("in_progress");
+  await editor.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  await expect(editor.getByRole("alert")).toContainText("La tâche a changé");
+  await expect(editor.getByLabel("Statut de la tâche")).toHaveValue(
     "in_progress",
   );
-  await panel.getByRole("button", { name: "Recharger les tâches" }).click();
+  page.once("dialog", (dialog) => dialog.accept());
+  await editor.getByRole("button", { name: "Recharger les tâches" }).click();
   await panel.getByRole("button", { name: "Modifier", exact: true }).click();
-  await panel.getByLabel("Statut de la tâche").selectOption("in_progress");
-  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  await editor.getByLabel("Statut de la tâche").selectOption("in_progress");
+  await editor.getByRole("button", { name: "Enregistrer la tâche" }).click();
   await expect(panel.locator("article .status")).toHaveText("En cours");
   await page
     .getByRole("link", {
@@ -1579,9 +1588,9 @@ test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
   ).toBeVisible();
   await page.goto(projectUrl);
   await panel.getByRole("button", { name: "Modifier", exact: true }).click();
-  await panel.getByLabel("Date de début").fill("");
-  await panel.getByLabel("Date limite").fill("2026-09-20");
-  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  await editor.getByLabel("Date de début").fill("");
+  await editor.getByLabel("Date limite").fill("2026-09-20");
+  await editor.getByRole("button", { name: "Enregistrer la tâche" }).click();
   await expect(panel.getByText("En retard", { exact: true })).toBeVisible();
   await page
     .getByRole("link", {
@@ -1594,8 +1603,8 @@ test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
   await expect(page.locator(".task-row")).toHaveCount(1);
   await page.goto(projectUrl);
   await panel.getByRole("button", { name: "Modifier", exact: true }).click();
-  await panel.getByLabel("Date limite").fill("");
-  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  await editor.getByLabel("Date limite").fill("");
+  await editor.getByRole("button", { name: "Enregistrer la tâche" }).click();
   await page
     .getByRole("link", {
       name: "Ouvrir le planning de l’entreprise",
@@ -1607,8 +1616,8 @@ test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
   await expect(page.locator(".task-row")).toHaveCount(1);
   await page.goto(projectUrl);
   await panel.getByRole("button", { name: "Modifier", exact: true }).click();
-  await panel.getByLabel("Statut de la tâche").selectOption("done");
-  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  await editor.getByLabel("Statut de la tâche").selectOption("done");
+  await editor.getByRole("button", { name: "Enregistrer la tâche" }).click();
   await expect(panel.locator("article .status")).toHaveText("Terminée");
   await page
     .getByRole("link", {
@@ -2740,9 +2749,12 @@ test("member edits only assigned tasks and sees no owner controls", async ({
   await expect(page.locator("#project-estimates")).toHaveCount(0);
   await expect(page.locator("#project-file-input")).toHaveCount(0);
   await panel.getByRole("button", { name: "Modifier", exact: true }).click();
-  await expect(panel.getByLabel("Responsable", { exact: true })).toHaveCount(0);
-  await panel.getByLabel("Statut de la tâche").selectOption("in_progress");
-  await panel.getByRole("button", { name: "Enregistrer la tâche" }).click();
+  const editor = page.getByRole("dialog");
+  await expect(editor.getByLabel("Responsable", { exact: true })).toHaveCount(
+    0,
+  );
+  await editor.getByLabel("Statut de la tâche").selectOption("in_progress");
+  await editor.getByRole("button", { name: "Enregistrer la tâche" }).click();
   await expect(panel.locator("article").first().locator(".status")).toHaveText(
     "En cours",
   );
@@ -3127,18 +3139,28 @@ test("project overview navigation, retained drafts, isolated failures and legacy
   await page
     .getByRole("button", { name: "Nouvelle tâche", exact: true })
     .click();
-  await page.getByLabel("Nom de la tâche").fill("Préparer les protections");
-  await nav.getByRole("link", { name: "Documents", exact: true }).click();
-  await expect(page.locator("#project-sketches input")).not.toBeVisible();
-  await page.goBack();
-  await expect(page.getByLabel("Nom de la tâche")).toHaveValue(
+  const taskDialog = page.getByRole("dialog", {
+    name: "Nouvelle tâche",
+    exact: true,
+  });
+  await taskDialog
+    .getByLabel("Nom de la tâche")
+    .fill("Préparer les protections");
+  page.once("dialog", (dialog) => dialog.dismiss());
+  await page.keyboard.press("Escape");
+  await expect(taskDialog.getByLabel("Nom de la tâche")).toHaveValue(
     "Préparer les protections",
   );
-  await page.goForward();
-  await expect(nav.getByRole("link", { name: "Documents" })).toHaveAttribute(
-    "aria-current",
-    "page",
-  );
+  page.once("dialog", (dialog) => dialog.accept());
+  await taskDialog
+    .getByRole("button", { name: "Annuler", exact: true })
+    .click();
+  await expect(taskDialog).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Nouvelle tâche", exact: true }),
+  ).toBeFocused();
+  await nav.getByRole("link", { name: "Documents", exact: true }).click();
+  await expect(page.locator("#project-sketches input")).not.toBeVisible();
   await page.locator("#project-sketches summary").click();
   await page.getByLabel("Nom du croquis").fill("Cuisine – implantation");
   await nav.getByRole("link", { name: "Vue d’ensemble" }).click();

@@ -1,9 +1,12 @@
 import { Plus } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { projectDetailCopy } from "@/features/projects/project-detail-copy";
+import { layoutCopy } from "@/features/projects/project-layout";
+import { useProjectItemFocus } from "@/features/projects/use-project-item-focus";
 import { AssigneePicker } from "@/features/team/assignee-picker";
 import { useCompanyAccess } from "@/features/team/company-access";
 import { teamCopy } from "@/features/team/team-copy";
@@ -11,6 +14,7 @@ import { listTeam, type TeamMember } from "@/features/team/team-service";
 import { useLocale } from "@/lib/i18n";
 import { ScheduleEmpty, ScheduleWeek, TaskDates } from "./schedule-layout";
 import { taskCopy } from "./task-copy";
+import { TaskEditorDialog } from "./task-editor-dialog";
 import {
   overdue,
   statuses,
@@ -29,17 +33,23 @@ import {
 } from "./task-service";
 
 export function TaskPanel({
+  active = true,
   org,
   project,
   filter = {},
   refreshKey = 0,
   onClearAssignee,
+  onChanged,
+  scheduleHref,
 }: {
+  active?: boolean;
   org: string;
   project?: string;
   filter?: TaskFilter;
   refreshKey?: number;
   onClearAssignee?: () => void;
+  onChanged?: () => void;
+  scheduleHref?: string;
 }) {
   const { locale } = useLocale(),
     c = taskCopy[locale];
@@ -92,6 +102,47 @@ export function TaskPanel({
       active = false;
     };
   }, [org, project, mode, start, filterToday, assignee, reload, refreshKey]);
+  const [search] = useSearchParams();
+  const focusId =
+    project && search.get("tab") === "tasks" ? search.get("task") : null;
+  const wantsNew =
+    project && search.get("tab") === "tasks" && search.get("new") === "task";
+  const [focused, setFocused] = useState<(typeof rows)[number] | null>(null),
+    [focusFailed, setFocusFailed] = useState(false);
+  useEffect(() => {
+    if (!active) setEditing(null);
+    else if (wantsNew && access.owner) setEditing("new");
+  }, [active, wantsNew, access.owner]);
+  useEffect(() => {
+    setFocused(null);
+    setFocusFailed(false);
+    if (
+      !focusId ||
+      !project ||
+      loading ||
+      rows.some((row) => row.id === focusId)
+    )
+      return;
+    let active = true;
+    void listTasks(org, { project, id: focusId })
+      .then((data) => {
+        if (active) {
+          setFocused(data[0] ?? null);
+          setFocusFailed(!data.length);
+        }
+      })
+      .catch(() => {
+        if (active) setFocusFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [focusId, project, org, loading, rows]);
+  useProjectItemFocus(
+    focusId,
+    !loading && (!!focused || rows.some((row) => row.id === focusId)),
+    "task",
+  );
   async function loadMore() {
     setLoading(true);
     try {
@@ -113,6 +164,7 @@ export function TaskPanel({
   }
   function refresh() {
     setReload((n) => n + 1);
+    onChanged?.();
   }
   async function remove() {
     if (!deleting || busy) return;
@@ -134,6 +186,9 @@ export function TaskPanel({
       <article
         className={`task-row task-card-${row.status}${compactWeek ? " week-task" : ""}`}
         key={row.id}
+        id={project ? `task-${row.id}` : undefined}
+        tabIndex={-1}
+        data-selected={focusId === row.id || undefined}
       >
         <div className="task-content">
           <strong>
@@ -209,7 +264,7 @@ export function TaskPanel({
       className="saved-projects task-panel"
       aria-label={project ? c.tasks : c.schedule}
     >
-      <div className="section-heading">
+      <div className="section-heading project-section-heading">
         <div>
           <h2>
             {project
@@ -223,9 +278,16 @@ export function TaskPanel({
           {project && <p className="page-description">{c.hint}</p>}
         </div>
         <div className="task-actions">
-          <Button variant="outline" disabled={loading} onClick={refresh}>
-            {c.refresh}
-          </Button>
+          {scheduleHref && (
+            <Button asChild variant="ghost">
+              <Link to={scheduleHref}>{layoutCopy[locale].schedule}</Link>
+            </Button>
+          )}
+          {!project && (
+            <Button variant="outline" disabled={loading} onClick={refresh}>
+              {c.refresh}
+            </Button>
+          )}
           {project && access.owner && (
             <Button onClick={() => setEditing("new")}>
               <Plus size={16} />
@@ -251,6 +313,19 @@ export function TaskPanel({
           }}
         />
       )}
+      {focusFailed && (
+        <p role="alert">
+          {projectDetailCopy[locale].missingItem}{" "}
+          <Button variant="ghost" onClick={refresh}>
+            {c.retry}
+          </Button>
+        </p>
+      )}
+      {focused && !rows.some((row) => row.id === focused.id) && (
+        <section aria-label={projectDetailCopy[locale].selected}>
+          {taskItem(focused)}
+        </section>
+      )}
       {loading && <p role="status">{c.loading}</p>}
       {failed ? (
         <div role="alert">
@@ -272,6 +347,7 @@ export function TaskPanel({
           )}
           {!loading &&
             rows.length === 0 &&
+            !focused &&
             (!project && mode ? (
               <ScheduleEmpty
                 mode={mode}
@@ -363,7 +439,7 @@ function TaskEditor({
     );
   async function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (busy) return;
+    if (busy || error === "conflict") return;
     const form = new FormData(e.currentTarget);
     const input: TaskInput = {
       assignee_id: canAssign
@@ -394,89 +470,83 @@ function TaskEditor({
     }
   }
   return (
-    <form className="company-form task-editor" onSubmit={submit}>
-      <fieldset disabled={busy} className="project-fields">
-        {canAssign && (
-          <AssigneePicker org={org} value={task?.assignee_id ?? null} />
-        )}
-        <label className="field" htmlFor="task-title">
-          {c.title}
-          <Input
-            id="task-title"
-            name="title"
-            defaultValue={task?.title ?? ""}
-            required
-            maxLength={160}
-          />
-        </label>
-        <label className="field" htmlFor="task-status">
-          {c.status}
-          <select
-            className="input"
-            id="task-status"
-            name="status"
-            defaultValue={task?.status ?? "todo"}
-          >
-            {statuses.map((s) => (
-              <option key={s} value={s}>
-                {c[s]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field" htmlFor="task-start">
-          {c.start}
-          <Input
-            id="task-start"
-            name="start"
-            type="date"
-            min="1900-01-01"
-            max="2100-12-31"
-            defaultValue={task?.start_date ?? ""}
-          />
-        </label>
-        <label className="field" htmlFor="task-due">
-          {c.due}
-          <Input
-            id="task-due"
-            name="due"
-            type="date"
-            min="1900-01-01"
-            max="2100-12-31"
-            defaultValue={task?.due_date ?? ""}
-          />
-        </label>
-        <label className="field task-notes-field" htmlFor="task-notes">
-          {c.notes}
-          <textarea
-            className="input"
-            id="task-notes"
-            name="notes"
-            maxLength={2000}
-            rows={3}
-            defaultValue={task?.notes ?? ""}
-          />
-        </label>
-        <p className="helper-text">{c.datesHint}</p>
-        <div className="dialog-actions">
-          <Button type="button" variant="outline" onClick={close}>
-            {c.cancel}
-          </Button>
-          <Button disabled={error === "conflict"}>
-            {busy ? c.loading : c.save}
-          </Button>
-        </div>
-      </fieldset>
-      {error && (
-        <div role="alert">
-          <p>{c[error]}</p>
-          {error === "conflict" && (
-            <Button type="button" onClick={saved}>
-              {c.reload}
-            </Button>
-          )}
-        </div>
+    <TaskEditorDialog
+      initial={{
+        title: task?.title ?? "",
+        notes: task?.notes ?? "",
+        status: (task?.status ?? "todo") as TaskInput["status"],
+        start_date: task?.start_date ?? null,
+        due_date: task?.due_date ?? null,
+        assignee_id: task?.assignee_id ?? null,
+      }}
+      editing={!!task}
+      busy={busy}
+      error={error}
+      submit={submit}
+      close={close}
+      reload={saved}
+    >
+      <label className="field" htmlFor="task-title">
+        {c.title}
+        <Input
+          id="task-title"
+          name="title"
+          defaultValue={task?.title ?? ""}
+          required
+          maxLength={160}
+        />
+      </label>
+      {canAssign && (
+        <AssigneePicker org={org} value={task?.assignee_id ?? null} />
       )}
-    </form>
+      <label className="field" htmlFor="task-status">
+        {c.status}
+        <select
+          className="input"
+          id="task-status"
+          name="status"
+          defaultValue={task?.status ?? "todo"}
+        >
+          {statuses.map((s) => (
+            <option key={s} value={s}>
+              {c[s]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="field" htmlFor="task-start">
+        {c.start}
+        <Input
+          id="task-start"
+          name="start"
+          type="date"
+          min="1900-01-01"
+          max="2100-12-31"
+          defaultValue={task?.start_date ?? ""}
+        />
+      </label>
+      <label className="field" htmlFor="task-due">
+        {c.due}
+        <Input
+          id="task-due"
+          name="due"
+          type="date"
+          min="1900-01-01"
+          max="2100-12-31"
+          defaultValue={task?.due_date ?? ""}
+        />
+      </label>
+      <label className="field task-notes-field" htmlFor="task-notes">
+        {c.notes}
+        <textarea
+          className="input"
+          id="task-notes"
+          name="notes"
+          maxLength={2000}
+          rows={3}
+          defaultValue={task?.notes ?? ""}
+        />
+      </label>
+    </TaskEditorDialog>
   );
 }

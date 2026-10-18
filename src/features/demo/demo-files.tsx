@@ -1,8 +1,12 @@
 import { Camera, FileText, Mic, Sparkles, Upload } from "lucide-react";
 import { lazy, Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { fileCopy } from "@/features/files/file-copy";
+import { FileMoreActions } from "@/features/files/file-more-actions";
+import { projectDetailCopy } from "@/features/projects/project-detail-copy";
+import { useProjectItemFocus } from "@/features/projects/use-project-item-focus";
 import { useDemo } from "@/lib/demo-store";
 import { useLocale } from "@/lib/i18n";
 import { useDemoCopy } from "./demo-copy";
@@ -72,6 +76,13 @@ export function DemoFiles({ projectId }: { projectId: string }) {
     [preview, setPreview] = useState<DemoFile | null>(null),
     [review, setReview] = useState(false);
   const { url, failed } = usePreviewUrl(preview);
+  const [search] = useSearchParams();
+  const focusId = search.get("tab") === "documents" ? search.get("file") : null;
+  useProjectItemFocus(
+    focusId,
+    rows.some((row) => row.id === focusId),
+    "file",
+  );
   const dialogClass =
     preview?.kind === "dxf"
       ? "dxf-dialog"
@@ -95,16 +106,8 @@ export function DemoFiles({ projectId }: { projectId: string }) {
       <fieldset aria-label={c.choose} className="document-upload-shell">
         <div className="document-upload">
           <div className="document-drop-target">
-            <Upload size={24} aria-hidden="true" />
             <p>
-              {c.drag}{" "}
-              <button
-                type="button"
-                className="document-choose"
-                onClick={() => setNotice(d.uploadDemo)}
-              >
-                {c.choose}
-              </button>
+              {locale === "fr" ? "Déposez un fichier ici" : "Drop a file here"}
             </p>
             <p className="helper-text">{c.hint}</p>
           </div>
@@ -140,13 +143,30 @@ export function DemoFiles({ projectId }: { projectId: string }) {
             </thead>
             <tbody>
               {rows.map((file) => (
-                <tr key={file.id}>
+                <tr
+                  key={file.id}
+                  id={`file-${file.id}`}
+                  tabIndex={-1}
+                  data-selected={file.id === focusId || undefined}
+                >
                   <td className="document-file-name">
                     <div className="document-file-info">
                       <FileText size={22} aria-hidden="true" />
                       <div>
                         <strong>{file.name}</strong>
                       </div>
+                      <FileMoreActions name={file.name}>
+                        <Button
+                          variant="outline"
+                          onClick={() =>
+                            file.url
+                              ? download(file.url, file.name)
+                              : setNotice(d.downloadUnavailable)
+                          }
+                        >
+                          {c.download}
+                        </Button>
+                      </FileMoreActions>
                     </div>
                   </td>
                   <td className="document-file-type">
@@ -160,16 +180,6 @@ export function DemoFiles({ projectId }: { projectId: string }) {
                   </td>
                   <td>
                     <div className="file-actions">
-                      <Button
-                        variant="outline"
-                        onClick={() =>
-                          file.url
-                            ? download(file.url, file.name)
-                            : setNotice(d.downloadUnavailable)
-                        }
-                      >
-                        {c.download}
-                      </Button>
                       {file.kind === "audio" ? (
                         <Button
                           variant="outline"
@@ -194,6 +204,9 @@ export function DemoFiles({ projectId }: { projectId: string }) {
           </table>
         </>
       )}
+      <p className="register-scope">
+        {projectDetailCopy[locale].loadedFiles}: {rows.length}
+      </p>
       {review && (
         <DemoSiteNoteReview
           projectId={projectId}

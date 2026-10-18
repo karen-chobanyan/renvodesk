@@ -1,4 +1,5 @@
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -55,6 +56,12 @@ export function DemoCosts({ projectId }: { projectId: string }) {
   const [budgetEdit, setBudgetEdit] = useState(false),
     [edit, setEdit] = useState<DemoCost | "new" | null>(null),
     [voiding, setVoiding] = useState<DemoCost | null>(null);
+  const [search] = useSearchParams();
+  const wantsBudget =
+    search.get("editBudget") === "1" && search.get("tab") === "budget";
+  useEffect(() => {
+    if (wantsBudget) setBudgetEdit(true);
+  }, [wantsBudget]);
   const rows = costs
     .filter((row) => row.projectId === projectId)
     .sort((a, b) => b.date.localeCompare(a.date));
@@ -64,7 +71,7 @@ export function DemoCosts({ projectId }: { projectId: string }) {
       <CostMetrics summary={summary} />
       <div className="cost-ledger">
         <div>
-          <div className="section-heading">
+          <div className="section-heading project-section-heading">
             <h2>{c.breakdown}</h2>
             <Button
               variant="outline"
@@ -88,7 +95,7 @@ export function DemoCosts({ projectId }: { projectId: string }) {
               </div>
             ))}
           </div>
-          <div className="section-heading costs-heading">
+          <div className="section-heading project-section-heading costs-heading">
             <h2>{c.actual}</h2>
             <div className="task-actions">
               <Button onClick={() => setEdit("new")}>{c.add}</Button>

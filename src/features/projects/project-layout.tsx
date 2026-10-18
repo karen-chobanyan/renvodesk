@@ -1,9 +1,9 @@
-import { useEffect, useRef } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import { StatusBadge } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { useLocale } from "@/lib/i18n";
-import type { SavedProject } from "./project-service";
+import { projectDetailCopy } from "./project-detail-copy";
 export const projectTabs = [
   "overview",
   "tasks",
@@ -77,8 +77,17 @@ export function ProjectHeader({
   project,
   owner,
   edit,
+  backHref,
 }: {
-  project: SavedProject;
+  project: {
+    name: string;
+    status: string;
+    client_name: string;
+    address: string | null;
+    city: string;
+    organization_id?: string;
+  };
+  backHref?: string;
   owner: boolean;
   edit: () => void;
 }) {
@@ -88,7 +97,7 @@ export function ProjectHeader({
     <header className="project-header">
       <Link
         className="back-link"
-        to={`/workspace?company=${project.organization_id}`}
+        to={backHref ?? `/workspace?company=${project.organization_id}`}
       >
         {c.back}
       </Link>
@@ -106,7 +115,7 @@ export function ProjectHeader({
           </p>
         </div>
         {owner && (
-          <Button variant="outline" onClick={edit}>
+          <Button id="project-edit-details" variant="outline" onClick={edit}>
             {c.edit}
           </Button>
         )}
@@ -124,6 +133,18 @@ export function ProjectNavigation({
   const { locale } = useLocale(),
     c = layoutCopy[locale];
   const nav = useRef<HTMLElement>(null);
+  const [overflow, setOverflow] = useState(false);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: labels and role change scroll width without resizing the container
+  useEffect(() => {
+    const container = nav.current;
+    if (!container) return;
+    const measure = () =>
+      setOverflow(container.scrollWidth > container.clientWidth + 1);
+    const observer = new ResizeObserver(measure);
+    observer.observe(container);
+    measure();
+    return () => observer.disconnect();
+  }, [locale, owner]);
   useEffect(() => {
     const container = nav.current;
     const selected = container?.querySelector(`[href$="?tab=${active}"]`);
@@ -136,23 +157,30 @@ export function ProjectNavigation({
       container.scrollLeft += item.right - viewport.right;
   }, [active]);
   return (
-    <nav
-      ref={nav}
-      className="project-tabs"
-      aria-label={locale === "fr" ? "Sections du projet" : "Project sections"}
-    >
-      {projectTabs
-        .filter((tab) => owner || !["budget", "estimates"].includes(tab))
-        .map((tab) => (
-          <Link
-            key={tab}
-            to={`?tab=${tab}`}
-            aria-current={active === tab ? "page" : undefined}
-          >
-            {c[tab]}
-          </Link>
-        ))}
-    </nav>
+    <div className="project-navigation">
+      <nav
+        ref={nav}
+        className="project-tabs"
+        aria-label={locale === "fr" ? "Sections du projet" : "Project sections"}
+      >
+        {projectTabs
+          .filter((tab) => owner || !["budget", "estimates"].includes(tab))
+          .map((tab) => (
+            <Link
+              key={tab}
+              to={`?tab=${tab}`}
+              aria-current={active === tab ? "page" : undefined}
+            >
+              {c[tab]}
+            </Link>
+          ))}
+      </nav>
+      {overflow && (
+        <small className="project-tabs-hint">
+          {projectDetailCopy[locale].moreSections}
+        </small>
+      )}
+    </div>
   );
 }
 export function ProjectSkeleton() {
@@ -167,5 +195,25 @@ export function ProjectSkeleton() {
       <span />
       <span />
     </div>
+  );
+}
+
+export function ProjectSectionHeading({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: string;
+  children?: ReactNode;
+}) {
+  return (
+    <header className="section-heading project-section-heading">
+      <div>
+        <h2>{title}</h2>
+        {description && <p className="page-description">{description}</p>}
+      </div>
+      <div className="task-actions">{children}</div>
+    </header>
   );
 }

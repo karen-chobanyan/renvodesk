@@ -307,3 +307,40 @@ Passwords remain in uncontrolled inputs rather than persistent or shared state.
 One page-level guard covers both drafts, with the existing navigation limitations.
 Live and fictional Account settings reuse presentation and FR/EN copy. Demo profile
 changes survive route navigation in memory; password operations remain disabled.
+
+## Project details
+
+Project details uses a compact shared header and a sticky section navigation row.
+Overflowing navigation shows a scroll hint on narrow screens. Tabs own section
+navigation without a duplicate shortcut row. Creation and capture actions stay in
+their relevant sections, including voice capture in Documents. Next tasks leads the
+content, with a compact, actionable cost allowance summary beside it on desktop
+and directly after it on phones. Estimates, sketches and files use consistent
+preview rows. The journal preview is limited to three entries with a full-history
+link. Empty states lead to the relevant creation or capture controls.
+
+Project estimates reuse the register table and creation dialog, with the current
+project fixed and redundant project columns omitted. Tasks places the company
+schedule link with its other actions. Documents uses one Upload file entry plus
+a compact drop target and secondary capture controls. Preview/AI actions remain
+visible; download and deletion sit in an accessible disclosure. AI disclosure and
+existing file recovery, preview, expiry and deletion confirmation remain intact.
+
+Overview task/file links focus the matching row. If it falls outside the loaded
+page, a separate company/project-scoped read resolves it without changing the
+pagination offset. Missing items show recovery feedback. Related task, cost and
+file refreshes invalidate the read-only overview while working panels stay mounted.
+
+The shared live/demo project editor owns its base record and revision. Background
+query updates cannot overwrite its draft. Save is dirty-aware; Cancel, field errors,
+focus and save feedback match Account settings. Conflict reload needs confirmation
+and replaces inputs only after a successful read. The existing shared leave guard
+covers navigation and unload, with the same older-browser history limitations.
+
+Task creation and editing use the shared task dialog in live and demo projects.
+The name receives initial focus; the list stays visible behind the overlay. Fields
+use two columns on desktop and one on phones. Save is enabled for changed values;
+Cancel, Escape and the close control confirm before discarding edits. Save failures
+keep fields and the existing request/revision. Conflicts require an explicit,
+confirmed reload. Closing restores focus to the opening control. The existing
+navigation/unload guard protects task drafts with its documented browser limits.

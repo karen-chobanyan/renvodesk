@@ -121,8 +121,10 @@ export function EstimateRegisterTools({
 
 export function EstimateRegisterTable({
   rows,
+  showProject = true,
 }: {
   rows: EstimateRegisterRow[];
+  showProject?: boolean;
 }) {
   const { locale, t } = useLocale();
   const c = registerCopy[locale];
@@ -132,9 +134,11 @@ export function EstimateRegisterTable({
         <thead>
           <tr>
             <th>{draftCopy[locale].title}</th>
-            <th>
-              {t("project")} / {t("client")}
-            </th>
+            {showProject && (
+              <th>
+                {t("project")} / {t("client")}
+              </th>
+            )}
             <th>{t("status")}</th>
             <th className="numeric">{c.amount}</th>
           </tr>
@@ -150,10 +154,12 @@ export function EstimateRegisterTable({
                   {c.revision} {row.revision}
                 </small>
               </td>
-              <td className="estimate-project">
-                <Link to={row.projectHref}>{row.project}</Link>
-                <small>{row.client}</small>
-              </td>
+              {showProject && (
+                <td className="estimate-project">
+                  <Link to={row.projectHref}>{row.project}</Link>
+                  <small>{row.client}</small>
+                </td>
+              )}
               <td className="estimate-status">
                 <span className={`status estimate-status-${row.status}`}>
                   {workflowCopy[locale][row.status]}

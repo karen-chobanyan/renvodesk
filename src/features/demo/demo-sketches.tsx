@@ -1,4 +1,5 @@
-import { lazy, Suspense, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { sketchCopy } from "@/features/sketches/sketch-copy";
 import "@/features/sketches/sketch-modal.css";
@@ -89,6 +90,12 @@ export function DemoSketches({
   const { sketches } = useDemo();
   const rows = sketches.filter((s) => s.projectId === projectId);
   const [notice, setNotice] = useState(false);
+  const [search] = useSearchParams();
+  const wantsNew =
+    search.get("tab") === "documents" && search.get("new") === "sketch";
+  useEffect(() => {
+    if (wantsNew) setNotice(true);
+  }, [wantsNew]);
   return (
     <section id="project-sketches" className="company-form">
       <header className="document-section-heading">

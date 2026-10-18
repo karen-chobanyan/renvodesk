@@ -3,13 +3,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import {
-  type FormEvent,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Link,
   useLocation,
@@ -18,7 +12,6 @@ import {
   useSearchParams,
 } from "react-router";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { ProjectJournal } from "@/features/activity/project-journal";
 import { useAuth } from "@/features/auth/auth-provider";
 import { ProjectCosts } from "@/features/costs/project-costs";
@@ -30,8 +23,7 @@ import { SketchModal } from "@/features/sketches/sketch-modal";
 import { TaskPanel } from "@/features/tasks/task-panel";
 import { useCompanyAccess } from "@/features/team/company-access";
 import { useLocale } from "@/lib/i18n";
-import { projectCopy } from "./project-copy";
-import { ProjectFields } from "./project-fields";
+import { ProjectDetailsEditor } from "./project-details-editor";
 import {
   layoutCopy,
   ProjectHeader,
@@ -49,36 +41,16 @@ import { SavedProjectOverview } from "./saved-project-overview";
 
 const copy = {
   fr: {
-    back: "Retour aux entreprises",
     title: "Détails du projet",
-    save: "Enregistrer les modifications",
-    status: "Statut",
     missing: "Projet introuvable ou accès indisponible.",
     error: "Impossible de charger le projet.",
     retry: "Réessayer",
-    failed:
-      "Enregistrement non confirmé. Vos champs sont conservés. Réessayez ou rechargez pour vérifier la version enregistrée.",
-    conflict:
-      "Le projet a changé ou votre accès a été retiré. Vos champs sont conservés. Rechargez la version enregistrée avant de modifier à nouveau.",
-    reload: "Recharger et remplacer mes champs",
-    saved: "Modifications enregistrées.",
-    hint: "Coordonnées du chantier et état d’avancement.",
   },
   en: {
-    back: "Back to companies",
     title: "Project details",
-    save: "Save changes",
-    status: "Status",
     missing: "Project not found or access unavailable.",
     error: "Could not load the project.",
     retry: "Try again",
-    failed:
-      "Save not confirmed. Your fields are preserved. Retry or reload to check the saved version.",
-    conflict:
-      "The project changed or your access was removed. Your fields are preserved. Reload the saved version before editing again.",
-    reload: "Reload and replace my fields",
-    saved: "Changes saved.",
-    hint: "Site details and project status.",
   },
 };
 export function SavedProjectPage() {
@@ -99,9 +71,8 @@ function ProjectDetail({
   organizationId: string;
   id: string;
 }) {
-  const { locale, t } = useLocale(),
-    c = copy[locale],
-    shared = projectCopy[locale];
+  const { locale } = useLocale(),
+    c = copy[locale];
   const {
     owner,
     role,
@@ -128,15 +99,24 @@ function ProjectDetail({
   const project = projectQuery.data ?? null;
   const loading = projectQuery.isPending && projectQuery.isFetching;
   const failed = projectQuery.isError && !project;
-  const [reload, setReload] = useState(0);
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState<"failed" | "conflict" | null>(null),
-    [saved, setSaved] = useState(false);
   function refreshProject() {
-    setReload((n) => n + 1);
-    setError(null);
-    setSaved(false);
     void projectQuery.refetch();
+  }
+  function cacheProject(updated: SavedProject) {
+    client.setQueryData(
+      workspaceKeys.project(userId, organizationId, id),
+      updated,
+    );
+    client.setQueryData<InfiniteData<SavedProject[], number>>(
+      workspaceKeys.projects(userId, organizationId),
+      (old) =>
+        old && {
+          ...old,
+          pages: old.pages.map((page) =>
+            page.map((row) => (row.id === id ? updated : row)),
+          ),
+        },
+    );
   }
   const location = useLocation(),
     navigate = useNavigate(),
@@ -156,91 +136,31 @@ function ProjectDetail({
       ? (requested as ProjectTab)
       : "overview";
   const [visited, setVisited] = useState<Set<ProjectTab>>(() => new Set()),
-    [editing, setEditing] = useState(false);
-  const [voiceNoteRequested, setVoiceNoteRequested] = useState(false);
-  const voiceNoteRequestHandled = useCallback(() => {
-    setVoiceNoteRequested(false);
-  }, []);
-  function recordVoiceNote() {
-    setVoiceNoteRequested(true);
-    void navigate({ search: "?tab=documents", hash: "#project-files" });
-  }
+    [editing, setEditing] = useState<SavedProject | null>(null);
+  const [overviewRefresh, setOverviewRefresh] = useState(0);
+  const refreshOverview = useCallback(
+    () => setOverviewRefresh((n) => n + 1),
+    [],
+  );
   const [sketchId, setSketchId] = useState<string | null>(null);
   const [sketchRefresh, setSketchRefresh] = useState(0);
   const [taskRefresh, setTaskRefresh] = useState(0);
-  const editDirty = useRef(false),
-    panel = useRef<HTMLElement>(null);
+  const panel = useRef<HTMLElement>(null);
   useEffect(() => {
     setVisited((old) => new Set([...old, active]));
     panel.current?.focus({ preventScroll: true });
   }, [active]);
   useEffect(() => {
-    if (location.hash === "#site-details" && owner) setEditing(true);
-  }, [location.hash, owner]);
-  function closeEdit(open: boolean) {
-    if (!open && (busy || (editDirty.current && !window.confirm(l.leave))))
-      return;
-    setEditing(open);
-    if (!open) {
-      editDirty.current = false;
-      requestAnimationFrame(() =>
-        document
-          .querySelector<HTMLButtonElement>(".project-header button")
-          ?.focus(),
-      );
-      if (location.hash === "#site-details")
-        void navigate({ search: location.search, hash: "" }, { replace: true });
-    }
-  }
-  useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => {
-      if (editDirty.current) {
-        event.preventDefault();
-        event.returnValue = "";
-      }
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, []);
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!project || busy) return;
-    const values = new FormData(event.currentTarget);
-    const input = {
-      name: String(values.get("project_name") ?? "").trim(),
-      client_name: String(values.get("client_name") ?? "").trim(),
-      city: String(values.get("city") ?? "").trim(),
-      address: String(values.get("address") ?? "").trim(),
-      status: String(values.get("status") ?? ""),
-    };
-    setBusy(true);
-    setError(null);
-    setSaved(false);
-    try {
-      const updated = await updateProject(project, input);
-      if (updated) {
-        client.setQueryData(
-          workspaceKeys.project(userId, organizationId, id),
-          updated,
-        );
-        client.setQueryData<InfiniteData<SavedProject[], number>>(
-          workspaceKeys.projects(userId, organizationId),
-          (old) =>
-            old && {
-              ...old,
-              pages: old.pages.map((page) =>
-                page.map((row) => (row.id === id ? updated : row)),
-              ),
-            },
-        );
-        editDirty.current = false;
-        setSaved(true);
-      } else setError("conflict");
-    } catch {
-      setError("failed");
-    } finally {
-      setBusy(false);
-    }
+    if (location.hash === "#site-details" && owner && project)
+      setEditing((current) => current ?? project);
+  }, [location.hash, owner, project]);
+  function closeEdit() {
+    setEditing(null);
+    requestAnimationFrame(() =>
+      document.getElementById("project-edit-details")?.focus(),
+    );
+    if (location.hash === "#site-details")
+      void navigate({ search: location.search, hash: "" }, { replace: true });
   }
   return (
     <>
@@ -249,7 +169,7 @@ function ProjectDetail({
           <ProjectHeader
             project={project}
             owner={owner}
-            edit={() => setEditing(true)}
+            edit={() => setEditing(project)}
           />
         ) : (
           <>
@@ -267,7 +187,14 @@ function ProjectDetail({
         )}
         {projectQuery.isError && project && (
           <p role="alert" className="error-message">
-            {c.error}
+            {c.error}{" "}
+            <Button
+              variant="ghost"
+              disabled={projectQuery.isFetching}
+              onClick={refreshProject}
+            >
+              {c.retry}
+            </Button>
           </p>
         )}
         {failed ? (
@@ -295,7 +222,7 @@ function ProjectDetail({
             >
               {active === "activity" && (
                 <ProjectJournal
-                  key={sketchRefresh}
+                  key={`${sketchRefresh}:${overviewRefresh}:${taskRefresh}`}
                   org={organizationId}
                   project={id}
                   owner={owner}
@@ -306,32 +233,32 @@ function ProjectDetail({
               {(visited.has("overview") || active === "overview") && (
                 <div hidden={active !== "overview"}>
                   <SavedProjectOverview
-                    key={`${project.revision}:${sketchRefresh}:${taskRefresh}`}
+                    key={`${project.revision}:${sketchRefresh}:${taskRefresh}:${overviewRefresh}`}
                     project={project}
                     owner={owner}
                     onOpenSketch={setSketchId}
-                    onRecordVoiceNote={recordVoiceNote}
                   />
                 </div>
               )}
               {(visited.has("tasks") || active === "tasks") && (
                 <div hidden={active !== "tasks"}>
-                  <Link
-                    className="account-link"
-                    to={`/workspace/${organizationId}/schedule`}
-                  >
-                    {l.schedule}
-                  </Link>
                   <TaskPanel
+                    active={active === "tasks"}
                     org={organizationId}
                     project={id}
                     refreshKey={taskRefresh}
+                    onChanged={refreshOverview}
+                    scheduleHref={`/workspace/${organizationId}/schedule`}
                   />
                 </div>
               )}
               {owner && (visited.has("budget") || active === "budget") && (
                 <div hidden={active !== "budget"}>
-                  <ProjectCosts org={organizationId} project={id} />
+                  <ProjectCosts
+                    org={organizationId}
+                    project={id}
+                    onChanged={refreshOverview}
+                  />
                 </div>
               )}
               {owner &&
@@ -340,6 +267,8 @@ function ProjectDetail({
                     <ProjectEstimates
                       organizationId={organizationId}
                       projectId={id}
+                      projectName={project.name}
+                      clientName={project.client_name}
                     />
                   </div>
                 )}
@@ -352,9 +281,8 @@ function ProjectDetail({
                     organizationId={organizationId}
                     projectId={id}
                     canManage={owner}
-                    voiceNoteRequested={voiceNoteRequested}
-                    onVoiceNoteRequestHandled={voiceNoteRequestHandled}
                     onTaskCreated={() => setTaskRefresh((n) => n + 1)}
+                    onChanged={refreshOverview}
                   />
                   <ProjectSketches
                     org={organizationId}
@@ -366,64 +294,21 @@ function ProjectDetail({
                 </div>
               )}
             </section>
-            {owner && (
-              <Dialog open={editing} onOpenChange={closeEdit}>
-                <DialogContent
-                  title={c.title}
-                  description={c.hint}
-                  closeLabel={l.close}
-                >
-                  <form
-                    id="site-details"
-                    className="company-form"
-                    key={`${project.revision}:${reload}`}
-                    onSubmit={submit}
-                    onChange={() => {
-                      editDirty.current = true;
-                    }}
-                  >
-                    <fieldset className="project-fields" disabled={busy}>
-                      <ProjectFields values={project} />
-                      <div className="field">
-                        <label htmlFor="project-status">{c.status}</label>
-                        <select
-                          className="input"
-                          id="project-status"
-                          name="status"
-                          defaultValue={project.status}
-                        >
-                          {(["planning", "active", "completed"] as const).map(
-                            (status) => (
-                              <option key={status} value={status}>
-                                {t(status)}
-                              </option>
-                            ),
-                          )}
-                        </select>
-                      </div>
-                      <div className="dialog-actions">
-                        <Button type="submit" disabled={error === "conflict"}>
-                          {busy ? shared.loading : c.save}
-                        </Button>
-                      </div>
-                    </fieldset>
-                    {error && (
-                      <div role="alert">
-                        <p className="error-message">{c[error]}</p>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          disabled={busy}
-                          onClick={refreshProject}
-                        >
-                          {c.reload}
-                        </Button>
-                      </div>
-                    )}
-                    {saved && <p role="status">{c.saved}</p>}
-                  </form>
-                </DialogContent>
-              </Dialog>
+            {owner && editing && (
+              <ProjectDetailsEditor
+                initial={editing}
+                close={closeEdit}
+                save={async (base, input) => {
+                  const updated = await updateProject(base, input);
+                  if (updated) cacheProject(updated);
+                  return updated;
+                }}
+                reload={async () => {
+                  const updated = await getProject(organizationId, id);
+                  if (updated) cacheProject(updated);
+                  return updated;
+                }}
+              />
             )}
           </>
         )}

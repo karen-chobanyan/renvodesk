@@ -6,6 +6,7 @@ export type Task = Database["public"]["Tables"]["project_tasks"]["Row"];
 export const TASK_PAGE_SIZE = 50;
 export type TaskFilter = {
   assignee?: string;
+  id?: string;
   project?: string;
   mode?: "week" | "overdue" | "undated";
   start?: string;
@@ -20,6 +21,7 @@ export async function listTasks(
     .from("project_tasks")
     .select("*, projects(name)")
     .eq("organization_id", org);
+  if (filter.id) query = query.eq("id", filter.id);
   if (filter.assignee) query = query.eq("assignee_id", filter.assignee);
   if (filter.project) query = query.eq("project_id", filter.project);
   if (filter.mode === "week" && filter.start) {

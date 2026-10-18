@@ -226,7 +226,7 @@ test("journal sidebar, full history, filters, retry, pagination and keyboard", a
   const state = await fixture(page);
   await page.goto(base);
   const journal = page.getByRole("region", { name: "Project journal" });
-  await expect(journal.locator("li")).toHaveCount(5);
+  await expect(journal.locator("li")).toHaveCount(3);
   await expect(journal).toContainText(
     "Activity recorded since 22 September 2026",
   );
@@ -316,7 +316,7 @@ test("member journal in French omits financial navigation and requests", async (
     fullPage: true,
   });
 });
-test("project edit refreshes journal and tab navigation preserves task drafts", async ({
+test("project edit refreshes journal and task modal guards navigation", async ({
   page,
 }) => {
   const state = await fixture(page);
@@ -339,17 +339,18 @@ test("project edit refreshes journal and tab navigation preserves task drafts", 
     .getByRole("link", { name: "Tasks", exact: true })
     .click();
   await page.getByRole("button", { name: "New task", exact: true }).click();
-  await page.getByLabel("Task name", { exact: true }).fill("Keep my draft");
-  await page
-    .locator(".project-tabs")
-    .getByRole("link", { name: "Activity", exact: true })
-    .click();
-  await journal.getByRole("button", { name: "Refresh", exact: true }).click();
-  await page
-    .locator(".project-tabs")
-    .getByRole("link", { name: "Tasks", exact: true })
-    .click();
-  await expect(page.getByLabel("Task name", { exact: true })).toHaveValue(
+  const dialog = page.getByRole("dialog", { name: "New task", exact: true });
+  await dialog.getByLabel("Task name", { exact: true }).fill("Keep my draft");
+  page.once("dialog", (prompt) => prompt.dismiss());
+  await page.evaluate(() => history.back());
+  await expect(page).toHaveURL(/tab=tasks$/);
+  await expect(dialog.getByLabel("Task name", { exact: true })).toHaveValue(
     "Keep my draft",
   );
+  page.once("dialog", (prompt) => prompt.accept());
+  await page.evaluate(() => history.back());
+  await expect(page).toHaveURL(/tab=activity$/);
+  await expect(dialog).toHaveCount(0);
+  await journal.getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(journal).toContainText("Updated site");
 });

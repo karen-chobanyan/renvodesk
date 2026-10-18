@@ -10,7 +10,7 @@ export async function listActivity(
   project: string,
   category: ActivityCategory = "all",
   cursor: ActivityCursor | null = null,
-  size: 5 | 20 = 20,
+  size: 3 | 5 | 20 = 20,
 ) {
   let query = requireSupabase()
     .from("project_activity")

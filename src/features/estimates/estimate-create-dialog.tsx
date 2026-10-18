@@ -24,8 +24,10 @@ export function EstimateCreateDialog({
   trigger,
   close,
   create,
+  fixedProject,
 }: {
   projects: EstimateProjectOption[];
+  fixedProject?: EstimateProjectOption;
   loading?: boolean;
   failed?: boolean;
   more?: boolean;
@@ -39,7 +41,7 @@ export function EstimateCreateDialog({
   const { locale } = useLocale(),
     c = registerCopy[locale],
     d = draftCopy[locale];
-  const [project, setProject] = useState("");
+  const [project, setProject] = useState(fixedProject?.id ?? "");
   const [title, setTitle] = useState("");
   const [busy, setBusy] = useState(false),
     [error, setError] = useState(false);
@@ -51,7 +53,7 @@ export function EstimateCreateDialog({
     if (busy) return;
     const message = request.current
       ? c.unconfirmedClose
-      : project || title
+      : (!fixedProject && project) || title
         ? c.discard
         : "";
     if (!message || window.confirm(message)) close();
@@ -98,63 +100,75 @@ export function EstimateCreateDialog({
         >
           <Dialog.Title className="dialog-title">{d.new}</Dialog.Title>
           <Dialog.Description className="muted">
-            {c.createHint}
+            {fixedProject
+              ? locale === "fr"
+                ? "Nommez votre devis. Vous ajouterez les lignes dans le brouillon."
+                : "Name your estimate. You can add lines in the draft."
+              : c.createHint}
           </Dialog.Description>
           <form className="estimate-create-form" onSubmit={submit}>
-            <label className="field" htmlFor="estimate-project">
-              {c.chooseProject}
-              <select
-                id="estimate-project"
-                className="input"
-                required
-                value={project}
-                disabled={locked || !projects.length}
-                onChange={(e) => setProject(e.target.value)}
-              >
-                <option value="">{c.choosePlaceholder}</option>
-                {projects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} — {p.client}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {projects.length > 0 && (
+            {fixedProject ? (
               <p className="helper-text">
-                {c.projectsLoaded}: {projects.length}
+                {fixedProject.name} · {fixedProject.client}
               </p>
-            )}
-            {loading && <p role="status">{d.loading}</p>}
-            {failed && (
-              <div role="alert">
-                <p>{c.projectsError}</p>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onRetry}
-                  disabled={loading || locked}
-                >
-                  {d.retry}
-                </Button>
-              </div>
-            )}
-            {more && !failed && (
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onMore}
-                disabled={loading || locked}
-              >
-                {c.moreProjects}
-              </Button>
-            )}
-            {!loading && !failed && !projects.length && (
-              <div className="estimate-project-empty">
-                <p>{c.noProjects}</p>
-                <Link className="account-link" to={projectsHref}>
-                  {c.viewProjects}
-                </Link>
-              </div>
+            ) : (
+              <>
+                <label className="field" htmlFor="estimate-project">
+                  {c.chooseProject}
+                  <select
+                    id="estimate-project"
+                    className="input"
+                    required
+                    value={project}
+                    disabled={locked || !projects.length}
+                    onChange={(e) => setProject(e.target.value)}
+                  >
+                    <option value="">{c.choosePlaceholder}</option>
+                    {projects.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} — {p.client}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {projects.length > 0 && (
+                  <p className="helper-text">
+                    {c.projectsLoaded}: {projects.length}
+                  </p>
+                )}
+                {loading && <p role="status">{d.loading}</p>}
+                {failed && (
+                  <div role="alert">
+                    <p>{c.projectsError}</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={onRetry}
+                      disabled={loading || locked}
+                    >
+                      {d.retry}
+                    </Button>
+                  </div>
+                )}
+                {more && !failed && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={onMore}
+                    disabled={loading || locked}
+                  >
+                    {c.moreProjects}
+                  </Button>
+                )}
+                {!loading && !failed && !projects.length && (
+                  <div className="estimate-project-empty">
+                    <p>{c.noProjects}</p>
+                    <Link className="account-link" to={projectsHref}>
+                      {c.viewProjects}
+                    </Link>
+                  </div>
+                )}
+              </>
             )}
             <label className="field" htmlFor="estimate-title">
               {d.title}

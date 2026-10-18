@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocale } from "@/lib/i18n";
@@ -54,6 +55,23 @@ export function ProjectSketches({
     [busy, setBusy] = useState(false),
     [more, setMore] = useState(false),
     [loaded, setLoaded] = useState(false);
+  const [search] = useSearchParams();
+  const createDisclosure = useRef<HTMLDetailsElement>(null);
+  const wantsNew =
+    owner &&
+    search.get("tab") === "documents" &&
+    search.get("new") === "sketch";
+  useEffect(() => {
+    if (!wantsNew || !createDisclosure.current) return;
+    createDisclosure.current.open = true;
+    requestAnimationFrame(() =>
+      (
+        createDisclosure.current?.querySelector<HTMLInputElement>(
+          "input:not(:disabled)",
+        ) ?? createDisclosure.current?.querySelector("summary")
+      )?.focus(),
+    );
+  }, [wantsNew]);
   const request = useRef<{ id: string; title: string } | null>(null);
   async function load(offset = 0) {
     setBusy(true);
@@ -101,7 +119,7 @@ export function ProjectSketches({
           <p className="helper-text">{c.hint}</p>
         </div>
         {owner && (
-          <details className="project-create">
+          <details className="project-create" ref={createDisclosure}>
             <summary className="button button-primary">{c.new}</summary>
             <form
               className="sketch-toolbar"

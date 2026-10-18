@@ -1,4 +1,5 @@
 import { type FormEvent, type ReactNode, useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -27,10 +28,12 @@ export function ProjectCosts({
   org,
   project,
   children,
+  onChanged,
 }: {
   org: string;
   project: string;
   children?: ReactNode;
+  onChanged?: () => void;
 }) {
   const { locale } = useLocale(),
     c = costCopy[locale];
@@ -45,6 +48,12 @@ export function ProjectCosts({
     [voiding, setVoiding] = useState<Cost | null>(null),
     [busy, setBusy] = useState(false),
     [voidError, setVoidError] = useState(false);
+  const [search] = useSearchParams();
+  const wantsBudget =
+    search.get("editBudget") === "1" && search.get("tab") === "budget";
+  useEffect(() => {
+    if (wantsBudget) setBudgetEdit(true);
+  }, [wantsBudget]);
   // biome-ignore lint/correctness/useExhaustiveDependencies: explicit refresh reloads totals and first page
   useEffect(() => {
     let active = true;
@@ -70,6 +79,7 @@ export function ProjectCosts({
   }, [org, project, reload]);
   function refresh() {
     setReload((n) => n + 1);
+    onChanged?.();
   }
   function saved() {
     setEdit(null);
@@ -119,7 +129,7 @@ export function ProjectCosts({
             <CostMetrics summary={summary} />
             <div className={children ? "detail-grid" : "cost-ledger"}>
               <div>
-                <div className="section-heading">
+                <div className="section-heading project-section-heading">
                   <h2>{c.breakdown}</h2>
                   <Button
                     variant="outline"
@@ -149,7 +159,7 @@ export function ProjectCosts({
                     </div>
                   ))}
                 </div>
-                <div className="section-heading costs-heading">
+                <div className="section-heading project-section-heading costs-heading">
                   <h2>{c.actual}</h2>
                   <div className="task-actions">
                     <Button

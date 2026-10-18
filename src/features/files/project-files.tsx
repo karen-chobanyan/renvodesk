@@ -1,17 +1,22 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { Camera, FileText, Mic, Sparkles, Upload } from "lucide-react";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useAuth } from "@/features/auth/auth-provider";
+import { projectDetailCopy } from "@/features/projects/project-detail-copy";
+import { useProjectItemFocus } from "@/features/projects/use-project-item-focus";
 import { quotaErrorCode } from "@/features/storage-usage/storage-model";
 import { useLocale } from "@/lib/i18n";
 import { fileCopy } from "./file-copy";
 import { canPreview, PREVIEW_URL_SECONDS, validateFile } from "./file-model";
+import { FileMoreActions } from "./file-more-actions";
 import {
   confirmUpload,
   deleteFile,
   downloadFile,
+  getProjectFile,
   listFiles,
   type ProjectFile,
   previewUrl,
@@ -33,16 +38,14 @@ export function ProjectFiles({
   organizationId,
   projectId,
   canManage,
-  voiceNoteRequested,
-  onVoiceNoteRequestHandled,
   onTaskCreated,
+  onChanged,
 }: {
   organizationId: string;
   projectId: string;
   canManage: boolean;
-  voiceNoteRequested: boolean;
-  onVoiceNoteRequestHandled: () => void;
   onTaskCreated: () => void;
+  onChanged?: () => void;
 }) {
   const { locale } = useLocale(),
     c = fileCopy[locale];
@@ -75,11 +78,6 @@ export function ProjectFiles({
     canManage && import.meta.env.VITE_AI_SITE_NOTES_ENABLED === "true";
   const ai = useSiteNoteAnalysis(organizationId, projectId, aiFlag);
   const canAnalyze = aiFlag && ai.available;
-  useEffect(() => {
-    if (!canManage || !voiceNoteRequested) return;
-    setCapture("voice");
-    onVoiceNoteRequestHandled();
-  }, [canManage, voiceNoteRequested, onVoiceNoteRequestHandled]);
   const [dragging, setDragging] = useState(false);
   const dragDepth = useRef(0);
   const input = useRef<HTMLInputElement>(null),
@@ -102,6 +100,7 @@ export function ProjectFiles({
   // biome-ignore lint/correctness/useExhaustiveDependencies: upload/deletion completion refreshes Settings usage
   useEffect(() => {
     if (!reload) return;
+    onChanged?.();
     void queryClient.invalidateQueries({
       queryKey: ["workspace", userId],
       predicate: (query) => query.queryKey[3] === "storage",
@@ -129,6 +128,38 @@ export function ProjectFiles({
       active = false;
     };
   }, [organizationId, projectId, reload]);
+  const [search] = useSearchParams();
+  const focusId = search.get("tab") === "documents" ? search.get("file") : null;
+  const [focused, setFocused] = useState<ProjectFile | null>(null),
+    [focusFailed, setFocusFailed] = useState(false);
+  useEffect(() => {
+    setFocused(null);
+    setFocusFailed(false);
+    if (!focusId || loading || rows.some((row) => row.id === focusId)) return;
+    let active = true;
+    void getProjectFile(organizationId, projectId, focusId)
+      .then((file) => {
+        if (active) {
+          setFocused(file);
+          setFocusFailed(!file);
+        }
+      })
+      .catch(() => {
+        if (active) setFocusFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [focusId, loading, rows, organizationId, projectId]);
+  useProjectItemFocus(
+    focusId,
+    !loading && (!!focused || rows.some((row) => row.id === focusId)),
+    "file",
+  );
+  const visibleRows =
+    focused && !rows.some((row) => row.id === focused.id)
+      ? [focused, ...rows]
+      : rows;
   function selectFile(file: File | null) {
     setNotice(null);
     setRequestId(crypto.randomUUID());
@@ -242,17 +273,12 @@ export function ProjectFiles({
         >
           <div className="document-upload">
             <div className="document-drop-target">
-              <Upload size={24} aria-hidden="true" />
               <p>
-                {dragging ? c.drop : c.drag}{" "}
-                <button
-                  type="button"
-                  className="document-choose"
-                  disabled={busy}
-                  onClick={() => input.current?.click()}
-                >
-                  {c.choose}
-                </button>
+                {dragging
+                  ? c.drop
+                  : locale === "fr"
+                    ? "Déposez un fichier ici"
+                    : "Drop a file here"}
               </p>
               <p className="helper-text" id="project-file-hint">
                 {c.hint}
@@ -330,10 +356,18 @@ export function ProjectFiles({
           <p role="alert">{c.loadError}</p>
           <Button onClick={() => setReload((n) => n + 1)}>{c.retry}</Button>
         </>
-      ) : !loading && !rows.length ? (
+      ) : !loading && !rows.length && !focused ? (
         <p className="document-empty">{c.empty}</p>
       ) : null}
-      {rows.length > 0 && (
+      {focusFailed && (
+        <p role="alert">
+          {projectDetailCopy[locale].missingItem}{" "}
+          <Button variant="ghost" onClick={() => setReload((n) => n + 1)}>
+            {c.retry}
+          </Button>
+        </p>
+      )}
+      {visibleRows.length > 0 && (
         <>
           {canAnalyze && <p className="helper-text">{c.aiDisclosure}</p>}
           <table className="document-file-table">
@@ -347,8 +381,13 @@ export function ProjectFiles({
               </tr>
             </thead>
             <tbody>
-              {rows.map((file) => (
-                <tr key={file.id}>
+              {visibleRows.map((file) => (
+                <tr
+                  key={file.id}
+                  id={`file-${file.id}`}
+                  tabIndex={-1}
+                  data-selected={file.id === focusId || undefined}
+                >
                   <td className="document-file-name">
                     <div className="document-file-info">
                       <FileText size={22} aria-hidden="true" />
@@ -379,13 +418,6 @@ export function ProjectFiles({
                     <div className="file-actions">
                       {file.state === "ready" ? (
                         <>
-                          <Button
-                            variant="outline"
-                            disabled={busy}
-                            onClick={() => action(() => downloadFile(file))}
-                          >
-                            {c.download}
-                          </Button>
                           {canPreview(file.mime_type) && (
                             <Button
                               variant="outline"
@@ -431,14 +463,27 @@ export function ProjectFiles({
                           {c.verify}
                         </Button>
                       ) : null}
-                      {canManage && (
-                        <Button
-                          variant="ghost"
-                          disabled={busy}
-                          onClick={() => setRemoving(file)}
-                        >
-                          {c.remove}
-                        </Button>
+                      {(file.state === "ready" || canManage) && (
+                        <FileMoreActions name={file.original_name}>
+                          {file.state === "ready" && (
+                            <Button
+                              variant="ghost"
+                              disabled={busy}
+                              onClick={() => action(() => downloadFile(file))}
+                            >
+                              {c.download}
+                            </Button>
+                          )}
+                          {canManage && (
+                            <Button
+                              variant="ghost"
+                              disabled={busy}
+                              onClick={() => setRemoving(file)}
+                            >
+                              {c.remove}
+                            </Button>
+                          )}
+                        </FileMoreActions>
                       )}
                     </div>
                   </td>
@@ -448,6 +493,12 @@ export function ProjectFiles({
           </table>
         </>
       )}
+      <p className="register-scope">
+        {projectDetailCopy[locale].loadedFiles}: {rows.length}
+        {focused && !rows.some((row) => row.id === focused.id)
+          ? ` + 1 (${projectDetailCopy[locale].selected})`
+          : ""}
+      </p>
       {more && !failed && (
         <Button
           disabled={busy || loading}

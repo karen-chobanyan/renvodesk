@@ -21,6 +21,18 @@ export async function listFiles(org: string, project: string, offset = 0) {
   if (error) throw error;
   return data;
 }
+export async function getProjectFile(org: string, project: string, id: string) {
+  const { data, error } = await requireSupabase()
+    .from("project_files")
+    .select("*")
+    .eq("organization_id", org)
+    .eq("project_id", project)
+    .eq("id", id)
+    .neq("state", "deleted")
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
 export async function reserveFile(
   org: string,
   project: string,

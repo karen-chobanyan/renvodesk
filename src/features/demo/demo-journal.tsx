@@ -50,7 +50,7 @@ export function DemoJournal({
   const rows = activity
     .filter((row) => row.projectId === projectId)
     .filter((row) => category === "all" || row.category === category)
-    .slice(0, compact ? 6 : undefined);
+    .slice(0, compact ? 3 : undefined);
   const groups = new Map<string, DemoActivity[]>();
   for (const row of rows) {
     const day = activityDay(row.at, locale);

@@ -1,15 +1,18 @@
 import { Plus } from "lucide-react";
-import { type FormEvent, useState } from "react";
-import { Link } from "react-router";
+import { type FormEvent, useEffect, useState } from "react";
+import { Link, useSearchParams } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { layoutCopy } from "@/features/projects/project-layout";
+import { useProjectItemFocus } from "@/features/projects/use-project-item-focus";
 import {
   ScheduleEmpty,
   ScheduleWeek,
   TaskDates,
 } from "@/features/tasks/schedule-layout";
 import { taskCopy } from "@/features/tasks/task-copy";
+import { TaskEditorDialog } from "@/features/tasks/task-editor-dialog";
 import {
   addDays,
   overdue,
@@ -65,10 +68,14 @@ export function useAssigneeName() {
 }
 
 export function DemoTaskPanel({
+  active = true,
+  scheduleHref,
   projectId,
   filter = {},
   onClearMine,
 }: {
+  active?: boolean;
+  scheduleHref?: string;
   projectId?: string;
   filter?: DemoTaskFilter;
   onClearMine?: () => void;
@@ -89,6 +96,19 @@ export function DemoTaskPanel({
         Number(a.status === "done") - Number(b.status === "done") ||
         (a.due ?? a.start ?? "9999").localeCompare(b.due ?? b.start ?? "9999"),
     );
+  const [search] = useSearchParams();
+  const focusId =
+    projectId && search.get("tab") === "tasks" ? search.get("task") : null;
+  const wantsNew = !!projectId && search.get("new") === "task";
+  useEffect(() => {
+    if (!active) setEditing(null);
+    else if (wantsNew) setEditing("new");
+  }, [active, wantsNew]);
+  useProjectItemFocus(
+    focusId,
+    rows.some((row) => row.id === focusId),
+    "task",
+  );
   const compactWeek = !projectId && filter.mode === "week";
   function taskItem(row: DemoTask) {
     const project = projects.find((p) => p.id === row.projectId);
@@ -96,6 +116,9 @@ export function DemoTaskPanel({
       <article
         className={`task-row task-card-${row.status}${compactWeek ? " week-task" : ""}`}
         key={row.id}
+        id={projectId ? `task-${row.id}` : undefined}
+        tabIndex={-1}
+        data-selected={focusId === row.id || undefined}
       >
         <div className="task-content">
           <strong>
@@ -153,7 +176,7 @@ export function DemoTaskPanel({
       className="saved-projects task-panel"
       aria-label={projectId ? c.tasks : c.schedule}
     >
-      <div className="section-heading">
+      <div className="section-heading project-section-heading">
         <div>
           <h2>
             {projectId
@@ -168,6 +191,11 @@ export function DemoTaskPanel({
         </div>
         {projectId && (
           <div className="task-actions">
+            {scheduleHref && (
+              <Button asChild variant="ghost">
+                <Link to={scheduleHref}>{layoutCopy[locale].schedule}</Link>
+              </Button>
+            )}
             <Button onClick={() => setEditing("new")}>
               <Plus size={16} />
               {c.add}
@@ -303,91 +331,94 @@ function DemoTaskEditor({
     close();
   }
   return (
-    <form className="company-form task-editor" onSubmit={submit}>
-      <fieldset className="project-fields">
-        <label className="field" htmlFor="demo-task-assignee">
-          {d.assignee}
-          <select
-            className="input"
-            id="demo-task-assignee"
-            name="assignee"
-            defaultValue={task?.assignee ?? ""}
-          >
-            <option value="">{d.unassigned}</option>
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {assignee(m.id)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field" htmlFor="demo-task-title">
-          {c.title}
-          <Input
-            id="demo-task-title"
-            name="title"
-            defaultValue={task ? say(task.title, locale) : ""}
-            required
-            maxLength={160}
-          />
-        </label>
-        <label className="field" htmlFor="demo-task-status">
-          {c.status}
-          <select
-            className="input"
-            id="demo-task-status"
-            name="status"
-            defaultValue={task?.status ?? "todo"}
-          >
-            {statuses.map((s) => (
-              <option key={s} value={s}>
-                {c[s]}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="field" htmlFor="demo-task-start">
-          {c.start}
-          <Input
-            id="demo-task-start"
-            name="start"
-            type="date"
-            min="1900-01-01"
-            max="2100-12-31"
-            defaultValue={task?.start ?? ""}
-          />
-        </label>
-        <label className="field" htmlFor="demo-task-due">
-          {c.due}
-          <Input
-            id="demo-task-due"
-            name="due"
-            type="date"
-            min="1900-01-01"
-            max="2100-12-31"
-            defaultValue={task?.due ?? ""}
-          />
-        </label>
-        <label className="field task-notes-field" htmlFor="demo-task-notes">
-          {c.notes}
-          <textarea
-            className="input"
-            id="demo-task-notes"
-            name="notes"
-            maxLength={2000}
-            rows={3}
-            defaultValue={task?.notes ? say(task.notes, locale) : ""}
-          />
-        </label>
-        <p className="helper-text">{c.datesHint}</p>
-        <div className="dialog-actions">
-          <Button type="button" variant="outline" onClick={close}>
-            {c.cancel}
-          </Button>
-          <Button>{c.save}</Button>
-        </div>
-      </fieldset>
-      {invalid && <p role="alert">{c.invalid}</p>}
-    </form>
+    <TaskEditorDialog
+      initial={{
+        title: task ? say(task.title, locale) : "",
+        notes: task?.notes ? say(task.notes, locale) : "",
+        status: task?.status ?? "todo",
+        start_date: task?.start ?? null,
+        due_date: task?.due ?? null,
+        assignee_id: task?.assignee ?? null,
+      }}
+      editing={!!task}
+      error={invalid ? "invalid" : null}
+      submit={submit}
+      close={close}
+    >
+      <label className="field" htmlFor="demo-task-title">
+        {c.title}
+        <Input
+          id="demo-task-title"
+          name="title"
+          defaultValue={task ? say(task.title, locale) : ""}
+          required
+          maxLength={160}
+        />
+      </label>
+      <label className="field" htmlFor="demo-task-assignee">
+        {d.assignee}
+        <select
+          className="input"
+          id="demo-task-assignee"
+          name="assignee"
+          defaultValue={task?.assignee ?? ""}
+        >
+          <option value="">{d.unassigned}</option>
+          {members.map((m) => (
+            <option key={m.id} value={m.id}>
+              {assignee(m.id)}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="field" htmlFor="demo-task-status">
+        {c.status}
+        <select
+          className="input"
+          id="demo-task-status"
+          name="status"
+          defaultValue={task?.status ?? "todo"}
+        >
+          {statuses.map((s) => (
+            <option key={s} value={s}>
+              {c[s]}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="field" htmlFor="demo-task-start">
+        {c.start}
+        <Input
+          id="demo-task-start"
+          name="start"
+          type="date"
+          min="1900-01-01"
+          max="2100-12-31"
+          defaultValue={task?.start ?? ""}
+        />
+      </label>
+      <label className="field" htmlFor="demo-task-due">
+        {c.due}
+        <Input
+          id="demo-task-due"
+          name="due"
+          type="date"
+          min="1900-01-01"
+          max="2100-12-31"
+          defaultValue={task?.due ?? ""}
+        />
+      </label>
+      <label className="field task-notes-field" htmlFor="demo-task-notes">
+        {c.notes}
+        <textarea
+          className="input"
+          id="demo-task-notes"
+          name="notes"
+          maxLength={2000}
+          rows={3}
+          defaultValue={task?.notes ? say(task.notes, locale) : ""}
+        />
+      </label>
+    </TaskEditorDialog>
   );
 }

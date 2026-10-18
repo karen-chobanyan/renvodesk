@@ -743,3 +743,165 @@ test("account demo matches settings, retains profile changes and disables passwo
     ),
   ).toBe(true);
 });
+
+test("project details demo shares editor, focused links, estimate creation and responsive overview", async ({
+  page,
+}, testInfo) => {
+  await open(page, "/projects/maison-ixelles");
+  const nav = page.locator(".project-tabs");
+  await expect(
+    page.locator(".project-overview-grid .project-preview").first(),
+  ).toContainText("Prochaines tâches");
+  await page.screenshot({
+    path: `/private/tmp/project-details-${testInfo.project.name}-fr.png`,
+    fullPage: true,
+  });
+  await page.evaluate(() => window.scrollTo(0, 600));
+  await expect
+    .poll(
+      async () => (await page.locator(".project-navigation").boundingBox())?.y,
+    )
+    .toBe(0);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({
+    path: `/private/tmp/project-details-${testInfo.project.name}-viewport.png`,
+    fullPage: false,
+  });
+  const taskLink = page.locator('.project-preview a[href*="task="]').first();
+  await taskLink.click();
+  await expect(page.locator('.task-row[data-selected="true"]')).toBeFocused();
+  await nav.getByRole("link", { name: "Vue d’ensemble", exact: true }).click();
+  await page.locator('.project-preview a[href*="file="]').first().click();
+  await expect(page.locator('tr[data-selected="true"]')).toBeFocused();
+  await expect(
+    page.getByRole("button", { name: "Choisir un fichier", exact: true }),
+  ).toHaveCount(0);
+  await page.locator('tr[data-selected="true"] summary').click();
+  await expect(
+    page
+      .locator('tr[data-selected="true"]')
+      .getByRole("button", { name: "Télécharger", exact: true }),
+  ).toBeVisible();
+  await nav.getByRole("link", { name: "Vue d’ensemble", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Modifier les détails", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByRole("button", { name: "Enregistrer les modifications" }),
+  ).toBeDisabled();
+  await dialog
+    .getByLabel("Nom du projet", { exact: true })
+    .fill("Projet modifié");
+  page.once("dialog", (d) => d.dismiss());
+  await dialog.getByRole("button", { name: "Annuler", exact: true }).click();
+  await expect(dialog.getByLabel("Nom du projet", { exact: true })).toHaveValue(
+    "Projet modifié",
+  );
+  await dialog
+    .getByRole("button", { name: "Enregistrer les modifications" })
+    .click();
+  await expect(dialog.getByRole("status")).toHaveText(
+    "Modifications enregistrées.",
+  );
+  await dialog.getByRole("button", { name: "Annuler", exact: true }).click();
+  await page
+    .getByRole("combobox", { name: "Langue", exact: true })
+    .selectOption("en");
+  await expect(
+    page.getByRole("heading", { name: "Projet modifié", exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: `/private/tmp/project-details-${testInfo.project.name}-en.png`,
+    fullPage: true,
+  });
+  await nav.getByRole("link", { name: "Estimates", exact: true }).click();
+  await expect(page.locator(".estimate-register-table")).toBeVisible();
+  await page
+    .getByRole("button", { name: "New estimate", exact: true })
+    .first()
+    .click();
+  await expect(dialog.getByRole("combobox")).toHaveCount(0);
+  await dialog
+    .getByLabel("Estimate title", { exact: true })
+    .fill("Roof repairs");
+  await dialog
+    .getByRole("button", { name: "Create draft", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Roof repairs", exact: true }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test("task modals protect drafts and restore keyboard focus in both languages", async ({
+  page,
+}, testInfo) => {
+  await open(page, "/projects/maison-ixelles?tab=tasks");
+  const edit = page
+    .locator(".task-row")
+    .first()
+    .getByRole("button", { name: "Modifier", exact: true });
+  await edit.click();
+  const dialog = page.getByRole("dialog", {
+    name: "Modifier la tâche",
+    exact: true,
+  });
+  const title = dialog.getByLabel("Nom de la tâche", { exact: true });
+  const original = await title.inputValue();
+  await expect(title).toBeFocused();
+  await expect(
+    dialog.getByRole("button", { name: "Enregistrer la tâche" }),
+  ).toBeDisabled();
+  await page.keyboard.press("Shift+Tab");
+  await expect(
+    dialog.getByRole("button", { name: "Fermer", exact: true }),
+  ).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(edit).toBeFocused();
+  await edit.click();
+  await title.fill("Inspection de la charpente");
+  page.once("dialog", (prompt) => prompt.dismiss());
+  await dialog.getByRole("button", { name: "Fermer", exact: true }).click();
+  await expect(title).toHaveValue("Inspection de la charpente");
+  await page.screenshot({
+    path: `/private/tmp/task-modal-${testInfo.project.name}-fr.png`,
+    animations: "disabled",
+  });
+  await title.fill(original);
+  await expect(
+    dialog.getByRole("button", { name: "Enregistrer la tâche" }),
+  ).toBeDisabled();
+  await dialog.getByRole("button", { name: "Annuler", exact: true }).click();
+  await page
+    .getByRole("combobox", { name: "Langue", exact: true })
+    .selectOption("en");
+  await page
+    .locator(".task-row")
+    .first()
+    .getByRole("button", { name: "Edit", exact: true })
+    .click();
+  const english = page.getByRole("dialog", { name: "Edit task", exact: true });
+  await english
+    .getByLabel("Notes", { exact: true })
+    .fill("Check beam connections.");
+  await page.screenshot({
+    path: `/private/tmp/task-modal-${testInfo.project.name}-en.png`,
+    animations: "disabled",
+  });
+  expect(
+    await english.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth,
+    ),
+  ).toBe(true);
+  await english.getByRole("button", { name: "Save task", exact: true }).click();
+  await expect(english).toHaveCount(0);
+  await expect(page.locator(".task-row").first()).toContainText(
+    "Check beam connections.",
+  );
+});

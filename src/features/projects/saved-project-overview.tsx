@@ -1,4 +1,3 @@
-import { Mic } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,9 @@ import { dateLabel, today } from "@/features/tasks/task-model";
 import { nextProjectTasks } from "@/features/tasks/task-service";
 import { listTeam } from "@/features/team/team-service";
 import { formatMoney, useLocale } from "@/lib/i18n";
+import { projectDetailCopy } from "./project-detail-copy";
 import { layoutCopy, ProjectSkeleton } from "./project-layout";
+import { ProjectPreview, ProjectPreviewEmpty } from "./project-overview-layout";
 import type { SavedProject } from "./project-service";
 
 function Preview({
@@ -24,11 +25,15 @@ function Preview({
   empty,
   to,
   load,
+  emptyAction,
+  emptyTo,
 }: {
   title: string;
   empty: string;
   to: string;
   load: () => Promise<ReactNode[]>;
+  emptyAction: string;
+  emptyTo?: string;
 }) {
   const { locale } = useLocale(),
     c = layoutCopy[locale];
@@ -52,13 +57,7 @@ function Preview({
     };
   }, [locale, retry]);
   return (
-    <section className="project-preview">
-      <div className="section-heading">
-        <h2>{title}</h2>
-        <Link className="account-link" to={to}>
-          {c.view}
-        </Link>
-      </div>
+    <ProjectPreview title={title} to={to}>
       {failed ? (
         <div role="alert">
           <p>{c.error}</p>
@@ -71,175 +70,180 @@ function Preview({
       ) : rows.length ? (
         rows
       ) : (
-        <p className="project-empty">{empty}</p>
+        <ProjectPreviewEmpty
+          text={empty}
+          action={emptyAction}
+          to={emptyTo ?? to}
+        />
       )}
-    </section>
+    </ProjectPreview>
   );
 }
 export function SavedProjectOverview({
   project,
   owner,
   onOpenSketch,
-  onRecordVoiceNote,
 }: {
   project: SavedProject;
   owner: boolean;
   onOpenSketch: (id: string) => void;
-  onRecordVoiceNote: () => void;
 }) {
   const { locale } = useLocale(),
     c = layoutCopy[locale],
+    d = projectDetailCopy[locale],
     org = project.organization_id,
     id = project.id,
     base = `/workspace/${org}/projects/${id}`;
   return (
-    <>
-      {owner && (
-        <div className="project-overview-actions">
-          <Button type="button" onClick={onRecordVoiceNote}>
-            <Mic size={18} aria-hidden="true" />
-            {c.recordVoiceNote}
-          </Button>
-        </div>
-      )}
-      {owner && <CostSummary org={org} project={id} />}
-      <div className="project-overview-grid">
-        <div>
+    <div
+      className={`project-overview-grid${owner ? "" : " project-overview-member"}`}
+    >
+      <div>
+        <Preview
+          emptyAction={owner ? d.newTask : d.tasks}
+          emptyTo={owner ? "?tab=tasks&new=task" : "?tab=tasks"}
+          title={c.next}
+          empty={c.emptyTasks}
+          to="?tab=tasks"
+          load={async () => {
+            const [rows, people] = await Promise.all([
+              nextProjectTasks(org, id),
+              listTeam(org).catch(() => []),
+            ]);
+            return rows.map((task) => (
+              <Link
+                className="project-preview-row"
+                to={`?tab=tasks&task=${task.id}`}
+                key={task.id}
+              >
+                <span>
+                  <strong>{task.title}</strong>
+                  <small>
+                    {task.due_date
+                      ? dateLabel(task.due_date, locale)
+                      : c.undated}{" "}
+                    ·{" "}
+                    {task.assignee_id
+                      ? (people.find((p) => p.user_id === task.assignee_id)
+                          ?.email ??
+                        (locale === "fr" ? "Responsable attribué" : "Assigned"))
+                      : locale === "fr"
+                        ? "Non attribuée"
+                        : "Unassigned"}
+                  </small>
+                </span>
+                <span
+                  className={
+                    task.due_date && task.due_date < today()
+                      ? "status status-planning"
+                      : "status"
+                  }
+                >
+                  {task.due_date && task.due_date < today()
+                    ? c.overdue
+                    : locale === "fr"
+                      ? task.status === "in_progress"
+                        ? "En cours"
+                        : "À faire"
+                      : task.status === "in_progress"
+                        ? "In progress"
+                        : "To do"}
+                </span>
+              </Link>
+            ));
+          }}
+        />
+        {owner && <CostSummary org={org} project={id} overview />}
+        {owner && (
           <Preview
-            title={c.next}
-            empty={c.emptyTasks}
-            to="?tab=tasks"
+            emptyAction={d.newEstimate}
+            emptyTo="?tab=estimates&new=estimate"
+            title={c.recent}
+            empty={c.emptyEstimates}
+            to="?tab=estimates"
             load={async () => {
-              const [rows, people] = await Promise.all([
-                nextProjectTasks(org, id),
-                listTeam(org).catch(() => []),
-              ]);
-              return rows.map((task) => (
+              const rows = await listEstimates(org, id);
+              return rows.slice(0, 3).map((row) => (
                 <Link
                   className="project-preview-row"
-                  to="?tab=tasks"
-                  key={task.id}
+                  key={row.id}
+                  to={`${base}/estimates/${row.id}`}
                 >
                   <span>
-                    <strong>{task.title}</strong>
+                    <strong>{row.title}</strong>
                     <small>
-                      {task.due_date
-                        ? dateLabel(task.due_date, locale)
-                        : c.undated}{" "}
-                      ·{" "}
-                      {task.assignee_id
-                        ? (people.find((p) => p.user_id === task.assignee_id)
-                            ?.email ??
-                          (locale === "fr"
-                            ? "Responsable attribué"
-                            : "Assigned"))
-                        : locale === "fr"
-                          ? "Non attribuée"
-                          : "Unassigned"}
+                      {workflowCopy[locale][estimateStatus(row.status)]}
                     </small>
                   </span>
-                  <span
-                    className={
-                      task.due_date && task.due_date < today()
-                        ? "status status-planning"
-                        : "status"
-                    }
-                  >
-                    {task.due_date && task.due_date < today()
-                      ? c.overdue
-                      : locale === "fr"
-                        ? task.status === "in_progress"
-                          ? "En cours"
-                          : "À faire"
-                        : task.status === "in_progress"
-                          ? "In progress"
-                          : "To do"}
-                  </span>
+                  <span>{formatMoney(row.total_cents, locale)}</span>
                 </Link>
               ));
             }}
           />
-          {owner && (
-            <Preview
-              title={c.recent}
-              empty={c.emptyEstimates}
-              to="?tab=estimates"
-              load={async () => {
-                const rows = await listEstimates(org, id);
-                return rows.slice(0, 3).map((row) => (
-                  <Link
-                    className="project-preview-row"
-                    key={row.id}
-                    to={`${base}/estimates/${row.id}`}
-                  >
-                    <span>
-                      <strong>{row.title}</strong>
-                      <small>
-                        {workflowCopy[locale][estimateStatus(row.status)]}
-                      </small>
-                    </span>
-                    <span>{formatMoney(row.total_cents, locale)}</span>
-                  </Link>
-                ));
-              }}
-            />
-          )}
-          <Preview
-            title={c.sketches}
-            empty={c.emptySketches}
-            to="?tab=documents#project-sketches"
-            load={async () => {
-              const rows = await listSketches(org, id);
-              return rows.slice(0, 2).map((sk) => (
-                <button
-                  className="project-preview-row project-sketch-preview-open"
-                  key={sk.id}
-                  type="button"
-                  onClick={() => onOpenSketch(sk.id)}
+        )}
+        <Preview
+          emptyAction={owner ? d.newSketch : d.documents}
+          emptyTo={
+            owner ? "?tab=documents&new=sketch#project-sketches" : undefined
+          }
+          title={c.sketches}
+          empty={c.emptySketches}
+          to="?tab=documents#project-sketches"
+          load={async () => {
+            const rows = await listSketches(org, id);
+            return rows.slice(0, 2).map((sk) => (
+              <button
+                className="project-preview-row project-sketch-preview-open"
+                key={sk.id}
+                type="button"
+                onClick={() => onOpenSketch(sk.id)}
+              >
+                <SketchPreview sk={sk} />
+                <span>
+                  <strong>{sk.title}</strong>
+                  <small>
+                    {locale === "fr" ? "Ouvrir le croquis" : "Open sketch"}
+                  </small>
+                </span>
+              </button>
+            ));
+          }}
+        />
+        <Preview
+          emptyAction={owner ? d.addFiles : d.documents}
+          title={c.files}
+          empty={c.emptyFiles}
+          to="?tab=documents#project-files"
+          load={async () => {
+            const rows = await recentFiles(org, id);
+            return rows
+              .filter((f) => f.state === "ready")
+              .slice(0, 3)
+              .map((f) => (
+                <Link
+                  className="project-preview-row"
+                  key={f.id}
+                  to={`?tab=documents&file=${f.id}#project-files`}
                 >
-                  <SketchPreview sk={sk} />
-                  <span>
-                    <strong>{sk.title}</strong>
-                    <small>
-                      {locale === "fr" ? "Ouvrir le croquis" : "Open sketch"}
-                    </small>
-                  </span>
-                </button>
+                  <strong>{f.original_name}</strong>
+                </Link>
               ));
-            }}
-          />
-          <Preview
-            title={c.files}
-            empty={c.emptyFiles}
-            to="?tab=documents#project-files"
-            load={async () => {
-              const rows = await recentFiles(org, id);
-              return rows
-                .filter((f) => f.state === "ready")
-                .slice(0, 3)
-                .map((f) => (
-                  <Link
-                    className="project-preview-row"
-                    key={f.id}
-                    to="?tab=documents#project-files"
-                  >
-                    <strong>{f.original_name}</strong>
-                  </Link>
-                ));
-            }}
-          />
-        </div>
-        <aside className="project-context">
-          <ProjectJournal
-            org={org}
-            project={id}
-            owner={owner}
-            compact
-            revision={project.revision}
-            onOpenSketch={onOpenSketch}
-          />
-        </aside>
+          }}
+        />
       </div>
-    </>
+      <aside className="project-context">
+        <ProjectJournal
+          org={org}
+          project={id}
+          owner={owner}
+          compact
+          revision={project.revision}
+          onOpenSketch={onOpenSketch}
+        />
+        <Link className="account-link" to="?tab=activity">
+          {d.activity}
+        </Link>
+      </aside>
+    </div>
   );
 }

@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
+import { projectDetailCopy } from "@/features/projects/project-detail-copy";
 import { ProjectSkeleton } from "@/features/projects/project-layout";
 import { useLocale } from "@/lib/i18n";
 import { costCopy } from "./cost-copy";
@@ -42,9 +44,11 @@ export function CostMetrics({ summary }: { summary: Summary }) {
 export function CostSummary({
   org,
   project,
+  overview = false,
 }: {
   org: string;
   project: string;
+  overview?: boolean;
 }) {
   const { locale } = useLocale(),
     c = costCopy[locale];
@@ -68,7 +72,11 @@ export function CostSummary({
     };
   }, [org, project, retry]);
   return (
-    <section aria-label={c.title}>
+    <section
+      aria-label={c.title}
+      className={overview ? "project-budget-preview" : undefined}
+    >
+      {overview && <h2>{c.title}</h2>}
       {failed ? (
         <div role="alert">
           <p>{c.error}</p>
@@ -82,6 +90,20 @@ export function CostSummary({
         <ProjectSkeleton />
       )}
       <p className="helper-text">{c.notice}</p>
+      {overview && data && (
+        <Link
+          className="account-link"
+          to={
+            data.budget_cents === null
+              ? "?tab=budget&editBudget=1"
+              : "?tab=budget"
+          }
+        >
+          {data.budget_cents === null
+            ? projectDetailCopy[locale].setBudget
+            : projectDetailCopy[locale].budget}
+        </Link>
+      )}
     </section>
   );
 }
