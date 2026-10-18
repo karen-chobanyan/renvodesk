@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import type { Activity } from "../src/features/activity/activity-model";
 
 const org = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   project = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
@@ -51,9 +52,12 @@ async function fixture(page: Page, owner = true, locale = "en") {
     financialReads: 0,
     empty: false,
     updated: false,
+    trackingFail: false,
+    actorsFail: false,
+    offsets: [] as string[],
   };
   let revision = 1;
-  const events = Array.from({ length: 24 }, (_, i) => ({
+  const events: Activity[] = Array.from({ length: 24 }, (_, i) => ({
     organization_id: org,
     project_id: project,
     id: `cccccccc-cccc-4ccc-8ccc-${String(100 - i).padStart(12, "0")}`,
@@ -144,24 +148,35 @@ async function fixture(page: Page, owner = true, locale = "en") {
         });
       }
       if (name === "project_activity_tracking")
-        return route.fulfill({ json: { started_at: "2026-09-22T08:00:00Z" } });
+        return state.trackingFail
+          ? route.fulfill({
+              status: 500,
+              json: { message: "Fixture unavailable" },
+            })
+          : route.fulfill({ json: { started_at: "2026-09-22T08:00:00Z" } });
       if (name === "team_members")
-        return route.fulfill({
-          json: [
-            {
-              user_id: uid,
-              email: user.email,
-              role: owner ? "owner" : "member",
-            },
-            {
-              user_id: "22222222-2222-4222-8222-222222222222",
-              email: "teammate@example.test",
-              role: "member",
-            },
-          ],
-        });
+        return state.actorsFail
+          ? route.fulfill({
+              status: 500,
+              json: { message: "Fixture unavailable" },
+            })
+          : route.fulfill({
+              json: [
+                {
+                  user_id: uid,
+                  email: user.email,
+                  role: owner ? "owner" : "member",
+                },
+                {
+                  user_id: "22222222-2222-4222-8222-222222222222",
+                  email: "teammate@example.test",
+                  role: "member",
+                },
+              ],
+            });
       if (name === "project_activity") {
         state.reads++;
+        state.offsets.push(url.searchParams.get("or") ?? "first");
         expect(url.searchParams.get("organization_id")).toBe(`eq.${org}`);
         expect(url.searchParams.get("project_id")).toBe(`eq.${project}`);
         expect(url.searchParams.get("order")).toBe("occurred_at.desc,id.desc");
@@ -218,7 +233,7 @@ async function fixture(page: Page, owner = true, locale = "en") {
       return route.fulfill({ json: [] });
     },
   );
-  return state;
+  return Object.assign(state, { events });
 }
 test("journal sidebar, full history, filters, retry, pagination and keyboard", async ({
   page,
@@ -260,7 +275,7 @@ test("journal sidebar, full history, filters, retry, pagination and keyboard", a
   await expect(journal.locator("li")).toHaveCount(1);
   await expect(journal).toContainText("Expense added");
   state.empty = true;
-  await journal.getByRole("button", { name: "Refresh", exact: true }).click();
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(journal).toContainText("No activity of this type");
   state.empty = false;
   state.fail = true;
@@ -271,15 +286,15 @@ test("journal sidebar, full history, filters, retry, pagination and keyboard", a
   ).toBeVisible();
   state.fail = false;
   await journal.getByRole("button", { name: "Try again" }).click();
-  await expect(journal.locator("li")).toHaveCount(20);
+  await expect(journal.getByRole("alert")).toHaveCount(0);
+  await expect(journal.locator("li")).toHaveCount(24);
   const filter = page.getByLabel("Activity type");
   await filter.focus();
   await expect(filter).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(
     journal.getByRole("button", { name: "Refresh", exact: true }),
-  ).toBeFocused();
-  await page.keyboard.press("Tab");
+  ).toHaveCount(0);
   await expect(journal.getByRole("link").first()).toBeFocused();
   await page.screenshot({
     path: testInfo.outputPath("journal-activity.png"),
@@ -351,6 +366,140 @@ test("project edit refreshes journal and task modal guards navigation", async ({
   await page.evaluate(() => history.back());
   await expect(page).toHaveURL(/tab=activity$/);
   await expect(dialog).toHaveCount(0);
-  await journal.getByRole("button", { name: "Refresh", exact: true }).click();
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(journal).toContainText("Updated site");
+});
+
+test("journal keeps filters, pages and reading position through navigation and independent failures", async ({
+  page,
+}) => {
+  const state = await fixture(page);
+  state.trackingFail = true;
+  state.actorsFail = true;
+  await page.goto(`${base}?tab=activity`);
+  const journal = page.getByRole("region", {
+    name: "Project journal",
+    exact: true,
+  });
+  await expect(journal.locator(".journal-row")).toHaveCount(20);
+  await expect(journal).toContainText("History start date unavailable");
+  await expect(journal).toContainText("Team member");
+  state.trackingFail = false;
+  await journal
+    .getByRole("button", { name: "Retry history start date" })
+    .click();
+  await expect(journal).toContainText("Activity recorded since");
+  await expect(journal).not.toContainText("History start date unavailable");
+  await page.getByLabel("Activity type").selectOption("tasks");
+  await journal.getByRole("button", { name: "Load older activity" }).click();
+  await expect(journal.locator(".journal-row")).toHaveCount(21);
+  await expect(journal).toContainText("Loaded events: 21");
+  await page.evaluate(() => window.scrollTo(0, 650));
+  await expect.poll(() => page.evaluate(() => window.scrollY)).toBe(650);
+  const readingRow = journal.locator(".journal-row").nth(3);
+  const readingY = (await readingRow.boundingBox())?.y;
+  await page
+    .locator(".project-tabs")
+    .getByRole("link", { name: "Documents", exact: true })
+    .click();
+  state.fail = true;
+  await page
+    .locator(".project-tabs")
+    .getByRole("link", { name: "Activity", exact: true })
+    .click();
+  await expect(page.getByLabel("Activity type")).toHaveValue("tasks");
+  await expect(journal.locator(".journal-row")).toHaveCount(21);
+  await expect(journal.getByRole("alert")).toContainText(
+    "Displayed events have been kept",
+  );
+  await expect
+    .poll(async () => (await readingRow.boundingBox())?.y)
+    .toBe(readingY);
+  state.fail = false;
+  await journal.getByRole("button", { name: "Try again", exact: true }).click();
+  await expect(journal.getByRole("alert")).toHaveCount(0);
+  await expect(journal.locator(".journal-row")).toHaveCount(21);
+  expect(
+    state.offsets.filter((cursor) => cursor !== "first").length,
+  ).toBeGreaterThanOrEqual(2);
+  await journal
+    .getByRole("button", { name: "Show all activity", exact: true })
+    .click();
+  await expect(page.getByLabel("Activity type")).toHaveValue("all");
+  await expect(
+    journal.getByRole("button", { name: "Show all activity" }),
+  ).toHaveCount(0);
+  state.empty = true;
+  await page.getByLabel("Activity type").selectOption("project");
+  await expect(journal).toContainText("No activity of this type");
+  await expect(
+    journal.getByRole("button", { name: "Show all activity" }),
+  ).toBeVisible();
+});
+
+test("journal collapses consecutive sketch saves without losing individual events", async ({
+  page,
+}, testInfo) => {
+  const state = await fixture(page);
+  const template = state.events[0];
+  state.events.unshift(
+    ...[3, 2, 1].map((revision, index) => ({
+      ...template,
+      id: `dddddddd-dddd-4ddd-8ddd-${String(100 - index).padStart(12, "0")}`,
+      event_type: "sketch.published",
+      category: "documents",
+      entity_type: "sketch",
+      actor_user_id: uid,
+      occurred_at: `2026-09-22T09:3${revision}:00.000000+00:00`,
+      payload: {
+        label: "Kitchen concept — a long sketch name that must stay readable",
+        revision,
+      },
+    })),
+  );
+  await page.goto(`${base}?tab=activity`);
+  await page.getByLabel("Activity type").selectOption("documents");
+  const journal = page.getByRole("region", {
+    name: "Project journal",
+    exact: true,
+  });
+  await expect(journal).toContainText("Loaded events: 4");
+  const group = journal.locator(".journal-revisions details");
+  await expect(group).not.toHaveAttribute("open");
+  await expect(group.locator("summary")).toContainText(
+    "3 saved revisions among loaded events",
+  );
+  await group.locator("summary").focus();
+  await page.keyboard.press("Enter");
+  await expect(group).toHaveAttribute("open", "");
+  await expect(group.locator(".journal-row")).toHaveCount(3);
+  await expect(
+    group.getByRole("button", { name: /^Open sketch:/ }),
+  ).toHaveCount(3);
+  await expect(group).toContainText("Revision 1");
+  await expect(group).toContainText("Revision 3");
+  state.events.unshift({
+    ...state.events[0],
+    id: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee",
+    occurred_at: "2026-09-22T09:34:00.000000+00:00",
+    payload: {
+      label: "Kitchen concept — a long sketch name that must stay readable",
+      revision: 4,
+    },
+  });
+  await page.evaluate(() => window.dispatchEvent(new Event("focus")));
+  await expect(group.locator(".journal-row")).toHaveCount(4);
+  await expect(group).toHaveAttribute("open", "");
+  await expect(group.locator("summary")).toContainText(
+    "4 saved revisions among loaded events",
+  );
+  await page.screenshot({
+    path: `/private/tmp/activity-group-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
 });

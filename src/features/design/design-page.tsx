@@ -2,6 +2,7 @@ import { Link } from "react-router";
 import { EmptyState, PageHeader, StatusBadge } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { activityCopy } from "@/features/activity/activity-copy";
 import { costCopy } from "@/features/costs/cost-copy";
 import { CostMetrics } from "@/features/costs/cost-summary";
 import { fileCopy } from "@/features/files/file-copy";
@@ -73,6 +74,18 @@ export function DesignPage() {
           {locale === "fr"
             ? "Voir l’import, les fichiers et les croquis dans la démo"
             : "View the uploader, files and sketches in the demo"}
+        </Link>
+      </section>
+      <section className="showcase-section">
+        <h2>{activityCopy[locale].title}</h2>
+        <p className="helper-text">{activityCopy[locale].description}</p>
+        <Link
+          className="account-link"
+          to="/projects/maison-ixelles?tab=activity"
+        >
+          {locale === "fr"
+            ? "Voir le journal et ses filtres dans la démo"
+            : "View the journal and its filters in the demo"}
         </Link>
       </section>
       <section className="showcase-section">

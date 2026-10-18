@@ -961,3 +961,77 @@ test("budget layout and modals share localized responsive presentation", async (
     fullPage: true,
   });
 });
+
+test("activity demo retains filters and opens matching records with shared responsive rows", async ({
+  page,
+}, testInfo) => {
+  await open(page, "/projects/maison-ixelles?tab=activity");
+  const journal = page.getByRole("region", {
+    name: "Journal du projet",
+    exact: true,
+  });
+  await page.getByLabel("Type d’activité").selectOption("tasks");
+  await expect(journal).toContainText("Événements chargés: 3");
+  await journal
+    .getByRole("link", {
+      name: "Ouvrir: Pose des cloisons de l’étage",
+      exact: true,
+    })
+    .click();
+  await expect(page.locator('.task-row[data-selected="true"]')).toBeFocused();
+  await page
+    .locator(".project-tabs")
+    .getByRole("link", { name: "Journal", exact: true })
+    .click();
+  await expect(page.getByLabel("Type d’activité")).toHaveValue("tasks");
+  await journal
+    .getByRole("button", { name: "Afficher toute l’activité" })
+    .click();
+  await page.screenshot({
+    path: `/private/tmp/activity-demo-fr-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+  await page.getByLabel("Type d’activité").selectOption("documents");
+  await journal
+    .getByRole("button", {
+      name: "Ouvrir le croquis: Cuisine — implantation de l’îlot",
+      exact: true,
+    })
+    .click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await journal
+    .getByRole("link", {
+      name: "Ouvrir: Note-vocale-visite-cuisine.m4a",
+      exact: true,
+    })
+    .click();
+  await expect(page.locator('tr[data-selected="true"]')).toBeFocused();
+  await page
+    .locator(".project-tabs")
+    .getByRole("link", { name: "Journal", exact: true })
+    .click();
+  await expect(page.getByLabel("Type d’activité")).toHaveValue("documents");
+  await page
+    .getByRole("combobox", { name: "Langue", exact: true })
+    .selectOption("en");
+  await page
+    .getByRole("button", { name: "Show all activity", exact: true })
+    .click();
+  await page.screenshot({
+    path: `/private/tmp/activity-demo-en-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+  await expect(
+    page.getByRole("region", { name: "Project journal" }).getByRole("link", {
+      name: "Open: Kitchen — island option",
+      exact: true,
+    }),
+  ).toHaveAttribute("href", "/estimates/ixelles-cuisine");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+});

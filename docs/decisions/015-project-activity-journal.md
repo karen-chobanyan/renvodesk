@@ -2,6 +2,24 @@
 
 Date: 2026-09-22. Status: implemented.
 
+## Layout and refresh update — 2026-10-18
+
+The overview now shows three events. Activity stays mounted between project tabs,
+retaining its filter and reading position. Session/company/project/role-scoped
+TanStack Query pages retain keyset cursors and cached rows across tab/window return
+and relevant-write refreshes. Retry is local to initial/refresh, pagination or
+history-start failures; tracking metadata and actor lookup cannot block the feed.
+The routine Refresh control is removed. This replaces the remount/explicit-refresh
+behavior described in the original implementation below; there is still no Realtime.
+
+Shared live/demo rows emphasize the record name, place actor/time beside details,
+omit redundant status field labels, and use specific task/file destinations. Sketch
+actions open the current sketch and say so. Consecutive visible sketch saves by
+one actor with gaps of at most five minutes on the same local day may collapse
+into an expandable group. Grouping is presentation only, counts only loaded events,
+and preserves every event and revision label. This replaces the former absence
+of grouping; storage, source triggers, payloads and permissions are unchanged.
+
 ## Decision
 
 Saved projects have a Project journal / Journal du projet in their overview's

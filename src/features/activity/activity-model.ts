@@ -60,7 +60,9 @@ export function activityPresentation(row: Activity, locale: "fr" | "en") {
       : "";
   const fields = Array.isArray(payload.changed_fields)
     ? payload.changed_fields.flatMap((key) =>
-        typeof key === "string" && Object.hasOwn(c.fields, key)
+        typeof key === "string" &&
+        Object.hasOwn(c.fields, key) &&
+        !(key === "status" && from && to)
           ? [c.fields[key as keyof typeof c.fields]]
           : [],
       )
@@ -85,12 +87,12 @@ export function activityTarget(row: Activity) {
     case "project":
       return `${base}?tab=overview`;
     case "task":
-      return `${base}?tab=tasks`;
+      return `${base}?tab=tasks&task=${encodeURIComponent(row.entity_id)}`;
     case "budget":
     case "cost":
       return `${base}?tab=budget`;
     case "file":
-      return `${base}?tab=documents`;
+      return `${base}?tab=documents&file=${encodeURIComponent(row.entity_id)}`;
     case "estimate":
       return `${base}/estimates/${row.entity_id}`;
     case "sketch":
@@ -105,4 +107,36 @@ export function activityDay(instant: string, locale: "fr" | "en") {
     month: "long",
     year: "numeric",
   }).format(new Date(instant));
+}
+
+/** Group only adjacent visible saves by one actor to one sketch within five minutes.
+ * Never merge stored events or infer unloaded revisions; every member stays accessible. */
+export function groupSketchActivity<
+  T extends {
+    event: string;
+    entityId?: string;
+    actorId: string;
+    at: string;
+  },
+>(rows: T[], locale: "fr" | "en"): T[][] {
+  const groups: T[][] = [];
+  for (const row of rows) {
+    const group = groups.at(-1),
+      previous = group?.at(-1);
+    const gap = previous ? Date.parse(previous.at) - Date.parse(row.at) : -1;
+    if (
+      previous &&
+      row.event === "sketch.published" &&
+      previous.event === row.event &&
+      row.entityId &&
+      previous.entityId === row.entityId &&
+      previous.actorId === row.actorId &&
+      gap >= 0 &&
+      gap <= 300_000 &&
+      activityDay(previous.at, locale) === activityDay(row.at, locale)
+    ) {
+      group?.push(row);
+    } else groups.push([row]);
+  }
+  return groups;
 }

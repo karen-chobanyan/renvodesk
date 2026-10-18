@@ -1,55 +1,40 @@
-import {
-  ClipboardCheck,
-  Coins,
-  FileText,
-  FolderKanban,
-  History,
-  RefreshCw,
-} from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
-import { Link } from "react-router";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/auth-provider";
-import { listTeam, type TeamMember } from "@/features/team/team-service";
+import { listTeam } from "@/features/team/team-service";
 import { useLocale } from "@/lib/i18n";
 import { activityCopy } from "./activity-copy";
 import {
-  type Activity,
   type ActivityCategory,
   type ActivityCursor,
-  activityCategories,
   activityDay,
   activityPresentation,
   activityTarget,
 } from "./activity-model";
 import { activityStartedAt, listActivity } from "./activity-service";
+import {
+  type JournalEntry,
+  JournalView,
+  useJournalPosition,
+} from "./journal-view";
 
-export function ProjectJournal({
-  org,
-  project,
-  owner,
-  compact = false,
-  revision,
-  onOpenSketch,
-}: {
+type Props = {
   org: string;
   project: string;
   owner: boolean;
   compact?: boolean;
   revision: number;
+  refreshKey?: string;
+  active?: boolean;
   onOpenSketch?: (id: string) => void;
-}) {
+};
+export function ProjectJournal(props: Props) {
   const { session } = useAuth();
-  // Scope every pending request and cached row to the current user/project/role.
   return (
     <Journal
-      key={`${session?.user.id}:${org}:${project}:${owner}`}
-      org={org}
-      project={project}
-      owner={owner}
-      compact={compact}
-      revision={revision}
-      onOpenSketch={onOpenSketch}
+      key={`${session?.user.id}:${props.org}:${props.project}:${props.owner}`}
+      {...props}
     />
   );
 }
@@ -57,269 +42,142 @@ function Journal({
   org,
   project,
   owner,
-  compact,
+  compact = false,
   revision,
+  refreshKey = "",
+  active = true,
   onOpenSketch,
-}: {
-  org: string;
-  project: string;
-  owner: boolean;
-  compact: boolean;
-  revision: number;
-  onOpenSketch?: (id: string) => void;
-}) {
+}: Props) {
   const { locale } = useLocale(),
     c = activityCopy[locale];
   const { session } = useAuth();
-  const filterId = useId(),
-    headingId = useId();
   const [category, setCategory] = useState<ActivityCategory>("all");
-  const [rows, setRows] = useState<Activity[]>([]),
-    [next, setNext] = useState<ActivityCursor | null>(null);
-  const [started, setStarted] = useState<string | null>(null),
-    [people, setPeople] = useState<TeamMember[]>([]);
-  const [busy, setBusy] = useState(true),
-    [failed, setFailed] = useState(false),
-    [reload, setReload] = useState(0);
-  const generation = useRef(0),
-    loadingOlder = useRef(false);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: revision and reload invalidate the current feed; never remount working forms
+  useJournalPosition(active && !compact);
+  const scope = [
+    "workspace",
+    session?.user.id,
+    org,
+    "project-activity",
+    project,
+    owner,
+  ];
+  const query = useInfiniteQuery({
+    queryKey: [...scope, compact ? "compact" : "full", category],
+    queryFn: ({ pageParam }) =>
+      listActivity(org, project, category, pageParam, compact ? 3 : 20),
+    initialPageParam: null as ActivityCursor | null,
+    getNextPageParam: (last) => last.next ?? undefined,
+    enabled: active,
+    staleTime: 0,
+    retry: false,
+  });
+  const tracking = useQuery({
+    queryKey: [...scope, "tracking"],
+    queryFn: activityStartedAt,
+    enabled: active,
+    staleTime: 300_000,
+    retry: false,
+  });
+  const people = useQuery({
+    queryKey: [...scope, "actors"],
+    queryFn: () => listTeam(org),
+    enabled: active,
+    staleTime: 60_000,
+    retry: false,
+  });
+  const refetch = query.refetch;
+  const version = `${revision}:${refreshKey}`,
+    lastVersion = useRef(version);
   useEffect(() => {
-    const current = ++generation.current;
-    setBusy(true);
-    setFailed(false);
-    setRows([]);
-    setNext(null);
-    setStarted(null);
-    loadingOlder.current = false;
-    void Promise.all([
-      listActivity(org, project, category, null, compact ? 3 : 20),
-      activityStartedAt(),
-      listTeam(org).catch(() => []),
-    ])
-      .then(([page, date, team]) => {
-        if (current !== generation.current) return;
-        setRows(page.rows);
-        setNext(page.next);
-        setStarted(date);
-        setPeople(team);
-      })
-      .catch(() => {
-        if (current === generation.current) setFailed(true);
-      })
-      .finally(() => {
-        if (current === generation.current) setBusy(false);
-      });
-    return () => {
-      generation.current++;
-    };
-  }, [org, project, category, compact, revision, reload]);
-  async function older() {
-    if (!next || loadingOlder.current || busy) return;
-    const current = generation.current;
-    loadingOlder.current = true;
-    setBusy(true);
-    setFailed(false);
-    try {
-      const page = await listActivity(org, project, category, next);
-      if (current !== generation.current) return;
-      setRows((old) => [
-        ...old,
-        ...page.rows.filter((r) => !old.some((o) => o.id === r.id)),
-      ]);
-      setNext(page.next);
-    } catch {
-      if (current === generation.current) setFailed(true);
-    } finally {
-      if (current === generation.current) {
-        setBusy(false);
-        loadingOlder.current = false;
-      }
+    if (!active) return;
+    if (lastVersion.current !== version) {
+      lastVersion.current = version;
+      void refetch();
     }
-  }
-  const groups = new Map<string, Activity[]>();
-  for (const row of rows) {
-    const day = activityDay(row.occurred_at, locale);
-    groups.set(day, [...(groups.get(day) ?? []), row]);
-  }
+  }, [active, version, refetch]);
+  useEffect(() => {
+    const focus = () => {
+      if (active) void refetch({ cancelRefetch: false });
+    };
+    window.addEventListener("focus", focus);
+    return () => window.removeEventListener("focus", focus);
+  }, [active, refetch]);
+  const rows = Array.from(
+    new Map(
+      (query.data?.pages.flatMap((page) => page.rows) ?? []).map((row) => [
+        row.id,
+        row,
+      ]),
+    ).values(),
+  );
+  const entries: JournalEntry[] = rows.map((row) => {
+    const content = activityPresentation(row, locale),
+      target = activityTarget(row);
+    return {
+      ...content,
+      id: row.id,
+      at: row.occurred_at,
+      category: row.category,
+      event: row.payload_version === 1 ? row.event_type : "",
+      entityId: row.entity_id,
+      actorId: row.actor_user_id ?? "",
+      actor:
+        row.actor_user_id === session?.user.id
+          ? c.you
+          : !row.actor_user_id
+            ? c.system
+            : (people.data?.find(
+                (person) => person.user_id === row.actor_user_id,
+              )?.email ?? c.member),
+      target,
+      open:
+        target && row.entity_type === "sketch" && onOpenSketch
+          ? () => onOpenSketch(row.entity_id)
+          : undefined,
+      actionLabel:
+        row.entity_type === "sketch"
+          ? c.openSketch
+          : ["cost", "budget"].includes(row.entity_type)
+            ? c.viewCosts
+            : undefined,
+    };
+  });
   return (
-    <section
-      className={`project-journal${compact ? " project-journal-compact" : ""}`}
-      aria-labelledby={headingId}
-    >
-      <div className="journal-heading">
-        <div>
-          <h2 id={headingId}>{c.title}</h2>
-          {!compact && <p>{c.description}</p>}
-        </div>
-        <div className="journal-toolbar">
-          {!compact && (
-            <div className="journal-filter">
-              <label htmlFor={filterId}>{c.filter}</label>
-              <select
-                id={filterId}
-                className="input"
-                value={category}
-                onChange={(e) =>
-                  setCategory(e.target.value as ActivityCategory)
-                }
-              >
-                {activityCategories
-                  .filter(
-                    (key) => owner || !["costs", "estimates"].includes(key),
-                  )
-                  .map((key) => (
-                    <option key={key} value={key}>
-                      {c[key]}
-                    </option>
-                  ))}
-              </select>
-            </div>
-          )}
-          <Button
-            variant={compact ? "ghost" : "outline"}
-            size={compact ? "icon" : "default"}
-            aria-label={c.refresh}
-            disabled={busy}
-            onClick={() => setReload((n) => n + 1)}
-          >
-            <RefreshCw size={16} aria-hidden="true" />
-            {!compact && c.refresh}
-          </Button>
-        </div>
-      </div>
-      {started && (
-        <p className="journal-since">
-          {c.since} {activityDay(started, locale)}.
-        </p>
-      )}
-      {busy && (
-        <p role="status" className="journal-notice">
-          {c.loading}
-        </p>
-      )}
-      {failed && (
-        <div role="alert" className="journal-notice">
-          <p>{c.error}</p>
-          <Button
-            variant="outline"
-            onClick={() =>
-              rows.length && next ? void older() : setReload((n) => n + 1)
-            }
-          >
-            {c.retry}
-          </Button>
-        </div>
-      )}
-      {!busy && !failed && !rows.length && (
-        <p className="project-empty">
-          {category === "all" ? c.empty : c.emptyFilter}
-        </p>
-      )}
-      {[...groups].map(([day, events]) => (
-        <div className="journal-day" key={day}>
-          <h3>{day}</h3>
-          <ol>
-            {events.map((row) => {
-              const content = activityPresentation(row, locale),
-                target = activityTarget(row);
-              const Icon =
-                row.category === "tasks"
-                  ? ClipboardCheck
-                  : row.category === "costs"
-                    ? Coins
-                    : row.category === "documents" ||
-                        row.category === "estimates"
-                      ? FileText
-                      : row.category === "project"
-                        ? FolderKanban
-                        : History;
-              const actor =
-                row.actor_user_id === session?.user.id
-                  ? c.you
-                  : (people.find((p) => p.user_id === row.actor_user_id)
-                      ?.email ?? c.member);
-              return (
-                <li key={row.id}>
-                  {!compact && (
-                    <time
-                      dateTime={row.occurred_at}
-                      title={new Date(row.occurred_at).toLocaleString(
-                        locale === "fr" ? "fr-BE" : "en-IE",
-                      )}
-                    >
-                      {new Date(row.occurred_at).toLocaleTimeString(
-                        locale === "fr" ? "fr-BE" : "en-IE",
-                        { hour: "2-digit", minute: "2-digit" },
-                      )}
-                    </time>
-                  )}
-                  <span className="journal-icon">
-                    <Icon size={16} aria-hidden="true" />
-                  </span>
-                  <div className="journal-entry">
-                    <p className="journal-action">{content.title}</p>
-                    {content.label && (
-                      <p className="journal-label">{content.label}</p>
-                    )}
-                    {content.detail && (
-                      <p className="journal-detail">{content.detail}</p>
-                    )}
-                    {content.amount && (
-                      <p className="journal-amount">{content.amount}</p>
-                    )}
-                    {!compact && content.changes && (
-                      <p className="journal-detail">{content.changes}</p>
-                    )}
-                    {compact && (
-                      <p className="journal-meta">
-                        <span>{actor}</span>
-                        <span aria-hidden="true"> · </span>
-                        <time
-                          dateTime={row.occurred_at}
-                          title={new Date(row.occurred_at).toLocaleString(
-                            locale === "fr" ? "fr-BE" : "en-IE",
-                          )}
-                        >
-                          {new Date(row.occurred_at).toLocaleTimeString(
-                            locale === "fr" ? "fr-BE" : "en-IE",
-                            { hour: "2-digit", minute: "2-digit" },
-                          )}
-                        </time>
-                      </p>
-                    )}
-                  </div>
-                  {!compact && <span className="journal-actor">{actor}</span>}
-                  {target &&
-                    (row.entity_type === "sketch" && onOpenSketch ? (
-                      <button
-                        type="button"
-                        className="account-link journal-open"
-                        onClick={() => onOpenSketch(row.entity_id)}
-                        aria-label={`${c.open}: ${content.label || content.title}`}
-                      >
-                        {c.open}
-                      </button>
-                    ) : (
-                      <Link
-                        className="account-link journal-open"
-                        to={target}
-                        aria-label={`${c.open}: ${content.label || content.title}`}
-                      >
-                        {c.open}
-                      </Link>
-                    ))}
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      ))}
-      {!compact && next && !failed && (
-        <Button variant="outline" disabled={busy} onClick={() => void older()}>
-          {c.older}
-        </Button>
-      )}
-    </section>
+    <JournalView
+      rows={entries}
+      compact={compact}
+      owner={owner}
+      category={category}
+      setCategory={setCategory}
+      loading={query.isPending && !query.isError}
+      updating={query.isFetching}
+      error={query.isError && !query.isFetchNextPageError}
+      retry={() => void refetch()}
+      more={
+        query.hasNextPage
+          ? () => void query.fetchNextPage({ cancelRefetch: false })
+          : undefined
+      }
+      loadingMore={query.isFetchingNextPage}
+      moreError={query.isFetchNextPageError}
+      footer={
+        tracking.data ? (
+          <span>
+            {c.since} {activityDay(tracking.data, locale)}.
+          </span>
+        ) : tracking.isError ? (
+          <span>
+            {c.trackingError}{" "}
+            <Button
+              variant="ghost"
+              disabled={tracking.isFetching}
+              onClick={() => void tracking.refetch()}
+            >
+              {c.retryTracking}
+            </Button>
+          </span>
+        ) : null
+      }
+    />
   );
 }

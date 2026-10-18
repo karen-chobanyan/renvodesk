@@ -131,7 +131,15 @@ function DemoProjectDetail({ project }: { project: Project }) {
               </div>
             </div>
           )}
-          {active === "activity" && <DemoJournal projectId={project.id} />}
+          {(active === "activity" || visited.has("activity")) && (
+            <div hidden={active !== "activity"}>
+              <DemoJournal
+                projectId={project.id}
+                active={active === "activity"}
+                openSketch={setSketch}
+              />
+            </div>
+          )}
         </section>
         {editing && (
           <ProjectDetailsEditor

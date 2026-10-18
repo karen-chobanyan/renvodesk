@@ -16,6 +16,7 @@ type Entry = [
   actor: string,
   detail?: Text | null,
   amountCents?: number | null,
+  entityId?: string,
 ];
 
 const ixelles: Entry[] = [
@@ -31,6 +32,8 @@ const ixelles: Entry[] = [
       "Remis en main propre lors du rendez-vous.",
       "Handed over at the meeting.",
     ),
+    null,
+    "ixelles-demolition",
   ],
   [
     -26,
@@ -41,6 +44,7 @@ const ixelles: Entry[] = [
     "alex",
     null,
     798000,
+    "ixelles-demolition",
   ],
   [-25, "08:40", "costs", "budget.created", null, "alex", null, 6200000],
   [
@@ -50,6 +54,9 @@ const ixelles: Entry[] = [
     "task.created",
     tx("Démolition de la salle de bains", "Bathroom demolition"),
     "alex",
+    null,
+    null,
+    "task-demolition",
   ],
   [
     -6,
@@ -59,6 +66,8 @@ const ixelles: Entry[] = [
     tx("Démolition de la salle de bains", "Bathroom demolition"),
     "lea",
     tx("Statut : Terminée", "Status: Done"),
+    null,
+    "task-demolition",
   ],
   [
     -5,
@@ -72,6 +81,7 @@ const ixelles: Entry[] = [
     "alex",
     null,
     945000,
+    "cost-electrician",
   ],
   [
     -4,
@@ -80,6 +90,9 @@ const ixelles: Entry[] = [
     "file.added",
     tx("Note-vocale-visite-cuisine.m4a", "Note-vocale-visite-cuisine.m4a"),
     "alex",
+    null,
+    null,
+    "file-voice",
   ],
   [
     -3,
@@ -92,6 +105,8 @@ const ixelles: Entry[] = [
       "Envoyé par e-mail aux clients après la visite.",
       "Emailed to the clients after the visit.",
     ),
+    null,
+    "ixelles-cuisine",
   ],
   [
     -2,
@@ -101,6 +116,8 @@ const ixelles: Entry[] = [
     tx("Cuisine — implantation de l’îlot", "Kitchen — island layout"),
     "alex",
     tx("Révision 3", "Revision 3"),
+    null,
+    "sketch-kitchen",
   ],
   [
     -1,
@@ -111,6 +128,7 @@ const ixelles: Entry[] = [
     "alex",
     null,
     110000,
+    "cost-skip-duplicate",
   ],
   [
     0,
@@ -120,12 +138,17 @@ const ixelles: Entry[] = [
     tx("Pose des cloisons de l’étage", "Install upstairs partitions"),
     "lea",
     tx("Statut : En cours", "Status: In progress"),
+    null,
+    "task-partitions",
   ],
 ];
 
 function build(base: string, projectId: string, entries: Entry[]) {
   return entries.map(
-    ([offset, time, category, event, label, actor, detail, amount], i) => ({
+    (
+      [offset, time, category, event, label, actor, detail, amount, entityId],
+      i,
+    ) => ({
       id: `${projectId}-activity-${i}`,
       projectId,
       at: demoInstant(base, offset, time),
@@ -135,6 +158,7 @@ function build(base: string, projectId: string, entries: Entry[]) {
       detail: detail ?? null,
       amountCents: amount ?? null,
       actor,
+      entityId,
     }),
   );
 }

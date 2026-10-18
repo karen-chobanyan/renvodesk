@@ -196,7 +196,7 @@ export function DemoOverview({
         </Preview>
       </div>
       <aside className="project-context">
-        <DemoJournal projectId={projectId} compact />
+        <DemoJournal projectId={projectId} compact openSketch={openSketch} />
         <Link className="account-link" to="?tab=activity">
           {d.activity}
         </Link>

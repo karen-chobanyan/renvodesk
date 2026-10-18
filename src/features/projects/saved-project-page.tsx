@@ -220,15 +220,18 @@ function ProjectDetail({
               tabIndex={-1}
               aria-label={l[active]}
             >
-              {active === "activity" && (
-                <ProjectJournal
-                  key={`${sketchRefresh}:${overviewRefresh}:${taskRefresh}`}
-                  org={organizationId}
-                  project={id}
-                  owner={owner}
-                  revision={project.revision}
-                  onOpenSketch={setSketchId}
-                />
+              {(active === "activity" || visited.has("activity")) && (
+                <div hidden={active !== "activity"}>
+                  <ProjectJournal
+                    active={active === "activity"}
+                    refreshKey={`${sketchRefresh}:${overviewRefresh}:${taskRefresh}`}
+                    org={organizationId}
+                    project={id}
+                    owner={owner}
+                    revision={project.revision}
+                    onOpenSketch={setSketchId}
+                  />
+                </div>
               )}
               {(visited.has("overview") || active === "overview") && (
                 <div hidden={active !== "overview"}>

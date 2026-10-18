@@ -44,6 +44,7 @@ type ActivityInput = {
   label: Text | null;
   detail?: Text | null;
   amountCents?: number | null;
+  entityId?: string;
 };
 
 function useDemoState() {
@@ -86,6 +87,7 @@ function useDemoState() {
         projectId: task.projectId,
         category: "tasks",
         event: created ? "task.created" : "task.updated",
+        entityId: task.id,
         label: task.title,
       });
     },
@@ -98,6 +100,7 @@ function useDemoState() {
         projectId: task.projectId,
         category: "tasks",
         event: "task.deleted",
+        entityId: task.id,
         label: task.title,
       });
     },
@@ -119,6 +122,7 @@ function useDemoState() {
             ? "cost.created"
             : "cost.updated",
         label: cost.description,
+        entityId: cost.id,
         amountCents: cost.amountCents,
       });
     },
@@ -154,6 +158,7 @@ function useDemoState() {
         projectId,
         category: "estimates",
         event: "estimate.created",
+        entityId: id,
         label: estimate.title,
       });
       return id;
@@ -175,6 +180,7 @@ function useDemoState() {
         projectId: estimate.projectId,
         category: "estimates",
         event: "estimate.updated",
+        entityId: estimate.id,
         label: title,
       });
       return next;
@@ -204,6 +210,7 @@ function useDemoState() {
         projectId: estimate.projectId,
         category: "estimates",
         event: `estimate.${status}`,
+        entityId: estimate.id,
         label: estimate.title,
         detail: tx(note, note),
       });

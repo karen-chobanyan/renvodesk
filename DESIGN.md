@@ -171,11 +171,25 @@ and errors local so one failed request does not remove project context or naviga
 
 The live project overview uses its right-hand column for the journal. Client/site
 details, status and editing stay in the header; the sidebar does not repeat them.
-Five recent entries use small domain icons, an action label,
-optional record label/status/amount and author/time metadata, grouped by local day.
-The Activity tab uses the same rows at a readable maximum width with a labeled
-category select, explicit Refresh and Load older activity. Financial filters and
-rows are owner-only. Use existing semantic tokens and exact tabular cent formatting.
+Three recent entries use small domain icons, a prominent record label,
+action/status/amount and adjacent author/time metadata, grouped by local day.
+The Activity tab shares its row presentation with the overview and fictional demo.
+Use a compact 20px section heading, a labeled category select, scoped loaded-event
+count and Show all activity reset. Put the history-start date quietly below the
+feed. Financial filters and rows are owner-only; keep exact tabular cent formatting.
+
+Refresh automatically on tab/window return and relevant writes. Keep filters,
+loaded pages and reading position when visiting other project tabs. Preserve
+existing rows on read errors and distinguish initial, refresh, older-page and
+history-start failures. Older-page retry stays beside pagination. Empty filtered
+views explain the reset; an empty journal explains that saved changes appear here.
+
+Task/file actions focus specific records. Sketch actions say Open sketch because
+they open the current sketch rather than the event's historical revision. Group
+only consecutive visible saves to one sketch by the same actor, within five-minute
+gaps and the same local day. A keyboard-accessible disclosure exposes every event;
+its count explicitly refers to loaded events. Omit duplicate Changed: status text
+when the row already displays the complete status transition.
 
 On narrow screens the context/journal stacks below overview content; the Activity
 tab provides direct access without a second sidebar. Links and controls have 44px
@@ -224,11 +238,10 @@ owners to the existing controls and explain read-only access to members. Demo
 views share the layout while clearly explaining unavailable upload, capture and
 sketch-creation operations.
 
-The full Activity journal spans the project content width. Its 24px heading aligns
-with the category filter and labeled Refresh action. Day headings have fine rules;
-desktop rows align time, domain icon, event detail, actor and Open action. Narrow
-layouts stack metadata while retaining an adjacent action and 44px mobile targets.
-The overview retains its compact feed. Reduced-motion disables row transitions.
+The full Activity journal uses the shared project header and section bounds.
+Day headings have fine rules; event rows have a readable maximum width and keep
+author/time beside the event details. Narrow layouts put the action below the
+details with 44px targets. The overview retains its compact three-entry feed.
 
 ## PDF reading workspace
 

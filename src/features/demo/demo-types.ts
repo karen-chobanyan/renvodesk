@@ -92,6 +92,7 @@ export type DemoActivity = {
   detail: Text | null;
   amountCents: number | null;
   actor: string;
+  entityId?: string;
 };
 
 export type DemoProperty = {

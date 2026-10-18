@@ -1,153 +1,109 @@
-import {
-  ClipboardCheck,
-  Coins,
-  FileText,
-  FolderKanban,
-  History,
-} from "lucide-react";
-import { useId, useState } from "react";
+import { useState } from "react";
 import { activityCopy } from "@/features/activity/activity-copy";
-import { activityDay } from "@/features/activity/activity-model";
+import type { ActivityCategory } from "@/features/activity/activity-model";
+import {
+  type JournalEntry,
+  JournalView,
+  useJournalPosition,
+} from "@/features/activity/journal-view";
 import { exactMoney } from "@/features/costs/cost-model";
 import { useDemo } from "@/lib/demo-store";
 import { useLocale } from "@/lib/i18n";
 import { DEMO_USER } from "./demo-directory";
-import {
-  type DemoActivity,
-  type DemoActivityCategory,
-  say,
-} from "./demo-types";
-
-const icons = {
-  tasks: ClipboardCheck,
-  costs: Coins,
-  documents: FileText,
-  estimates: FileText,
-  project: FolderKanban,
-} satisfies Record<DemoActivityCategory, typeof History>;
-const categories = [
-  "all",
-  "project",
-  "tasks",
-  "documents",
-  "estimates",
-  "costs",
-] as const;
+import { type DemoSketch, say } from "./demo-types";
 
 export function DemoJournal({
   projectId,
   compact = false,
+  active = true,
+  openSketch,
 }: {
   projectId: string;
   compact?: boolean;
+  active?: boolean;
+  openSketch?: (sketch: DemoSketch) => void;
 }) {
   const { locale } = useLocale(),
     c = activityCopy[locale];
-  const { activity, members } = useDemo();
-  const [category, setCategory] = useState<(typeof categories)[number]>("all");
-  const headingId = useId(),
-    filterId = useId();
-  const rows = activity
+  const { activity, members, projects, tasks, files, estimates, sketches } =
+    useDemo();
+  const [category, setCategory] = useState<ActivityCategory>("all");
+  useJournalPosition(active && !compact);
+  const base = `/projects/${projectId}`;
+  const rows: JournalEntry[] = activity
     .filter((row) => row.projectId === projectId)
     .filter((row) => category === "all" || row.category === category)
-    .slice(0, compact ? 3 : undefined);
-  const groups = new Map<string, DemoActivity[]>();
-  for (const row of rows) {
-    const day = activityDay(row.at, locale);
-    groups.set(day, [...(groups.get(day) ?? []), row]);
-  }
-  const time = (at: string) =>
-    new Date(at).toLocaleTimeString(locale === "fr" ? "fr-BE" : "en-IE", {
-      hour: "2-digit",
-      minute: "2-digit",
+    .slice(0, compact ? 3 : undefined)
+    .map((row) => {
+      const known = Object.hasOwn(c.events, row.event),
+        deleted = row.event.endsWith(".deleted");
+      const kind = row.event.split(".")[0];
+      const sketch = sketches.find(
+        (s) => s.projectId === projectId && s.id === row.entityId,
+      );
+      let target: string | undefined;
+      if (known && !deleted) {
+        if (kind === "project") target = `${base}?tab=overview`;
+        else if (
+          kind === "task" &&
+          tasks.some((t) => t.projectId === projectId && t.id === row.entityId)
+        )
+          target = `${base}?tab=tasks&task=${row.entityId}`;
+        else if (
+          kind === "file" &&
+          files.some((f) => f.projectId === projectId && f.id === row.entityId)
+        )
+          target = `${base}?tab=documents&file=${row.entityId}`;
+        else if (
+          kind === "estimate" &&
+          estimates.some(
+            (e) => e.projectId === projectId && e.id === row.entityId,
+          )
+        )
+          target = `/estimates/${row.entityId}`;
+        else if (["cost", "budget"].includes(kind))
+          target = `${base}?tab=budget`;
+        else if (kind === "sketch" && sketch) target = `${base}?tab=documents`;
+      }
+      return {
+        id: row.id,
+        at: row.at,
+        event: row.event,
+        entityId: row.entityId,
+        category: row.category,
+        actorId: row.actor,
+        actor:
+          row.actor === DEMO_USER
+            ? c.you
+            : (members.find((m) => m.id === row.actor)?.name ?? c.member),
+        title: known ? c.events[row.event as keyof typeof c.events] : c.unknown,
+        label: row.label
+          ? say(row.label, locale)
+          : kind === "project"
+            ? (projects.find((p) => p.id === projectId)?.name ?? "")
+            : "",
+        detail: row.detail ? say(row.detail, locale) : "",
+        amount:
+          row.amountCents !== null
+            ? `${exactMoney(BigInt(row.amountCents), locale)} · ${c.tax}`
+            : "",
+        target,
+        open:
+          target && sketch && openSketch ? () => openSketch(sketch) : undefined,
+        actionLabel:
+          kind === "sketch"
+            ? c.openSketch
+            : ["cost", "budget"].includes(kind)
+              ? c.viewCosts
+              : undefined,
+      };
     });
-  const actor = (id: string) =>
-    id === DEMO_USER
-      ? c.you
-      : (members.find((m) => m.id === id)?.name ?? c.member);
   return (
-    <section
-      className={`project-journal${compact ? " project-journal-compact" : ""}`}
-      aria-labelledby={headingId}
-    >
-      <div className="journal-heading">
-        <div>
-          <h2 id={headingId}>{c.title}</h2>
-          {!compact && <p>{c.description}</p>}
-        </div>
-        {!compact && (
-          <div className="journal-toolbar">
-            <div className="journal-filter">
-              <label htmlFor={filterId}>{c.filter}</label>
-              <select
-                id={filterId}
-                className="input"
-                value={category}
-                onChange={(e) =>
-                  setCategory(e.target.value as (typeof categories)[number])
-                }
-              >
-                {categories.map((key) => (
-                  <option key={key} value={key}>
-                    {c[key]}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-      </div>
-      {!rows.length && (
-        <p className="project-empty">
-          {category === "all" ? c.empty : c.emptyFilter}
-        </p>
-      )}
-      {[...groups].map(([day, events]) => (
-        <div className="journal-day" key={day}>
-          <h3>{day}</h3>
-          <ol>
-            {events.map((row) => {
-              const Icon = icons[row.category] ?? History;
-              const title =
-                c.events[row.event as keyof typeof c.events] ?? c.unknown;
-              return (
-                <li key={row.id}>
-                  {!compact && <time dateTime={row.at}>{time(row.at)}</time>}
-                  <span className="journal-icon">
-                    <Icon size={16} aria-hidden="true" />
-                  </span>
-                  <div className="journal-entry">
-                    <p className="journal-action">{title}</p>
-                    {row.label && (
-                      <p className="journal-label">{say(row.label, locale)}</p>
-                    )}
-                    {row.detail && (
-                      <p className="journal-detail">
-                        {say(row.detail, locale)}
-                      </p>
-                    )}
-                    {row.amountCents !== null && (
-                      <p className="journal-amount">
-                        {exactMoney(BigInt(row.amountCents), locale)} · {c.tax}
-                      </p>
-                    )}
-                    {compact && (
-                      <p className="journal-meta">
-                        <span>{actor(row.actor)}</span>
-                        <span aria-hidden="true"> · </span>
-                        <time dateTime={row.at}>{time(row.at)}</time>
-                      </p>
-                    )}
-                  </div>
-                  {!compact && (
-                    <span className="journal-actor">{actor(row.actor)}</span>
-                  )}
-                </li>
-              );
-            })}
-          </ol>
-        </div>
-      ))}
-    </section>
+    <JournalView
+      rows={rows}
+      compact={compact}
+      category={category}
+      setCategory={setCategory}
+    />
   );
 }

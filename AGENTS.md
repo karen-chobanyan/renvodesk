@@ -559,9 +559,14 @@ Meaningful null-auth maintenance writes fail until a specific internal path exis
 real document deletion from cancellation of a pending upload. Keep that provenance
 when updating file lifecycle logic. Tracking starts at the server-owned
 `project_activity_tracking` marker; do not fabricate pre-rollout history. Activity
-remounts on entry and refreshes on project revision changes; other visited working
-panels retain their forms. No Realtime, manual notes, autosave grouping or email
-digests. See decision 015 and `supabase/tests/project_activity.sql`.
+retains filters, loaded pages and reading position between project tabs. Session,
+company, project and role-scoped queries refresh on return, window focus and relevant
+writes, retaining cached events on failure. Tracking metadata and actors load
+independently. Consecutive visible sketch saves by one actor within five-minute
+gaps on the same local day form expandable groups; every stored event remains
+accessible and the group count refers only to loaded events. Task/file actions
+focus the exact record; sketch actions open the current sketch. No Realtime,
+manual notes or email digests. See decision 015 and `supabase/tests/project_activity.sql`.
 
 Live navigation sidebar is limited to brand/company, primary business routes and
 account controls. Explore demo is inside the account disclosure. Cookie settings

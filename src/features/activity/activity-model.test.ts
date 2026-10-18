@@ -4,6 +4,7 @@ import {
   type Activity,
   activityPresentation,
   activityTarget,
+  groupSketchActivity,
   validCursor,
 } from "./activity-model";
 
@@ -42,9 +43,7 @@ describe("activity presentation", () => {
         .title,
     ).toBe("Estimate acceptance recorded");
     expect(activityPresentation(row, "fr").detail).toBe("À faire → Terminée");
-    expect(activityPresentation(row, "en").changes).toBe(
-      "Changed: status, notes",
-    );
+    expect(activityPresentation(row, "en").changes).toBe("Changed: notes");
   });
   it("formats cents without floating point even above the safe integer limit", () => {
     const input = { ...row, payload: { amount_cents: "9007199254740993" } };
@@ -86,9 +85,14 @@ describe("activity presentation", () => {
       ).changes,
     ).toBe("");
   });
-  it("does not link deleted records and opens task history through the stable tab", () => {
+  it("focuses exact records and never links deleted or unknown events", () => {
     expect(activityTarget(row)).toBe(
-      `/workspace/${row.organization_id}/projects/${row.project_id}?tab=tasks`,
+      `/workspace/${row.organization_id}/projects/${row.project_id}?tab=tasks&task=${row.entity_id}`,
+    );
+    expect(
+      activityTarget({ ...row, entity_type: "file", event_type: "file.added" }),
+    ).toBe(
+      `/workspace/${row.organization_id}/projects/${row.project_id}?tab=documents&file=${row.entity_id}`,
     );
     expect(activityTarget({ ...row, event_type: "task.deleted" })).toBeNull();
     expect(
@@ -98,6 +102,72 @@ describe("activity presentation", () => {
         event_type: "file.deleted",
       }),
     ).toBeNull();
+  });
+  it("omits only redundant status fields, preserving changes without a full transition", () => {
+    expect(
+      activityPresentation(
+        {
+          ...row,
+          payload: {
+            from_status: "todo",
+            to_status: "done",
+            changed_fields: ["status"],
+          },
+        },
+        "en",
+      ).changes,
+    ).toBe("");
+    expect(
+      activityPresentation(
+        { ...row, payload: { to_status: "done", changed_fields: ["status"] } },
+        "en",
+      ).changes,
+    ).toBe("Changed: status");
+  });
+  it("groups only adjacent same-sketch saves by one actor within a local day and five minute gap", () => {
+    const make = (id: string, at: string, extra = {}) => ({
+      id,
+      at,
+      event: "sketch.published",
+      entityId: "sketch-a",
+      actorId: "actor-a",
+      ...extra,
+    });
+    const input = [
+      make("1", "2026-10-18T12:03:00Z"),
+      make("2", "2026-10-18T12:02:00Z"),
+      make("3", "2026-10-18T12:01:00Z", { event: "task.updated" }),
+      make("4", "2026-10-18T12:00:00Z"),
+      make("5", "2026-10-18T11:59:00Z", { actorId: "actor-b" }),
+      make("6", "2026-10-18T11:58:00Z", {
+        entityId: "sketch-b",
+        actorId: "actor-b",
+      }),
+      make("7", "2026-10-18T11:52:00Z", {
+        entityId: "sketch-b",
+        actorId: "actor-b",
+      }),
+    ];
+    const groups = groupSketchActivity(input, "en");
+    expect(groups.map((group) => group.map((entry) => entry.id))).toEqual([
+      ["1", "2"],
+      ["3"],
+      ["4"],
+      ["5"],
+      ["6"],
+      ["7"],
+    ]);
+    expect(groups.flat()).toEqual(input);
+    const midnight = new Date(2026, 9, 18).getTime();
+    expect(
+      groupSketchActivity(
+        [
+          make("1", new Date(midnight + 60000).toISOString()),
+          make("2", new Date(midnight - 60000).toISOString()),
+        ],
+        "fr",
+      ),
+    ).toHaveLength(2);
   });
   it("preserves Postgres timestamp precision while rejecting filter injection", () => {
     expect(validCursor(row)).toBe(true);
