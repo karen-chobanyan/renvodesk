@@ -1,14 +1,17 @@
 import { Plus } from "lucide-react";
-import { type FormEvent, type ReactNode, useState } from "react";
+import { type FormEvent, useState } from "react";
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  ScheduleEmpty,
+  ScheduleWeek,
+  TaskDates,
+} from "@/features/tasks/schedule-layout";
 import { taskCopy } from "@/features/tasks/task-copy";
 import {
   addDays,
-  dateLabel,
-  onDay,
   overdue,
   statuses,
   type TaskInput,
@@ -64,9 +67,11 @@ export function useAssigneeName() {
 export function DemoTaskPanel({
   projectId,
   filter = {},
+  onClearMine,
 }: {
   projectId?: string;
   filter?: DemoTaskFilter;
+  onClearMine?: () => void;
 }) {
   const { locale } = useLocale(),
     c = taskCopy[locale],
@@ -93,7 +98,18 @@ export function DemoTaskPanel({
         key={row.id}
       >
         <div className="task-content">
-          <strong>{say(row.title, locale)}</strong>
+          <strong>
+            {projectId ? (
+              say(row.title, locale)
+            ) : (
+              <Link
+                className="task-title-link"
+                to={`/projects/${row.projectId}?tab=tasks`}
+              >
+                {say(row.title, locale)}
+              </Link>
+            )}
+          </strong>
           {!projectId && (
             <Link
               className="account-link"
@@ -108,12 +124,7 @@ export function DemoTaskPanel({
           {!compactWeek && row.notes && (
             <p className="task-notes">{say(row.notes, locale)}</p>
           )}
-          {!compactWeek && (
-            <small>
-              {row.start ? dateLabel(row.start, locale) : c.noDate} →{" "}
-              {row.due ? dateLabel(row.due, locale) : c.noDate}
-            </small>
-          )}
+          {!compactWeek && <TaskDates start={row.start} due={row.due} />}
         </div>
         <div className="task-actions">
           <span className={`status task-status-${row.status}`}>
@@ -172,13 +183,33 @@ export function DemoTaskPanel({
           close={() => setEditing(null)}
         />
       )}
-      {rows.length === 0 && filter.mode !== "week" && (
-        <p className="workspace-loading">{c.empty}</p>
-      )}
       {filter.mode === "week" && filter.start ? (
-        <WeekGrid start={filter.start} day={day} rows={rows} item={taskItem} />
+        <ScheduleWeek
+          start={filter.start}
+          day={day}
+          rows={rows.map((row) => ({
+            ...row,
+            start_date: row.start,
+            due_date: row.due,
+          }))}
+          item={taskItem}
+        />
       ) : (
         <div className="task-list">{rows.map(taskItem)}</div>
+      )}
+      {rows.length === 0 &&
+        (!projectId && filter.mode ? (
+          <ScheduleEmpty
+            mode={filter.mode}
+            mine={!!filter.mine}
+            projectsHref="/projects"
+            onClearMine={onClearMine}
+          />
+        ) : (
+          <p className="workspace-loading">{c.empty}</p>
+        ))}
+      {compactWeek && rows.length > 0 && (
+        <p className="helper-text">{c.multiDayHint}</p>
       )}
       {rows.length > 0 && (
         <p className="helper-text">
@@ -213,60 +244,6 @@ export function DemoTaskPanel({
         </DialogContent>
       </Dialog>
     </section>
-  );
-}
-
-function WeekGrid({
-  start,
-  day,
-  rows,
-  item,
-}: {
-  start: string;
-  day: string;
-  rows: DemoTask[];
-  item: (row: DemoTask) => ReactNode;
-}) {
-  const { locale } = useLocale(),
-    c = taskCopy[locale];
-  const format = (date: string, options: Intl.DateTimeFormatOptions) =>
-    new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" }).format(
-      new Date(`${date}T12:00:00Z`),
-    );
-  return (
-    <div className="week-grid">
-      {Array.from({ length: 7 }, (_, i) => addDays(start, i)).map((date) => {
-        const dayRows = rows.filter((row) =>
-          onDay({ start_date: row.start, due_date: row.due }, date),
-        );
-        return (
-          <section
-            key={date}
-            className={date === day ? "week-day is-today" : "week-day"}
-          >
-            <h3 className="calendar-day-heading">
-              <time
-                dateTime={date}
-                aria-current={date === day ? "date" : undefined}
-              >
-                <span>{format(date, { weekday: "short" })}</span>
-                <strong>{date.slice(8).replace(/^0/, "")}</strong>
-                <small>{format(date, { month: "short" })}</small>
-                {date === day && (
-                  <em className="calendar-today-label">{c.currentDay}</em>
-                )}
-              </time>
-            </h3>
-            {dayRows.length === 0 && (
-              <p className="calendar-day-empty">
-                {locale === "fr" ? "Rien de prévu" : "Nothing scheduled"}
-              </p>
-            )}
-            {dayRows.map(item)}
-          </section>
-        );
-      })}
-    </div>
   );
 }
 

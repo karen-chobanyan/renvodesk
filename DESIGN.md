@@ -68,11 +68,19 @@ Saved project overview now mirrors the demo detail composition: real project hea
 
 Tasks use flat rows with text status badges, dates, notes and an explicit overdue
 label. Editing uses existing form controls; deletion uses the shared confirmation
-modal. The weekly schedule is a light, ruled planning board: seven columns on
-desktop, two on narrower desktop, and a stacked daily agenda on phones. Compact
-weekly cards show title, project, assignee and status; the overdue and undated lists
-retain full details. Today has a labeled red rule, so color is not its only cue.
-Company identity remains visible and task cards link back to saved projects.
+modal. Live and demo schedules share a compact register header, week/overdue/undated
+filters, and labeled arrow navigation with a localized compact date range. Task
+titles and project names link to the project's Tasks panel. Creation/editing stay
+in that panel. Single-day dates appear once; one-sided dates retain start/due
+labels, and undated tasks show one clear label.
+
+The week uses seven columns on wide desktops and a chronological daily agenda
+below 1250px, avoiding a two-column calendar that breaks week scanning. Empty days
+are compact on phones. Empty weeks retain all seven days, with one compact contextual message and a project link below the calendar;
+empty personal views offer to clear the assignment filter. Today uses a labeled sage
+accent; red is reserved for overdue work. Existing status badges, surface/border
+and spacing tokens match Projects and Clients. Counts describe loaded tasks, not
+company totals, and multi-day repetition is explained below populated weeks.
 French and English are complete. Task previews in the register are replaced by live
 schedule links.
 

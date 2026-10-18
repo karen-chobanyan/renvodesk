@@ -1375,7 +1375,8 @@ test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
     projects: { name: string };
   }> = [];
   let lose = true,
-    conflict = true;
+    conflict = true,
+    failSchedule = false;
   await page.route("**/rest/v1/project_tasks**", async (route) => {
     const url = new URL(route.request().url()),
       method = route.request().method();
@@ -1421,6 +1422,10 @@ test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
       if (!row) throw new Error("Missing delete fixture");
       tasks.splice(tasks.indexOf(row), 1);
       await route.fulfill({ json: [{ id: taskId }] });
+      return;
+    }
+    if (failSchedule && url.searchParams.has("or")) {
+      await route.fulfill({ status: 400, json: { message: "Unavailable" } });
       return;
     }
     let result = taskId ? tasks.filter((t) => t.id === taskId) : tasks;
@@ -1513,14 +1518,42 @@ test("tasks save, recover, schedule, conflict and delete", async ({ page }) => {
     .getByRole("button", { name: "Semaine suivante", exact: true })
     .click();
   await expect(page.locator(".week-grid .task-row")).toHaveCount(0);
+  await expect(page.locator(".week-day")).toHaveCount(7);
+  await expect(
+    page.getByRole("heading", { name: "Aucune tâche cette semaine" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Voir les projets" }),
+  ).toBeVisible();
+  failSchedule = true;
   await page
     .getByRole("button", { name: "Semaine précédente", exact: true })
     .click();
+  await expect(page.getByRole("alert")).toContainText(
+    "Impossible de charger les tâches",
+  );
+  failSchedule = false;
+  await page.getByRole("button", { name: "Réessayer", exact: true }).click();
   await expect(page.locator(".week-grid .task-row")).toHaveCount(3);
+  const taskLink = page
+    .getByRole("link", { name: "Préparer le chantier", exact: true })
+    .first();
+  await taskLink.focus();
+  await expect(taskLink).toBeFocused();
+  await taskLink.press("Enter");
+  await expect(page).toHaveURL(/\?tab=tasks$/);
+  await expect(
+    panel.getByRole("button", { name: "Modifier", exact: true }),
+  ).toBeVisible();
+  await page.goBack();
   await page.getByRole("button", { name: "En retard", exact: true }).click();
-  await expect(page.getByText("Aucune tâche à afficher.")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Aucune tâche en retard" }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Sans date", exact: true }).click();
-  await expect(page.getByText("Aucune tâche à afficher.")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Aucune tâche sans date" }),
+  ).toBeVisible();
   await page.goto(projectUrl);
   await panel.getByRole("button", { name: "Modifier", exact: true }).click();
   await panel.getByLabel("Date de début").fill("");

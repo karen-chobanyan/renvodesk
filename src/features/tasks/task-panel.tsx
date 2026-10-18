@@ -9,11 +9,9 @@ import { useCompanyAccess } from "@/features/team/company-access";
 import { teamCopy } from "@/features/team/team-copy";
 import { listTeam, type TeamMember } from "@/features/team/team-service";
 import { useLocale } from "@/lib/i18n";
+import { ScheduleEmpty, ScheduleWeek, TaskDates } from "./schedule-layout";
 import { taskCopy } from "./task-copy";
 import {
-  addDays,
-  dateLabel,
-  onDay,
   overdue,
   statuses,
   type TaskInput,
@@ -35,11 +33,13 @@ export function TaskPanel({
   project,
   filter = {},
   refreshKey = 0,
+  onClearAssignee,
 }: {
   org: string;
   project?: string;
   filter?: TaskFilter;
   refreshKey?: number;
+  onClearAssignee?: () => void;
 }) {
   const { locale } = useLocale(),
     c = taskCopy[locale];
@@ -136,11 +136,22 @@ export function TaskPanel({
         key={row.id}
       >
         <div className="task-content">
-          <strong>{row.title}</strong>
+          <strong>
+            {project ? (
+              row.title
+            ) : (
+              <Link
+                className="task-title-link"
+                to={`/workspace/${org}/projects/${row.project_id}?tab=tasks`}
+              >
+                {row.title}
+              </Link>
+            )}
+          </strong>
           {!project && (
             <Link
               className="account-link"
-              to={`/workspace/${org}/projects/${row.project_id}#project-tasks`}
+              to={`/workspace/${org}/projects/${row.project_id}?tab=tasks`}
             >
               {row.projects?.name ?? c.project}
             </Link>
@@ -156,10 +167,7 @@ export function TaskPanel({
             <p className="task-notes">{row.notes}</p>
           )}
           {!compactWeek && (
-            <small>
-              {row.start_date ? dateLabel(row.start_date, locale) : c.noDate} →{" "}
-              {row.due_date ? dateLabel(row.due_date, locale) : c.noDate}
-            </small>
+            <TaskDates start={row.start_date} due={row.due_date} />
           )}
         </div>
         <div className="task-actions">
@@ -251,61 +259,31 @@ export function TaskPanel({
         </div>
       ) : (
         <>
-          {!loading && rows.length === 0 && mode !== "week" && (
-            <p className="workspace-loading">{c.empty}</p>
-          )}
           {mode === "week" && start ? (
-            <div className="week-grid">
-              {Array.from({ length: 7 }, (_, i) => addDays(start, i)).map(
-                (date) => {
-                  const dayRows = rows.filter((row) => onDay(row, date));
-                  return (
-                    <section
-                      key={date}
-                      className={
-                        date === day ? "week-day is-today" : "week-day"
-                      }
-                    >
-                      <h3 className="calendar-day-heading">
-                        <time
-                          dateTime={date}
-                          aria-current={date === day ? "date" : undefined}
-                        >
-                          <span>
-                            {new Intl.DateTimeFormat(locale, {
-                              weekday: "short",
-                              timeZone: "UTC",
-                            }).format(new Date(`${date}T12:00:00Z`))}
-                          </span>
-                          <strong>{date.slice(8).replace(/^0/, "")}</strong>
-                          <small>
-                            {new Intl.DateTimeFormat(locale, {
-                              month: "short",
-                              timeZone: "UTC",
-                            }).format(new Date(`${date}T12:00:00Z`))}
-                          </small>
-                          {date === day && (
-                            <em className="calendar-today-label">
-                              {c.currentDay}
-                            </em>
-                          )}
-                        </time>
-                      </h3>
-                      {!loading && dayRows.length === 0 && (
-                        <p className="calendar-day-empty">
-                          {locale === "fr"
-                            ? "Rien de prévu"
-                            : "Nothing scheduled"}
-                        </p>
-                      )}
-                      {dayRows.map(taskItem)}
-                    </section>
-                  );
-                },
-              )}
-            </div>
+            <ScheduleWeek
+              start={start}
+              day={day}
+              rows={rows}
+              loading={loading}
+              item={taskItem}
+            />
           ) : (
             <div className="task-list">{rows.map(taskItem)}</div>
+          )}
+          {!loading &&
+            rows.length === 0 &&
+            (!project && mode ? (
+              <ScheduleEmpty
+                mode={mode}
+                mine={!!assignee}
+                projectsHref={`/workspace?company=${org}`}
+                onClearMine={onClearAssignee}
+              />
+            ) : (
+              <p className="workspace-loading">{c.empty}</p>
+            ))}
+          {compactWeek && rows.length > 0 && (
+            <p className="helper-text">{c.multiDayHint}</p>
           )}
           {more && (
             <Button variant="outline" disabled={loading} onClick={loadMore}>

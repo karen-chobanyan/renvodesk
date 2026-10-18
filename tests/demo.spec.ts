@@ -88,6 +88,80 @@ test("a demo task created on a project appears in the schedule", async ({
   await expect(page.getByText("Tâche créée").first()).toBeVisible();
 });
 
+test("schedule navigation, empty views and task links work in both languages", async ({
+  page,
+}) => {
+  await page.clock.setFixedTime(new Date("2026-10-18T12:00:00Z"));
+  await open(page, "/schedule");
+  const schedule = page.locator(".schedule-workspace");
+  await expect(
+    schedule.getByRole("heading", { name: "Planning", exact: true }),
+  ).toBeVisible();
+  await expect(
+    schedule.getByRole("link", { name: "Retour aux projets" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Cette semaine", exact: true }),
+  ).toBeDisabled();
+  await expect(page.locator(".week-day")).toHaveCount(7);
+  await expect(page.locator("time[aria-current=date]")).toContainText(
+    "Aujourd’hui",
+  );
+  expect(
+    await schedule.evaluate((el) => el.scrollWidth <= el.clientWidth),
+  ).toBe(true);
+  // Native buttons remain keyboard-operable even though the arrows have no visible text.
+  const next = page.getByRole("button", {
+    name: "Semaine suivante",
+    exact: true,
+  });
+  await next.focus();
+  await next.press("Enter");
+  await next.press("Enter");
+  await expect(
+    page.getByRole("heading", { name: "Aucune tâche cette semaine" }),
+  ).toBeVisible();
+  await expect(page.locator(".week-day")).toHaveCount(7);
+  await expect(page.locator(".week-grid .task-row")).toHaveCount(0);
+  await expect(page.locator(".calendar-day-empty")).toHaveCount(0);
+  await page.getByLabel("Mes tâches uniquement").check();
+  await expect(
+    page.getByRole("heading", {
+      name: "Aucune tâche ne vous est attribuée dans cette vue.",
+    }),
+  ).toBeVisible();
+  await expect(page.locator(".week-day")).toHaveCount(7);
+  await page
+    .getByRole("button", { name: "Afficher toutes les tâches" })
+    .click();
+  await expect(page.getByLabel("Mes tâches uniquement")).not.toBeChecked();
+  await expect(page.getByLabel("Mes tâches uniquement")).toBeFocused();
+  await page
+    .getByRole("button", { name: "Cette semaine", exact: true })
+    .click();
+  await expect(page.locator(".week-day")).toHaveCount(7);
+  await page.getByRole("button", { name: "Sans date", exact: true }).click();
+  await expect(
+    page.locator(".task-row").first().locator(".task-dates"),
+  ).toHaveText("Sans date");
+  await page
+    .getByRole("combobox", { name: "Langue", exact: true })
+    .selectOption("en");
+  await expect(
+    page.locator(".task-row").first().locator(".task-dates"),
+  ).toHaveText("No dates");
+  const task = page.locator(".task-title-link").first();
+  await task.focus();
+  await task.press("Enter");
+  await expect(page).toHaveURL(/\/projects\/[^?]+\?tab=tasks$/);
+  await expect(
+    page.getByRole("region", { name: "Project tasks", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Edit", exact: true }).first(),
+  ).toBeVisible();
+});
+
 test("demo costs update totals and voided costs are excluded", async ({
   page,
 }) => {
