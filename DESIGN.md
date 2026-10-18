@@ -104,10 +104,22 @@ produce project totals. No automatic changes to draft estimates or project revis
 
 ## Client directory
 
-Reuse the workspace shell and flat task rows. Client selection reveals a property
-column on desktop; stack it below the list on mobile. Editors are inline and reuse
-project fields. The project creation picker is optional and clearly explains copied
-details. Preserve manual entry and display retry/conflict states in context.
+The directory shares Projects’ compact header, bordered search control and flat
+register styling. Search is explicitly submitted; the adjacent reset clears text,
+applied search and type, with a notice when typed text has not yet been applied.
+Counts describe loaded clients, not company-wide totals. Desktop rows group contact
+links; phone rows retain name, type, email, phone and Edit without sideways scrolling.
+
+Client editing uses a focused dialog with name/type first, paired contact fields and
+full-width billing address. Focus returns to the trigger; dirty dismissal requires
+confirmation and saving blocks dismissal. Server errors and revision conflicts keep
+fields in place. Successful saves clear filters to avoid leaving an excluding
+filter active; the directory still uses its existing alphabetical pagination.
+
+Selecting a client opens the existing properties drawer. Show client identity once,
+then contact/billing details, then properties. Property editing remains inline and
+focuses its first field. Live and fictional directories share presentation components
+without sharing services or records. The project creation picker remains separate.
 
 ## Team and role-aware workspace
 

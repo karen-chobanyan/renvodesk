@@ -1,11 +1,9 @@
 import * as Dialog from "@radix-ui/react-dialog";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
-import { Search } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "react-router";
-import { PageHeader } from "@/components/shared";
+import { useParams } from "react-router";
+import { EmptyState } from "@/components/shared";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/features/auth/auth-provider";
 import {
   useWorkspaceRouteState,
@@ -13,6 +11,13 @@ import {
 } from "@/features/organizations/workspace-context";
 import { useLocale } from "@/lib/i18n";
 import { clientCopy } from "./client-copy";
+import {
+  ClientContactDetails,
+  ClientEditorDialog,
+  ClientRegisterHeader,
+  ClientRegisterSearch,
+  ClientRegisterTable,
+} from "./client-register";
 import {
   type Client,
   listClients,
@@ -30,6 +35,8 @@ function ClientDirectory({ org }: { org: string }) {
   const { session } = useAuth();
   const userId = session?.user.id ?? "";
   const queryClient = useQueryClient();
+  const editFocus = useRef<HTMLButtonElement | null>(null);
+  const [saving, setSaving] = useState(false);
   const returnFocus = useRef<HTMLButtonElement | null>(null);
   const [kind, setKind] = useWorkspaceRouteState<"" | "individual" | "company">(
     `clients:${org}:kind`,
@@ -61,191 +68,123 @@ function ClientDirectory({ org }: { org: string }) {
   const more = clientQuery.hasNextPage;
   return (
     <div className="connected-workspace clients-register">
-      <Link className="back-link" to={`/workspace?company=${org}`}>
-        {c.back}
-      </Link>
-      <PageHeader
-        eyebrow={locale === "fr" ? "Carnet d’adresses" : "Address book"}
-        title={c.title}
-        description={c.hint}
-        action={
-          <Button
-            onClick={() => {
-              setEdit("new");
-              setSelected(null);
-            }}
-          >
-            {c.add}
-          </Button>
-        }
+      <ClientRegisterHeader
+        onAdd={(trigger) => {
+          editFocus.current = trigger;
+          setSaving(false);
+          setEdit("new");
+          setSelected(null);
+        }}
       />
       {edit && (
-        <DirectoryEditor
-          key={edit === "new" ? "new" : `${edit.id}:${edit.revision}`}
-          org={org}
-          client={edit === "new" ? undefined : edit}
-          done={() => {
-            setEdit(null);
-            setSelected(null);
-            void queryClient.invalidateQueries({
-              queryKey: ["workspace", userId, org, "clients"],
-            });
-          }}
-          cancel={() => setEdit(null)}
-        />
+        <ClientEditorDialog
+          key={edit === "new" ? "new" : edit.id}
+          title={edit === "new" ? c.add : c.editTitle}
+          busy={saving}
+          trigger={editFocus.current}
+          close={() => setEdit(null)}
+        >
+          {(cancel) => (
+            <DirectoryEditor
+              org={org}
+              client={edit === "new" ? undefined : edit}
+              onBusyChange={setSaving}
+              done={() => {
+                setEdit(null);
+                setSelected(null);
+                setKind("");
+                setQuery("");
+                setSearch("");
+                void queryClient.invalidateQueries({
+                  queryKey: ["workspace", userId, org, "clients"],
+                });
+              }}
+              cancel={cancel}
+            />
+          )}
+        </ClientEditorDialog>
       )}
-      <fieldset
-        className="section-tabs"
-        aria-label={locale === "fr" ? "Type de client" : "Client type"}
-      >
-        {(["", "individual", "company"] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            className={kind === value ? "selected" : ""}
-            aria-pressed={kind === value}
-            onClick={() => {
-              setKind(value);
-              setSelected(null);
-            }}
-          >
-            {value === ""
-              ? locale === "fr"
-                ? "Tous les clients"
-                : "All clients"
-              : value === "company"
-                ? c.company
-                : c.individual}
-          </button>
-        ))}
-      </fieldset>
-      <form
-        className="table-toolbar"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (loading) return;
-          setSearch(query);
+      <ClientRegisterSearch
+        kind={kind}
+        query={query}
+        search={search}
+        loading={loading}
+        onKind={(value) => {
+          setKind(value);
           setSelected(null);
-          if (search === query) void clientQuery.refetch();
         }}
-      >
-        <div className="search-field">
-          <Search size={17} />
-          <Input
-            aria-label={c.search}
-            placeholder={c.search}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            maxLength={120}
-          />
+        onQuery={setQuery}
+        onSearch={() => {
+          setSearch(query.trim());
+          setSelected(null);
+          if (search === query.trim()) void clientQuery.refetch();
+        }}
+        onReset={() => {
+          setKind("");
+          setQuery("");
+          setSearch("");
+          setSelected(null);
+        }}
+      />
+      {loading && (
+        <p role="status" className="register-message">
+          {c.loading}
+        </p>
+      )}
+      {clientQuery.isError && clientQuery.data && (
+        <div className="register-message">
+          <p role="alert">{c.error}</p>
+          <Button variant="outline" onClick={() => void clientQuery.refetch()}>
+            {c.retry}
+          </Button>
         </div>
-        <Button variant="outline" disabled={loading}>
-          {c.submit}
-        </Button>
-      </form>
-      {loading && <p role="status">{c.loading}</p>}
-      {clientQuery.isError && clientQuery.data && <p role="alert">{c.error}</p>}
+      )}
       {failed ? (
-        <div role="alert">
-          <p>{c.error}</p>
-          <Button onClick={() => void clientQuery.refetch()}>{c.retry}</Button>
+        <div className="register-message">
+          <p role="alert">{c.error}</p>
+          <Button variant="outline" onClick={() => void clientQuery.refetch()}>
+            {c.retry}
+          </Button>
         </div>
       ) : (
-        <div className="table-scroll">
-          <table className="project-table">
-            <caption className="sr-only">{c.title}</caption>
-            <thead>
-              <tr>
-                <th scope="col">{locale === "fr" ? "Client" : "Client"}</th>
-                <th scope="col">Type</th>
-                <th scope="col" className="client-secondary">
-                  Email
-                </th>
-                <th scope="col" className="client-secondary">
-                  {locale === "fr" ? "Téléphone" : "Phone"}
-                </th>
-                <th scope="col">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => (
-                <tr key={row.id}>
-                  <td>
-                    <button
-                      className="project-link client-open-button"
-                      type="button"
-                      aria-haspopup="dialog"
-                      onClick={(event) => {
-                        returnFocus.current = event.currentTarget;
-                        setSelected(row);
-                      }}
-                    >
-                      <span
-                        className="project-thumbnail sage"
-                        aria-hidden="true"
-                      >
-                        {row.name
-                          .trim()
-                          .split(/\s+/)
-                          .slice(0, 2)
-                          .map((part) => part[0])
-                          .join("")
-                          .toUpperCase()}
-                      </span>
-                      <span>
-                        <strong>{row.name}</strong>
-                      </span>
-                    </button>
-                  </td>
-                  <td>
-                    <span className="status">
-                      {row.kind === "company" ? c.company : c.individual}
-                    </span>
-                  </td>
-                  <td className="client-secondary">
-                    {row.email ? (
-                      <a href={`mailto:${row.email}`}>{row.email}</a>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td className="client-secondary">
-                    {row.phone ? (
-                      <a href={`tel:${row.phone}`}>{row.phone}</a>
-                    ) : (
-                      "—"
-                    )}
-                  </td>
-                  <td>
-                    <Button
-                      variant="ghost"
-                      onClick={() => {
-                        setEdit(row);
-                        setSelected(null);
-                      }}
-                    >
-                      {c.edit}
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {!loading && !rows.length && (
-            <p className="workspace-loading">{c.empty}</p>
-          )}
-          {more && (
-            <Button
-              disabled={clientQuery.isFetchingNextPage}
-              onClick={() => void clientQuery.fetchNextPage()}
-              variant="outline"
-            >
-              {c.more}
-            </Button>
-          )}
-        </div>
+        !loading && (
+          <>
+            {rows.length ? (
+              <ClientRegisterTable
+                rows={rows}
+                onOpen={(row, trigger) => {
+                  returnFocus.current = trigger;
+                  setSelected(row);
+                }}
+                onEdit={(row, trigger) => {
+                  editFocus.current = trigger;
+                  setSaving(false);
+                  setEdit(row);
+                  setSelected(null);
+                }}
+              />
+            ) : (
+              <EmptyState
+                title={search || kind ? c.empty : c.emptyTitle}
+                description={search || kind ? c.noResultsHint : c.emptyHint}
+              />
+            )}
+            <div className="register-footer">
+              <p role="status">
+                {rows.length} {c.loaded}
+              </p>
+              {more && (
+                <Button
+                  disabled={clientQuery.isFetchingNextPage}
+                  onClick={() => void clientQuery.fetchNextPage()}
+                  variant="outline"
+                >
+                  {clientQuery.isFetchingNextPage ? c.loading : c.more}
+                </Button>
+              )}
+            </div>
+          </>
+        )
       )}
       <Dialog.Root
         open={!!selected}
@@ -266,34 +205,19 @@ function ClientDirectory({ org }: { org: string }) {
               {selected?.name}
             </Dialog.Title>
             <Dialog.Description className="helper-text">
-              {c.hint}
+              {c.detailHint}
             </Dialog.Description>
             <Dialog.Close className="button button-outline client-drawer-close">
               {locale === "fr" ? "Fermer" : "Close"}
             </Dialog.Close>
             {selected && (
               <>
-                <div className="client-drawer-contact">
-                  <span className="status">
-                    {selected.kind === "company" ? c.company : c.individual}
-                  </span>
-                  {selected.email && (
-                    <a
-                      className="client-contact"
-                      href={`mailto:${selected.email}`}
-                    >
-                      {selected.email}
-                    </a>
-                  )}
-                  {selected.phone && (
-                    <a
-                      className="client-contact"
-                      href={`tel:${selected.phone}`}
-                    >
-                      {selected.phone}
-                    </a>
-                  )}
-                </div>
+                <ClientContactDetails
+                  kind={selected.kind}
+                  email={selected.email}
+                  phone={selected.phone}
+                  billing={selected.billing_address}
+                />
                 <PropertyDirectory
                   key={selected.id}
                   org={org}
@@ -355,16 +279,10 @@ function PropertyDirectory({ org, client }: { org: string; client: Client }) {
   }
   return (
     <section className="client-properties" aria-label={c.properties}>
-      <p className="eyebrow">{client.name}</p>
       <div className="section-heading">
         <h2>{c.properties}</h2>
         <Button onClick={() => setEdit("new")}>{c.addProperty}</Button>
       </div>
-      {client.billing_address && (
-        <p className="helper-text">
-          {c.billing_address}: {client.billing_address}
-        </p>
-      )}
       {edit && (
         <DirectoryEditor
           key={edit === "new" ? "new" : `${edit.id}:${edit.revision}`}

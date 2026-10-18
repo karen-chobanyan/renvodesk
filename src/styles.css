@@ -3704,13 +3704,7 @@ details[open] > .compact-identity > svg {
   max-width: 100%;
 }
 
-/* Clients reuse the Projects register components and table styles. */
-.clients-register .table-toolbar {
-  gap: 16px;
-}
-.clients-register .search-field {
-  flex: 1;
-}
+/* Client details drawer; register and editor refinements follow shared registers. */
 .client-open-button {
   background: transparent;
   text-align: left;
@@ -3720,11 +3714,11 @@ details[open] > .compact-identity > svg {
   position: fixed;
   inset: 0 0 0 auto;
   width: min(580px, 100%);
-  padding: 40px 28px;
+  padding: var(--space-8) var(--space-6);
   overflow-y: auto;
   background: var(--canvas);
   z-index: 51;
-  box-shadow: -20px 0 70px #24372512;
+  box-shadow: var(--shadow-overlay);
 }
 .client-drawer .dialog-title {
   padding-right: 90px;
@@ -3732,18 +3726,40 @@ details[open] > .compact-identity > svg {
 }
 .client-drawer-close {
   position: absolute;
-  top: 28px;
-  right: 24px;
+  top: var(--space-6);
+  right: var(--space-6);
 }
 .client-drawer-contact {
   display: grid;
   justify-items: start;
-  gap: 12px;
-  padding-block: 28px;
+  gap: var(--space-3);
+  padding-block: var(--space-6);
+  margin-bottom: var(--space-6);
+  border-bottom: 1px solid var(--border);
 }
 .client-contact {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   font-size: 13px;
   overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.client-contact svg {
+  flex-shrink: 0;
+}
+.client-billing {
+  padding-top: var(--space-2);
+  font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+}
+.client-billing h3 {
+  font-size: var(--text-sm);
+  margin-bottom: var(--space-2);
+}
+.client-billing p {
+  color: var(--muted);
+  white-space: pre-line;
 }
 .client-drawer .client-properties {
   border: 0;
@@ -3751,25 +3767,9 @@ details[open] > .compact-identity > svg {
 }
 .client-drawer .section-heading {
   flex-wrap: wrap;
-  gap: 16px;
-}
-@media (max-width: 760px) {
-  .clients-register .client-secondary {
-    display: none;
-  }
-  .client-drawer {
-    padding: 32px 20px;
-  }
+  gap: var(--space-4);
 }
 
-.clients-register .project-table td {
-  padding-top: 8px;
-  padding-bottom: 8px;
-}
-.clients-register .project-thumbnail {
-  width: 34px;
-  height: 34px;
-}
 .project-client-heading {
   grid-column: 1 / -1;
   display: flex;
@@ -4484,5 +4484,185 @@ details[open] > .compact-identity > svg {
   .register-table .row-arrow {
     width: 44px;
     height: 44px;
+  }
+}
+
+/* Client register: contacts remain usable on site, without horizontal scrolling. */
+.client-search {
+  margin-bottom: var(--space-3);
+}
+.clients-register .register-status {
+  display: flex;
+  gap: var(--space-6);
+}
+.clients-register .client-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+.client-table th:first-child {
+  width: 36%;
+}
+.client-table th:nth-child(2) {
+  width: 18%;
+}
+.client-table th:last-child {
+  width: 104px;
+}
+.client-table th {
+  color: var(--muted);
+  font-size: 11px;
+}
+.client-table td,
+.client-table td:first-child {
+  padding: var(--space-4) var(--space-3);
+}
+.client-table .project-link {
+  min-width: 0;
+  width: 100%;
+  min-height: 44px;
+  gap: var(--space-3);
+}
+.client-table .project-link strong {
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.client-table .project-thumbnail {
+  width: 40px;
+  height: 40px;
+  font-size: 11px;
+}
+.client-contacts > div {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: start;
+}
+.client-contacts a {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.client-contacts svg {
+  flex-shrink: 0;
+}
+.client-contacts span {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.client-contacts a:hover,
+.client-contact:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+.client-table tbody tr:focus-within {
+  background: var(--soft);
+}
+.dialog-content.client-editor-dialog {
+  max-width: 680px;
+  width: min(680px, calc(100vw - 32px));
+}
+.client-editor-dialog .company-form {
+  max-width: none;
+  margin: var(--space-6) 0 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.client-editor-dialog .project-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+.client-editor-dialog .field {
+  margin: 0;
+}
+.client-editor-dialog .client-billing-field {
+  grid-column: 1 / -1;
+}
+.client-editor-dialog .dialog-actions {
+  grid-column: 1 / -1;
+  margin-top: var(--space-2);
+}
+@media (max-width: 600px) {
+  .clients-register .project-register-header > .button {
+    width: 100%;
+  }
+  .clients-register .register-status {
+    justify-content: space-between;
+    gap: var(--space-2);
+  }
+  .clients-register .register-status button {
+    white-space: normal;
+    text-align: left;
+  }
+  .client-search .search-field {
+    flex: 1;
+    min-width: 0;
+  }
+  .client-search > .button {
+    flex-shrink: 0;
+  }
+  .client-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .client-table tbody {
+    display: block;
+  }
+  .client-table tbody tr {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "identity edit" "kind kind" "contacts contacts";
+    gap: var(--space-1) var(--space-2);
+    padding-block: var(--space-4);
+    border-bottom: 1px solid var(--border);
+  }
+  .client-table td,
+  .client-table td:first-child {
+    display: block;
+    min-width: 0;
+    border: 0;
+    padding: 0;
+  }
+  .client-table .client-identity {
+    grid-area: identity;
+  }
+  .client-table .client-edit {
+    grid-area: edit;
+  }
+  .client-table .client-kind {
+    grid-area: kind;
+    padding-left: 52px;
+  }
+  .client-table .client-contacts {
+    grid-area: contacts;
+    padding-left: 52px;
+  }
+  .client-contacts > div {
+    gap: 0;
+  }
+  .client-contacts a,
+  .client-contact {
+    min-height: 44px;
+  }
+  .client-editor-dialog .project-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .client-drawer {
+    padding: var(--space-6) var(--space-4);
+  }
+  .client-drawer-close {
+    right: var(--space-4);
+    top: var(--space-4);
+  }
+  .client-drawer .button {
+    min-height: 44px;
   }
 }

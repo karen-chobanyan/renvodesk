@@ -218,3 +218,96 @@ test("project register filters reset with keyboard and long names fit on phones"
     page.getByRole("heading", { name: "Company projects" }),
   ).toBeVisible();
 });
+
+test("client directory search, responsive contacts and guarded editing", async ({
+  page,
+}) => {
+  await open(page, "/clients");
+  const name = "Sophie & Marc Laurent";
+  const search = page.getByRole("textbox", { name: "Rechercher un client" });
+  await search.fill("no matching client");
+  await expect(
+    page.getByRole("status").filter({ hasText: "Validez avec Rechercher" }),
+  ).toBeVisible();
+  await search.press("Enter");
+  await expect(
+    page.getByRole("heading", { name: "Aucun client trouvé." }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Réinitialiser", exact: true })
+    .press("Enter");
+  await expect(search).toBeFocused();
+  await expect(page.getByRole("button", { name, exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("link", {
+      name: "laurent.famille@example.com",
+      exact: true,
+    }),
+  ).toBeVisible();
+  const edit = page.getByRole("button", {
+    name: `Modifier — ${name}`,
+    exact: true,
+  });
+  await edit.click();
+  const dialog = page.getByRole("dialog", { name: "Modifier le client" });
+  const input = dialog.getByLabel("Nom du client", { exact: true });
+  await expect(input).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(edit).toBeFocused();
+  await edit.click();
+  const longName =
+    "Famille Exemple — rénovation de la résidence et des dépendances";
+  await input.fill(longName);
+  await dialog
+    .getByLabel("E-mail du client")
+    .fill("contact.residence.et.dependances@example.test");
+  page.once("dialog", (confirmation) => void confirmation.dismiss());
+  await page.keyboard.press("Escape");
+  await expect(input).toHaveValue(longName);
+  await dialog.getByRole("button", { name: "Enregistrer le client" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: longName, exact: true }),
+  ).toBeVisible();
+  expect(
+    await page
+      .locator(".table-scroll")
+      .evaluate((element) => element.scrollWidth <= element.clientWidth),
+  ).toBe(true);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByRole("button", { name: longName, exact: true }).click();
+  const detail = page.getByRole("dialog", { name: longName });
+  await expect(
+    detail.getByRole("heading", { name: "Adresse de facturation" }),
+  ).toBeVisible();
+  await expect(
+    detail
+      .getByRole("region", { name: "Biens du client" })
+      .getByText("Adresse de facturation"),
+  ).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("button", { name: longName, exact: true }),
+  ).toBeFocused();
+  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  await expect(
+    page.getByRole("heading", { name: "Clients and properties" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Add client", exact: true }).click();
+  await expect(page.getByLabel("Client name", { exact: true })).toBeFocused();
+  await page.getByLabel("Client name", { exact: true }).fill("Unsaved client");
+  page.once("dialog", (confirmation) => void confirmation.accept());
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Add client", exact: true }),
+  ).toBeFocused();
+  await expect(
+    page.getByRole("button", { name: "Unsaved client", exact: true }),
+  ).toHaveCount(0);
+});

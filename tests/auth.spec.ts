@@ -2016,6 +2016,10 @@ test("clients and properties prefill a linked project", async ({
   const clients: Record<string, unknown>[] = [];
   const properties: Record<string, unknown>[] = [];
   let lost = false;
+  let releaseFirstCreate = () => {};
+  const firstCreatePending = new Promise<void>((resolve) => {
+    releaseFirstCreate = resolve;
+  });
   for (const [table, rows] of [
     ["clients", clients],
     ["properties", properties],
@@ -2034,6 +2038,7 @@ test("clients and properties prefill a linked project", async ({
         rows.push({ ...body, revision: 1, created_at: "2026-09-20T00:00:00Z" });
         if (table === "clients" && !lost) {
           lost = true;
+          await firstCreatePending;
           return route.abort();
         }
         return route.fulfill({ json: rows.at(-1) });
@@ -2054,12 +2059,25 @@ test("clients and properties prefill a linked project", async ({
   if (isMobile)
     await page.getByRole("button", { name: "Navigation", exact: true }).click();
   await page.getByRole("link", { name: "Clients", exact: true }).click();
+  await page.getByRole("button", { name: "Entreprise", exact: true }).click();
   await page.getByRole("button", { name: "Ajouter un client" }).click();
+  await expect(
+    page.getByRole("dialog", { name: "Ajouter un client" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Nom du client", { exact: true })).toBeFocused();
   await page
     .getByLabel("Nom du client", { exact: true })
     .fill("Client exemple");
   await page.getByLabel("E-mail du client").fill("client@example.test");
   await page.getByRole("button", { name: "Enregistrer le client" }).click();
+  await expect(
+    page.getByLabel("Nom du client", { exact: true }),
+  ).toBeDisabled();
+  await page.keyboard.press("Escape");
+  await expect(
+    page.getByRole("dialog", { name: "Ajouter un client" }),
+  ).toBeVisible();
+  releaseFirstCreate();
   await expect(page.getByRole("alert")).toContainText(
     "Enregistrement non confirmé",
   );
@@ -2086,6 +2104,17 @@ test("clients and properties prefill a linked project", async ({
     page.getByRole("button", { name: "Client exemple", exact: true }),
   ).toBeFocused();
   await expect(page.getByRole("table")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Tous les clients", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("link", { name: "client@example.test" }),
+  ).toBeVisible();
+  expect(
+    await page
+      .locator(".table-scroll")
+      .evaluate((element) => element.scrollWidth <= element.clientWidth),
+  ).toBe(true);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
@@ -2095,7 +2124,7 @@ test("clients and properties prefill a linked project", async ({
     path: `/private/tmp/renvo-client-table-${test.info().project.name}.png`,
     fullPage: true,
   });
-  await page.getByRole("link", { name: "Retour aux projets" }).click();
+  await page.getByRole("link", { name: "Mon espace", exact: true }).click();
   await page.getByRole("button", { name: "Nouveau projet" }).click();
   await page
     .getByLabel("Nom du projet", { exact: true })

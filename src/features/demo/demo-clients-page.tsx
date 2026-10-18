@@ -1,28 +1,26 @@
 import * as Dialog from "@radix-ui/react-dialog";
-import { Search } from "lucide-react";
-import { type FormEvent, useState } from "react";
-import { Link } from "react-router";
-import { PageHeader } from "@/components/shared";
+import { type FormEvent, useRef, useState } from "react";
+import { EmptyState } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { clientCopy } from "@/features/clients/client-copy";
+import {
+  ClientContactDetails,
+  ClientEditorDialog,
+  ClientRegisterHeader,
+  ClientRegisterSearch,
+  ClientRegisterTable,
+} from "@/features/clients/client-register";
 import { useDemo } from "@/lib/demo-store";
 import { useLocale } from "@/lib/i18n";
 import { type DemoClient, type DemoProperty, say, tx } from "./demo-types";
-
-const initials = (name: string) =>
-  name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part[0])
-    .join("")
-    .toUpperCase();
 
 export function DemoClientsPage() {
   const { locale } = useLocale(),
     c = clientCopy[locale];
   const { clients } = useDemo();
+  const editFocus = useRef<HTMLButtonElement | null>(null);
+  const returnFocus = useRef<HTMLButtonElement | null>(null);
   const [kind, setKind] = useState<"" | DemoClient["kind"]>(""),
     [query, setQuery] = useState(""),
     [search, setSearch] = useState(""),
@@ -36,116 +34,69 @@ export function DemoClientsPage() {
   );
   return (
     <div className="connected-workspace clients-register">
-      <Link className="back-link" to="/projects">
-        {c.back}
-      </Link>
-      <PageHeader
-        eyebrow={locale === "fr" ? "Carnet d’adresses" : "Address book"}
-        title={c.title}
-        description={c.hint}
-        action={<Button onClick={() => setEdit("new")}>{c.add}</Button>}
+      <ClientRegisterHeader
+        onAdd={(trigger) => {
+          editFocus.current = trigger;
+          setEdit("new");
+        }}
       />
       {edit && (
-        <ClientEditor
+        <ClientEditorDialog
           key={edit === "new" ? "new" : edit.id}
-          client={edit === "new" ? undefined : edit}
+          title={edit === "new" ? c.add : c.editTitle}
+          busy={false}
+          trigger={editFocus.current}
           close={() => setEdit(null)}
+        >
+          {(cancel) => (
+            <ClientEditor
+              client={edit === "new" ? undefined : edit}
+              cancel={cancel}
+              close={() => {
+                setEdit(null);
+                setKind("");
+                setQuery("");
+                setSearch("");
+              }}
+            />
+          )}
+        </ClientEditorDialog>
+      )}
+      <ClientRegisterSearch
+        kind={kind}
+        query={query}
+        search={search}
+        onKind={setKind}
+        onQuery={setQuery}
+        onSearch={() => setSearch(query.trim())}
+        onReset={() => {
+          setKind("");
+          setQuery("");
+          setSearch("");
+        }}
+      />
+      {rows.length ? (
+        <ClientRegisterTable
+          rows={rows}
+          onOpen={(row, trigger) => {
+            returnFocus.current = trigger;
+            setSelectedId(row.id);
+          }}
+          onEdit={(row, trigger) => {
+            editFocus.current = trigger;
+            setEdit(row);
+          }}
+        />
+      ) : (
+        <EmptyState
+          title={search || kind ? c.empty : c.emptyTitle}
+          description={search || kind ? c.noResultsHint : c.emptyHint}
         />
       )}
-      <fieldset
-        className="section-tabs"
-        aria-label={locale === "fr" ? "Type de client" : "Client type"}
-      >
-        {(["", "individual", "company"] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            className={kind === value ? "selected" : ""}
-            aria-pressed={kind === value}
-            onClick={() => setKind(value)}
-          >
-            {value === ""
-              ? locale === "fr"
-                ? "Tous les clients"
-                : "All clients"
-              : c[value]}
-          </button>
-        ))}
-      </fieldset>
-      <form
-        className="table-toolbar"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setSearch(query);
-        }}
-      >
-        <div className="search-field">
-          <Search size={17} />
-          <Input
-            aria-label={c.search}
-            placeholder={c.search}
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            maxLength={120}
-          />
-        </div>
-        <Button variant="outline">{c.submit}</Button>
-      </form>
-      <div className="table-scroll">
-        <table className="project-table">
-          <caption className="sr-only">{c.title}</caption>
-          <thead>
-            <tr>
-              <th scope="col">Client</th>
-              <th scope="col">Type</th>
-              <th scope="col" className="client-secondary">
-                Email
-              </th>
-              <th scope="col" className="client-secondary">
-                {locale === "fr" ? "Téléphone" : "Phone"}
-              </th>
-              <th scope="col">
-                <span className="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row) => (
-              <tr key={row.id}>
-                <td>
-                  <button
-                    className="project-link client-open-button"
-                    type="button"
-                    aria-haspopup="dialog"
-                    onClick={() => setSelectedId(row.id)}
-                  >
-                    <span className="project-thumbnail sage" aria-hidden="true">
-                      {initials(row.name)}
-                    </span>
-                    <span>
-                      <strong>{row.name}</strong>
-                    </span>
-                  </button>
-                </td>
-                <td>
-                  <span className="status">{c[row.kind]}</span>
-                </td>
-                <td className="client-secondary">
-                  <a href={`mailto:${row.email}`}>{row.email}</a>
-                </td>
-                <td className="client-secondary">
-                  <a href={`tel:${row.phone}`}>{row.phone}</a>
-                </td>
-                <td>
-                  <Button variant="ghost" onClick={() => setEdit(row)}>
-                    {c.edit}
-                  </Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        {!rows.length && <p className="workspace-loading">{c.empty}</p>}
+      <div className="register-footer">
+        <p role="status">
+          {rows.length} {c.loaded}
+        </p>
       </div>
       <Dialog.Root
         open={!!selected}
@@ -155,30 +106,30 @@ export function DemoClientsPage() {
       >
         <Dialog.Portal>
           <Dialog.Overlay className="dialog-overlay" />
-          <Dialog.Content className="client-drawer">
+          <Dialog.Content
+            className="client-drawer"
+            onCloseAutoFocus={(event) => {
+              event.preventDefault();
+              returnFocus.current?.focus();
+            }}
+          >
             <Dialog.Title className="dialog-title">
               {selected?.name}
             </Dialog.Title>
             <Dialog.Description className="helper-text">
-              {c.hint}
+              {c.detailHint}
             </Dialog.Description>
             <Dialog.Close className="button button-outline client-drawer-close">
               {locale === "fr" ? "Fermer" : "Close"}
             </Dialog.Close>
             {selected && (
               <>
-                <div className="client-drawer-contact">
-                  <span className="status">{c[selected.kind]}</span>
-                  <a
-                    className="client-contact"
-                    href={`mailto:${selected.email}`}
-                  >
-                    {selected.email}
-                  </a>
-                  <a className="client-contact" href={`tel:${selected.phone}`}>
-                    {selected.phone}
-                  </a>
-                </div>
+                <ClientContactDetails
+                  kind={selected.kind}
+                  email={selected.email}
+                  phone={selected.phone}
+                  billing={selected.billing}
+                />
                 <Properties key={selected.id} client={selected} />
               </>
             )}
@@ -220,16 +171,10 @@ function Properties({ client }: { client: DemoClient }) {
   }
   return (
     <section className="client-properties" aria-label={c.properties}>
-      <p className="eyebrow">{client.name}</p>
       <div className="section-heading">
         <h2>{c.properties}</h2>
         <Button onClick={() => setEdit("new")}>{c.addProperty}</Button>
       </div>
-      {client.billing && (
-        <p className="helper-text">
-          {c.billing_address}: {client.billing}
-        </p>
-      )}
       {edit && (
         <form className="company-form task-editor" onSubmit={submit}>
           <fieldset className="project-fields">
@@ -307,9 +252,11 @@ function Properties({ client }: { client: DemoClient }) {
 function ClientEditor({
   client,
   close,
+  cancel,
 }: {
   client?: DemoClient;
   close: () => void;
+  cancel: () => void;
 }) {
   const { locale } = useLocale(),
     c = clientCopy[locale];
@@ -367,13 +314,17 @@ function ClientEditor({
         <label className="field" htmlFor="demo-client-phone">
           {c.phone}
           <Input
+            type="tel"
             id="demo-client-phone"
             name="phone"
             maxLength={50}
             defaultValue={client?.phone}
           />
         </label>
-        <label className="field" htmlFor="demo-client-billing">
+        <label
+          className="field client-billing-field"
+          htmlFor="demo-client-billing"
+        >
           {c.billing_address}
           <Input
             id="demo-client-billing"
@@ -383,7 +334,7 @@ function ClientEditor({
           />
         </label>
         <div className="dialog-actions">
-          <Button type="button" variant="outline" onClick={close}>
+          <Button type="button" variant="outline" onClick={cancel}>
             {c.cancel}
           </Button>
           <Button>{c.save}</Button>

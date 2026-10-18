@@ -17,11 +17,13 @@ export function DirectoryEditor({
   done,
   cancel,
   clientSaved,
+  onBusyChange,
 }: {
   org: string;
   clientId?: string;
   client?: Client;
   property?: Property;
+  onBusyChange?: (busy: boolean) => void;
   clientSaved?: (client: Client) => void;
   done: () => void;
   cancel: () => void;
@@ -40,6 +42,7 @@ export function DirectoryEditor({
     const data = new FormData(e.currentTarget);
     const text = (key: string) => String(data.get(key) ?? "").trim();
     setBusy(true);
+    onBusyChange?.(true);
     setError(null);
     try {
       const result = clientId
@@ -76,6 +79,7 @@ export function DirectoryEditor({
       setError("failed");
     } finally {
       setBusy(false);
+      onBusyChange?.(false);
     }
   }
   return (
@@ -91,6 +95,7 @@ export function DirectoryEditor({
               >
                 {c[field]}
                 <Input
+                  autoFocus={field === "label"}
                   id={`directory-${field}`}
                   name={field}
                   required
@@ -118,19 +123,40 @@ export function DirectoryEditor({
             </label>
           </>
         ) : (
-          <>
-            {(["name", "email", "phone", "billing_address"] as const).map(
-              (field) => (
-                <label
-                  className="field"
-                  key={field}
-                  htmlFor={`directory-${field}`}
-                >
-                  {c[field]}
+          (["name", "kind", "email", "phone", "billing_address"] as const).map(
+            (field) => (
+              <label
+                className={
+                  field === "billing_address"
+                    ? "field client-billing-field"
+                    : "field"
+                }
+                key={field}
+                htmlFor={`directory-${field}`}
+              >
+                {c[field]}
+                {field === "kind" ? (
+                  <select
+                    className="input"
+                    id="directory-kind"
+                    name="kind"
+                    defaultValue={client?.kind ?? "individual"}
+                  >
+                    <option value="individual">{c.individual}</option>
+                    <option value="company">{c.company}</option>
+                  </select>
+                ) : (
                   <Input
+                    autoFocus={field === "name"}
                     id={`directory-${field}`}
                     name={field}
-                    type={field === "email" ? "email" : "text"}
+                    type={
+                      field === "email"
+                        ? "email"
+                        : field === "phone"
+                          ? "tel"
+                          : "text"
+                    }
                     required={field === "name"}
                     maxLength={
                       field === "name"
@@ -143,22 +169,10 @@ export function DirectoryEditor({
                     }
                     defaultValue={client?.[field] ?? ""}
                   />
-                </label>
-              ),
-            )}
-            <label className="field" htmlFor="directory-kind">
-              {c.kind}
-              <select
-                className="input"
-                id="directory-kind"
-                name="kind"
-                defaultValue={client?.kind ?? "individual"}
-              >
-                <option value="individual">{c.individual}</option>
-                <option value="company">{c.company}</option>
-              </select>
-            </label>
-          </>
+                )}
+              </label>
+            ),
+          )
         )}
         <div className="dialog-actions">
           <Button type="button" variant="outline" onClick={cancel}>
