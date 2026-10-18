@@ -22,6 +22,7 @@ import { useCompanyAccess } from "@/features/team/company-access";
 import { useDemo } from "@/lib/demo-store";
 import { useLocale } from "@/lib/i18n";
 import { ConsentControls } from "@/lib/telemetry/consent-controls";
+import { BrandMark } from "./brand-mark";
 import { Button } from "./ui/button";
 
 function subscribeMobile(callback: () => void) {
@@ -86,9 +87,7 @@ export function AppShell({
         </>
       )}
       <NavLink className="brand" to={home} onClick={() => setMobileOpen(false)}>
-        <span className="brand-mark">
-          r<span>.</span>
-        </span>
+        <BrandMark />
         RenvoDesk
       </NavLink>
       {live ? (

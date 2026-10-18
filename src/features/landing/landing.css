@@ -104,19 +104,9 @@ body:has(.landing) {
 }
 .landing-brand-mark {
   height: 34px;
-  width: 32px;
-  display: inline-flex;
-  justify-content: center;
-  align-items: center;
-  border-radius: 6px;
-  background: var(--lp-text);
-  color: #fff;
-  font-size: 29px;
-  letter-spacing: -2px;
-  padding-right: 3px;
-}
-.landing-brand-mark > span {
-  color: #c4d8ad;
+  width: 34px;
+  display: block;
+  flex-shrink: 0;
 }
 .landing-desktop-nav,
 .landing-header-actions {
@@ -411,10 +401,10 @@ body:has(.landing) {
   background: #f6f7f3;
 }
 .mini-brand {
-  font-size: 27px;
-  color: var(--lp-text);
-  font-weight: 600;
-  line-height: 1;
+  width: 28px;
+  height: 28px;
+  display: block;
+  flex-shrink: 0;
   margin-bottom: 16px;
 }
 .mini-avatar {
@@ -959,8 +949,7 @@ body:has(.landing) {
   }
   .landing-brand-mark {
     height: 30px;
-    width: 28px;
-    font-size: 26px;
+    width: 30px;
   }
   .landing-desktop-nav,
   .landing-login {

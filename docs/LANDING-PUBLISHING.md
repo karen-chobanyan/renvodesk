@@ -60,9 +60,10 @@ References: Google's [JavaScript SEO basics](https://developers.google.com/searc
 and [canonical URLs](https://developers.google.com/search/docs/crawling-indexing/consolidate-duplicate-urls).
 
 Product screenshots in `public/images/product/` are actual application renders at
-1440 × 1000 in French and English. Project overview/tasks/costs use fictional API
-fixtures based on `tests/project-activity.spec.ts`; the estimate uses the public
-`/estimates/maison-ixelles` demo. No customer data is present. Refresh these images
+1440 × 1000 in French and English. Refreshed on 2026-10-18 with the architectural
+brand mark using the public fictional `/projects/maison-ixelles` demo (overview,
+tasks and budget tabs) and `/estimates/ixelles-interieur`. No customer data is
+present. Decline optional tracking before capture. Refresh these images
 when the corresponding interface changes. Screenshots are expandable, with the
 hero loaded eagerly and feature images loaded lazily. The CAD-style illustration
 is decorative and does not claim measured CAD functionality.

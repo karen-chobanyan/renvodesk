@@ -5,6 +5,7 @@ import {
   FolderKanban,
   MoreHorizontal,
 } from "lucide-react";
+import { BrandMark } from "../../components/brand-mark";
 import { type LandingLocale, landingCopy } from "./landing-copy";
 
 export function ProductPreview({ locale }: { locale: LandingLocale }) {
@@ -23,7 +24,7 @@ export function ProductPreview({ locale }: { locale: LandingLocale }) {
         </div>
         <div className="product-window-body">
           <div className="product-mini-sidebar" aria-hidden="true">
-            <span className="mini-brand">r.</span>
+            <BrandMark className="mini-brand" />
             <FolderKanban size={17} />
             <FileText size={17} />
             <span className="mini-avatar">CL</span>

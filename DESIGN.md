@@ -19,6 +19,14 @@ Source of truth: `src/styles.css`.
 - Fine borders, minimal shadows. No decorative gradients.
 
 ## Components
+
+The brand uses the architectural lowercase “r” in a dark green (`#203C34`)
+rounded square with a warm ivory (`#F5F5EC`) letter and no dot. The single SVG
+source is `public/favicon.svg`, shared by the browser favicon and the lightweight
+`src/components/brand-mark.tsx` component. Keep it square, with no added padding,
+and decorative beside the existing Inter RenvoDesk wordmark. Use the versioned
+asset URL in both the component and `index.html` when replacing the artwork.
+
 `src/components/ui` contains locally owned shadcn-style primitives using Radix,
 class-variance-authority and semantic CSS. `components.json` establishes the shadcn
 registry configuration for future additions. Keep token styling when adding them.

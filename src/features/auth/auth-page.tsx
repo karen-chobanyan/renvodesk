@@ -1,6 +1,7 @@
 import { ArrowRight, ArrowUpRight } from "lucide-react";
 import { type FormEvent, type ReactNode, useState } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router";
+import { BrandMark } from "@/components/brand-mark";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useLocale } from "@/lib/i18n";
@@ -16,9 +17,7 @@ export function AuthLayout({ children }: { children: ReactNode }) {
     <div className="auth-layout">
       <header>
         <a className="brand" href={locale === "fr" ? "/" : "/en/"}>
-          <span className="brand-mark">
-            r<span>.</span>
-          </span>
+          <BrandMark />
           RenvoDesk
         </a>
         <label className="language-picker">
