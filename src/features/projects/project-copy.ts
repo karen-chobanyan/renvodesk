@@ -1,6 +1,18 @@
 export const projectCopy = {
   fr: {
     title: "Projets de l’entreprise",
+    registerHint: "Retrouvez vos chantiers, leurs clients et leur avancement.",
+    schedule: "Ouvrir le planning",
+    clearSearch: "Effacer la recherche",
+    loadedScope:
+      "Les compteurs, la recherche et les filtres portent sur les projets chargés.",
+    loadedProjects: "projets chargés",
+    emptyTitle: "Aucun projet pour le moment.",
+    emptyHint:
+      "Commencez avec Nouveau projet : renseignez le client et le chantier.",
+    memberEmptyHint: "Les projets créés par le propriétaire apparaîtront ici.",
+    noLoadedResults:
+      "Modifiez les filtres ou chargez davantage de projets en bas de la liste.",
     hint: "Vos projets sont enregistrés dans cet espace.",
     empty: "Aucun projet pour le moment. Ajoutez votre premier chantier.",
     name: "Nom du projet",
@@ -20,6 +32,16 @@ export const projectCopy = {
   },
   en: {
     title: "Company projects",
+    registerHint: "Find your renovation projects, clients and current status.",
+    schedule: "Open schedule",
+    clearSearch: "Clear search",
+    loadedScope: "Counts, search and filters apply to loaded projects.",
+    loadedProjects: "loaded projects",
+    emptyTitle: "No projects yet.",
+    emptyHint: "Start with New project to add the client and site details.",
+    memberEmptyHint: "Projects created by the owner will appear here.",
+    noLoadedResults:
+      "Change your filters or load more projects at the bottom of the list.",
     hint: "Your projects are saved in this workspace.",
     empty: "No projects yet. Add your first renovation.",
     name: "Project name",

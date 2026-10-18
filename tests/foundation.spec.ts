@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test("projects search, reset and locale switch", async ({ page }) => {
   await page.goto("/projects");
   await expect(
-    page.getByRole("heading", { name: "Vos projets, au clair." }),
+    page.getByRole("heading", { name: "Projets de l’entreprise" }),
   ).toBeVisible();
   await page
     .getByRole("textbox", { name: "Rechercher un projet ou un client…" })
@@ -17,7 +17,7 @@ test("projects search, reset and locale switch", async ({ page }) => {
     .click();
   await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
   await expect(
-    page.getByRole("heading", { name: "Every project. A clear picture." }),
+    page.getByRole("heading", { name: "Company projects" }),
   ).toBeVisible();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   expect(

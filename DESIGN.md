@@ -200,3 +200,20 @@ that fit. The toolbar keeps fit and private download actions visible while the i
 scrolls independently. The mobile dialog fills the viewport. French and English
 labels, keyboard panning, loading/error feedback and the existing signed-URL expiry
 behavior remain part of the image flow.
+
+## Project register
+
+The live and fictional project registers share `ProjectRegisterHeader` and
+`ProjectRegisterList`. One compact heading holds schedule and creation actions.
+Status filters include counts; a bordered search field, explicit reset and result
+count keep filtering understandable. Live counts and search remain scoped to loaded
+projects, with that scope stated once and Load more beside the result count.
+
+The register fills the content width without an instructional sidebar or duplicate
+summary metrics. Rows prioritize project/client, city and status; a neutral folder
+icon does not imply a real drawing preview. On phones the same table rows stack
+into readable entries with 44px open actions and no sideways scrolling. Filters
+form two columns to keep all statuses visible. Empty/error/loading feedback stays
+inside the register. Creating a project clears previous filters so it is visible.
+Demo data remains fictional and separate; its financial figures stay on project
+and estimate screens rather than the register.

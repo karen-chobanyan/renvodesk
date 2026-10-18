@@ -58,32 +58,43 @@ function Workspace({ settings }: { settings: boolean }) {
   const showForm = creating || (!loading && organizations.length === 0);
   return (
     <section className="connected-workspace">
-      <p className="eyebrow">{settings ? settingsTitle : ui("projects")}</p>
-      <h1>
-        {loading ? (
-          <span className="workspace-title-placeholder" aria-hidden="true" />
-        ) : showForm ? (
-          t("companyTitle")
-        ) : settings ? (
-          settingsTitle
-        ) : (
-          ui("title")
-        )}
-      </h1>
-      <p className="page-description">
-        {loading ? (
-          <span
-            className="workspace-description-placeholder"
-            aria-hidden="true"
-          />
-        ) : showForm ? (
-          t("companyHint")
-        ) : settings ? (
-          activeOrganization?.name
-        ) : (
-          ui("subtitle")
-        )}
-      </p>
+      {(loading ||
+        loadFailed ||
+        showForm ||
+        settings ||
+        !activeOrganization) && (
+        <>
+          <p className="eyebrow">{settings ? settingsTitle : ui("projects")}</p>
+          <h1>
+            {loading ? (
+              <span
+                className="workspace-title-placeholder"
+                aria-hidden="true"
+              />
+            ) : showForm ? (
+              t("companyTitle")
+            ) : settings ? (
+              settingsTitle
+            ) : (
+              ui("title")
+            )}
+          </h1>
+          <p className="page-description">
+            {loading ? (
+              <span
+                className="workspace-description-placeholder"
+                aria-hidden="true"
+              />
+            ) : showForm ? (
+              t("companyHint")
+            ) : settings ? (
+              activeOrganization?.name
+            ) : (
+              ui("subtitle")
+            )}
+          </p>
+        </>
+      )}
       {loading ? (
         <p role="status" className="workspace-loading">
           {t("loading")}

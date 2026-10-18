@@ -535,7 +535,7 @@ test("sign in, create company, reload and sign out", async ({ page }) => {
     register.getByRole("link", { name: "Rénovation cuisine", exact: true }),
   ).toBeVisible();
   await expect(
-    register.getByText("Find your project tasks in the company schedule."),
+    register.getByRole("link", { name: "Open schedule" }),
   ).toBeVisible();
   await page.screenshot({
     path: `/private/tmp/renvo-projects-${test.info().project.name}.png`,

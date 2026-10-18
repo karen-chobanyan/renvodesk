@@ -1,11 +1,8 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { ArrowUpRight, Plus, Search } from "lucide-react";
+import { Plus } from "lucide-react";
 import { type FormEvent, useRef, useState } from "react";
-import { Link } from "react-router";
-import { PlanMark, StatusBadge } from "@/components/shared";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { useAuth } from "@/features/auth/auth-provider";
 import {
   type ClientInput,
@@ -18,7 +15,9 @@ import {
 } from "@/features/organizations/workspace-context";
 import { useCompanyAccess } from "@/features/team/company-access";
 import { useLocale } from "@/lib/i18n";
+import type { ProjectStatus } from "./data";
 import { projectCopy } from "./project-copy";
+import { ProjectRegisterHeader, ProjectRegisterList } from "./project-register";
 import {
   createProject,
   listProjects,
@@ -123,6 +122,8 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
       setCreating(false);
       requestAnimationFrame(() => newProjectButton.current?.focus());
       setSaved(true);
+      setQuery("");
+      setStatus("all");
       void projectQuery.refetch();
     } catch {
       setError("saveError");
@@ -130,49 +131,29 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
       setBusy(false);
     }
   }
-  const visible = projects.filter(
-    (p) =>
-      (status === "all" || p.status === status) &&
-      `${p.name} ${p.client_name} ${p.city}`
-        .toLocaleLowerCase(locale)
-        .includes(query.toLocaleLowerCase(locale)),
-  );
   return (
-    <section className="saved-projects" aria-labelledby="saved-projects-title">
-      <div className="section-heading workspace-heading">
-        <h2 id="saved-projects-title">{c.title}</h2>
-        {owner && (
-          <Button
-            ref={newProjectButton}
-            onClick={() => {
-              setCreating(true);
-              setSaved(false);
-              setError(null);
-            }}
-          >
-            <Plus size={15} />
-            {t("newProject")}
-          </Button>
-        )}
-      </div>
-
-      <section className="metrics" aria-label={t("figures")}>
-        {(["active", "planning", "completed"] as const).map((value) => (
-          <div key={value}>
-            <span>{t(value)}</span>
-            <strong>
-              {loading || failed
-                ? "—"
-                : projects.filter((p) => p.status === value).length}
-            </strong>
-            <small>
-              {locale === "fr"
-                ? "Parmi les projets chargés"
-                : "Among loaded projects"}
-            </small>
-          </div>
-        ))}
-      </section>
+    <section
+      className="saved-projects project-register"
+      aria-labelledby="saved-projects-title"
+    >
+      <ProjectRegisterHeader
+        scheduleHref={`/workspace/${organizationId}/schedule`}
+        action={
+          owner && (
+            <Button
+              ref={newProjectButton}
+              onClick={() => {
+                setCreating(true);
+                setSaved(false);
+                setError(null);
+              }}
+            >
+              <Plus size={15} />
+              {t("newProject")}
+            </Button>
+          )
+        }
+      />
       {owner && (
         <Dialog
           open={creating}
@@ -216,157 +197,39 @@ export function SavedProjects({ organizationId }: { organizationId: string }) {
         </Dialog>
       )}
       {saved && <p role="status">{c.saved}</p>}
-      {loading && <p role="status">{c.loading}</p>}
       {projectQuery.isError && projectQuery.data && (
         <p role="alert" className="error-message">
           {c.error}
         </p>
       )}
-      {failed ? (
-        <div>
-          <p role="alert">{c.error}</p>
-          <Button variant="outline" onClick={() => void projectQuery.refetch()}>
-            {c.retry}
-          </Button>
-        </div>
-      ) : !loading && projects.length === 0 ? (
-        <p className="workspace-loading">{c.empty}</p>
-      ) : null}
-      <div className="project-workspace">
-        <div className="project-main">
-          <fieldset className="section-tabs" aria-label={t("status")}>
-            {(["all", "active", "planning", "completed"] as const).map(
-              (value) => (
-                <button
-                  type="button"
-                  key={value}
-                  className={status === value ? "selected" : ""}
-                  aria-pressed={status === value}
-                  onClick={() => setStatus(value)}
-                >
-                  {t(value)}
-                </button>
-              ),
-            )}
-          </fieldset>
-          <div className="table-toolbar">
-            <div className="search-field">
-              <Search size={17} />
-              <Input
-                aria-label={t("search")}
-                placeholder={t("search")}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-          </div>
-          <p className="helper-text">
-            {locale === "fr"
-              ? "Recherche et filtres sur les projets chargés."
-              : "Search and filters apply to loaded projects."}
-          </p>
-          <div className="table-scroll">
-            <table className="project-table">
-              <thead>
-                <tr>
-                  <th>{t("project")}</th>
-                  <th>{t("status")}</th>
-                  <th>{t("city")}</th>
-                  <th>
-                    <span className="sr-only">{t("open")}</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {visible.map((project) => (
-                  <tr key={project.id}>
-                    <td>
-                      <Link
-                        className="project-link"
-                        aria-label={project.name}
-                        to={`/workspace/${organizationId}/projects/${project.id}`}
-                      >
-                        <span className="project-thumbnail sage">
-                          <PlanMark />
-                        </span>
-                        <span>
-                          <strong>{project.name}</strong>
-                          <small>{project.client_name}</small>
-                        </span>
-                      </Link>
-                    </td>
-                    <td>
-                      <StatusBadge
-                        status={
-                          project.status as "planning" | "active" | "completed"
-                        }
-                      />
-                    </td>
-                    <td>{project.city}</td>
-                    <td>
-                      <Link
-                        className="row-arrow"
-                        aria-label={`${t("open")} — ${project.name}`}
-                        to={`/workspace/${organizationId}/projects/${project.id}`}
-                      >
-                        <ArrowUpRight size={17} />
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {!loading &&
-            !failed &&
-            projects.length > 0 &&
-            visible.length === 0 && (
-              <p className="workspace-loading">{t("noResults")}</p>
-            )}
-        </div>
-        <aside className="context-panel" aria-label={t("attention")}>
-          <div className="context-title">
-            <h2>{t("attention")}</h2>
-          </div>
-          <p className="muted context-description">
-            {locale === "fr"
-              ? "Retrouvez les tâches de vos chantiers dans le planning de l’entreprise."
-              : "Find your project tasks in the company schedule."}
-          </p>
-          <div className="next-steps">
-            <Link to={`/workspace/${organizationId}/schedule`}>
-              <span>
-                <strong>
-                  {locale === "fr" ? "Ouvrir le planning" : "Open schedule"}
-                </strong>
-                <small>
-                  {locale === "fr"
-                    ? "Semaine, retards et tâches sans date"
-                    : "Week, overdue and undated tasks"}
-                </small>
-              </span>
-              <ArrowUpRight size={15} />
-            </Link>
-          </div>
-          <div className="project-note">
-            <h3>{locale === "fr" ? "Croquis du chantier" : "Site sketches"}</h3>
-            <p>
-              {locale === "fr"
-                ? "Ouvrez un projet pour créer ou consulter ses croquis."
-                : "Open a project to create or view its sketches."}
-            </p>
-          </div>
-        </aside>
-      </div>
-      {hasMore && !failed && (
-        <Button
-          disabled={projectQuery.isFetchingNextPage}
-          variant="outline"
-          onClick={more}
-        >
-          {c.more}
-        </Button>
-      )}
+      <ProjectRegisterList
+        projects={projects.map((project) => ({
+          ...project,
+          client: project.client_name,
+          status: project.status as ProjectStatus,
+          href: `/workspace/${organizationId}/projects/${project.id}`,
+        }))}
+        query={query}
+        status={status}
+        onQuery={setQuery}
+        onStatus={setStatus}
+        loading={loading}
+        failed={failed}
+        loadedOnly
+        canCreate={owner}
+        onRetry={() => void projectQuery.refetch()}
+        more={
+          hasMore && (
+            <Button
+              disabled={projectQuery.isFetchingNextPage}
+              variant="outline"
+              onClick={more}
+            >
+              {projectQuery.isFetchingNextPage ? c.loading : c.more}
+            </Button>
+          )
+        }
+      />
     </section>
   );
 }

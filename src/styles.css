@@ -4232,3 +4232,257 @@ details[open] > .compact-identity > svg {
 .storage-usage-row p {
   margin: 0.5rem 0 0;
 }
+
+/* Shared live/demo project register. */
+.live-shell .saved-projects.project-register {
+  margin-top: 0;
+}
+.project-register-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-bottom: var(--space-8);
+}
+.project-register-header .page-description {
+  margin-top: var(--space-2);
+  max-width: 65ch;
+}
+.project-register-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+}
+.project-register-list {
+  min-width: 0;
+}
+.register-status {
+  gap: var(--space-6);
+}
+.register-status button {
+  min-height: var(--control-height);
+  padding: var(--space-2) var(--space-1) var(--space-3);
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.register-status button > span {
+  background: var(--soft);
+  color: var(--muted);
+  min-width: 22px;
+  text-align: center;
+  font-size: 10px;
+}
+.register-status button.selected > span {
+  background: var(--sidebar);
+  color: var(--green);
+}
+.register-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) 0 var(--space-3);
+}
+.register-toolbar .search-field {
+  max-width: 420px;
+  min-height: var(--control-height);
+  padding: 0 var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--muted);
+}
+.register-toolbar .search-field:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.register-toolbar .search-field > svg {
+  flex-shrink: 0;
+}
+.register-toolbar .input {
+  font-size: var(--text-sm);
+}
+.register-toolbar .input:focus-visible {
+  outline: none;
+}
+.register-scope {
+  color: var(--muted);
+  font-size: 11px;
+  margin: 0 0 var(--space-4);
+}
+.project-register .register-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+.register-table th:first-child {
+  width: 50%;
+}
+.register-table th:nth-child(2) {
+  width: 25%;
+}
+.register-table th:last-child {
+  width: 52px;
+}
+.register-table th {
+  font-size: 11px;
+  color: var(--muted);
+}
+.register-table td {
+  padding: var(--space-4) var(--space-3);
+  font-size: var(--text-sm);
+}
+.register-table td:first-child {
+  padding-left: var(--space-3);
+}
+.register-table .project-link {
+  min-width: 0;
+  min-height: 44px;
+  gap: var(--space-3);
+}
+.register-project-icon {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--green);
+  background: var(--surface);
+}
+.register-project-name,
+.register-city {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.register-table .project-link strong {
+  font-size: 13px;
+  line-height: 1.5;
+}
+.register-table .project-link small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+.register-table .row-arrow {
+  width: 40px;
+  height: 40px;
+}
+.register-table tbody tr:focus-within {
+  background: var(--soft);
+}
+.register-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 64px;
+  color: var(--muted);
+  font-size: 11px;
+}
+.register-message {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-4);
+  padding: var(--space-8) 0;
+}
+.register-loading > div {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--space-6) var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.register-loading span:not(.sr-only) {
+  width: 38%;
+  height: 20px;
+  background: var(--border);
+  border-radius: var(--radius);
+}
+.register-loading span:last-child {
+  width: 18%;
+}
+@media (max-width: 1000px) {
+  .project-register-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-4);
+  }
+}
+@media (max-width: 600px) {
+  .project-register-header {
+    margin-bottom: var(--space-6);
+  }
+  .project-register-actions {
+    width: 100%;
+    flex-wrap: wrap;
+  }
+  .project-register-actions .button {
+    flex: 1;
+  }
+  .register-status {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0 var(--space-3);
+    overflow: visible;
+  }
+  .register-status button {
+    justify-content: space-between;
+    white-space: normal;
+    text-align: left;
+    min-height: 44px;
+    padding: var(--space-3) var(--space-1);
+  }
+  .register-toolbar {
+    flex-wrap: wrap;
+    padding-top: var(--space-4);
+  }
+  .register-toolbar .search-field {
+    max-width: none;
+    min-height: 44px;
+  }
+  .register-toolbar .search-field button {
+    min-width: 44px;
+    min-height: 44px;
+    display: grid;
+    place-items: center;
+    margin-right: calc(-1 * var(--space-3));
+  }
+  .register-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
+  .register-table tbody,
+  .register-table tr {
+    display: block;
+  }
+  .register-table tbody tr {
+    position: relative;
+    padding: var(--space-4) 52px var(--space-4) 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .register-table td,
+  .register-table td:first-child {
+    display: block;
+    padding: 0;
+    border: none;
+  }
+  .register-table .register-city {
+    padding: var(--space-1) 0 var(--space-2) 52px;
+    color: var(--muted);
+  }
+  .register-table .register-project-status {
+    padding-left: 52px;
+  }
+  .register-table .register-open {
+    position: absolute;
+    right: 0;
+    top: var(--space-4);
+  }
+  .register-table .row-arrow {
+    width: 44px;
+    height: 44px;
+  }
+}

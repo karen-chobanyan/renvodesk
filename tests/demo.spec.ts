@@ -154,3 +154,67 @@ test("demo estimate PDF preview is generated from fictional data", async ({
   ).toBeVisible();
   await expect(page.getByText("Page 1 / 1")).toBeVisible({ timeout: 15000 });
 });
+
+test("project register filters reset with keyboard and long names fit on phones", async ({
+  page,
+}) => {
+  await open(page, "/projects");
+  const register = page.getByRole("region", {
+    name: "Projets de l’entreprise",
+  });
+  const search = register.getByRole("textbox");
+  await search.fill("no matching project");
+  await expect(
+    register.getByRole("heading", { name: "Aucun projet trouvé" }),
+  ).toBeVisible();
+  await register
+    .getByRole("button", { name: "Réinitialiser", exact: true })
+    .press("Enter");
+  await expect(search).toBeFocused();
+  await expect(search).toHaveValue("");
+  await register.getByRole("button", { name: "Terminés", exact: true }).click();
+  await expect(
+    register.getByRole("button", { name: "Terminés", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await register.getByRole("button", { name: "Nouveau projet" }).click();
+  const projectName =
+    "Rénovation complète de la maison et de ses dépendances — deuxième phase";
+  await page.getByLabel("Nom du projet", { exact: true }).fill(projectName);
+  await page
+    .getByLabel("Client", { exact: true })
+    .fill("Famille Exemple — résidence principale");
+  await page
+    .getByLabel("Ville", { exact: true })
+    .fill("Ottignies-Louvain-la-Neuve");
+  await page
+    .getByRole("button", { name: "Créer le projet", exact: true })
+    .click();
+  await expect(
+    register.getByRole("link", { name: projectName, exact: true }),
+  ).toBeVisible();
+  await expect(
+    register.getByRole("button", { name: "Tous les projets", exact: true }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await search.fill("  Ottignies  ");
+  await expect(
+    register.getByRole("link", { name: projectName, exact: true }),
+  ).toBeVisible();
+  await register
+    .getByRole("button", { name: "Effacer la recherche", exact: true })
+    .click();
+  await expect(search).toBeFocused();
+  expect(
+    await register
+      .locator(".table-scroll")
+      .evaluate((element) => element.scrollWidth <= element.clientWidth),
+  ).toBe(true);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByRole("combobox", { name: "Langue" }).selectOption("en");
+  await expect(
+    page.getByRole("heading", { name: "Company projects" }),
+  ).toBeVisible();
+});
